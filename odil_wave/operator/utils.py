@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 import torch
 from odil_wave.wavefield import Wavefield
-from .base import DenseOperator
-from .temporal import TimeOperator2ndOrder, TimeOperator4thOrder
+from .base import SparseOperator
+from .spatial import TimeOperator2ndOrder, TimeOperator4thOrder
 from .spatial import Laplacian2ndOrder, Laplacian4thOrder
 from .conditions import (
     Conditions,
@@ -23,8 +23,8 @@ class WaveEquation:
     ic_weight: float = 1.0
     pml_weight: float = 1.0
 
-    _time_op: DenseOperator = field(init=False)
-    _lap: DenseOperator = field(init=False)
+    _time_op: SparseOperator = field(init=False)
+    _lap: SparseOperator = field(init=False)
     _ic: InitialConditions = field(init=False)
     _bc: Conditions = field(init=False)
     _pml: PML = field(init=False)
