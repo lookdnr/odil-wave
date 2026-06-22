@@ -3,7 +3,7 @@ from typing import Tuple, List
 
 import scipy.optimize as scopt
 import numpy as np
-from odil_wave.loss import DiscreteLoss, ForwardLoss, InverseLoss
+from odil_wave.loss import DiscreteLoss, ForwardLoss
 from odil_wave.wavefield import Wavefield
 from odil_wave.loss.utils import LossTape
 
@@ -46,17 +46,6 @@ class ScipyOptimiser(Optimiser):
                 self.wavefield.amplitude.cpu().numpy().ravel(),
                 self.loss.config.geometry.n_sources,
             )
-        elif isinstance(self.loss, InverseLoss):
-            n_shots = self.loss.config.geometry.n_sources  # extract shots
-            amp0 = np.tile(
-                self.wavefield.amplitude.cpu().numpy().ravel(), n_shots
-            )  # tile amplitude for each shot
-            wsp0 = (
-                self.wavefield.wavespeed.cpu().numpy().ravel()
-            )  # tile wavespeed for each shot
-            u0 = np.concatenate(
-                [amp0, wsp0]
-            )  # concatenate amplitude and wavespeed for inverse problem
 
         result = scopt.minimize(
             fun=self.loss.evaluate,
@@ -82,19 +71,6 @@ class ScipyOptimiser(Optimiser):
                     grid=self.wavefield.grid, init_wavespeed=self.wavefield.wavespeed
                 )
                 wf.amplitude = chunks[s]
-                outputs.append(wf)
-
-        elif isinstance(self.loss, InverseLoss):
-            n_shots = self.loss.config.geometry.n_sources
-            speed_offset = self.loss.config.speed_offset
-
-            amp_blocks = result.x[:speed_offset].reshape(
-                n_shots, -1
-            )  # (n_shots, Nt*Nx*Ny)
-            wsp = result.x[speed_offset:]  # (Nx*Ny,)
-            for s in range(n_shots):
-                wf = Wavefield(grid=self.wavefield.grid, init_wavespeed=wsp)
-                wf.amplitude = amp_blocks[s]
                 outputs.append(wf)
 
         return outputs, self.loss.callback
