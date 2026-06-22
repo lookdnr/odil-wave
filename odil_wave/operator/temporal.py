@@ -27,11 +27,13 @@ def _diff_matrix(derivative: int, ord: int, n: int, h: float) -> sp.dia_matrix:
     return D
 
 
-def _assemble(deriv_ord: int, acc_ord: int, nt: int, nx: int, ny: int, dt: int):
+def _assemble(
+    deriv_ord: int, acc_ord: int, nt: int, nx: int, ny: int, dt: float
+) -> sp.csr_matrix:
     """Helper for assembling the sparse deriv_ord derivative operator"""
     D = _diff_matrix(deriv_ord, acc_ord, nt, dt)
     Ixy = sp.eye(nx * ny)
-    return sp.kron(D, Ixy, format="csr")
+    return sp.kron(D, Ixy).tocsr()  # type: ignore
 
 
 class FirstTimeDerivative(SparseOperator):
@@ -48,7 +50,12 @@ class FirstTimeDerivative(SparseOperator):
         nx, _ = self.wavefield.grid.nx, self.wavefield.grid.dx
         ny, _ = self.wavefield.grid.ny, self.wavefield.grid.dy
 
-        return _assemble(1, ord, nt, nx, ny, dt)  # type: ignore
+        D = _assemble(1, ord, nt, nx, ny, dt)
+
+        # enforce zero amplitude IC
+        spatial_extent = nx * ny
+        D[:spatial_extent, :] = sp.eye(nt * spatial_extent).tocsr()[:spatial_extent, :]
+        return D
 
 
 class SecondTimeDerivative(SparseOperator):
@@ -65,4 +72,16 @@ class SecondTimeDerivative(SparseOperator):
         nx, _ = self.wavefield.grid.nx, self.wavefield.grid.dx
         ny, _ = self.wavefield.grid.ny, self.wavefield.grid.dy
 
-        return _assemble(2, ord, nt, nx, ny, dt)  # type: ignore
+        D = _assemble(2, ord, nt, nx, ny, dt)  # type: ignore
+        spatial_extent = nx * ny
+
+        # enforce zero amplitude IC
+        D[:spatial_extent, :] = sp.eye(nt * spatial_extent).tocsr()[:spatial_extent, :]
+
+        # enforce zero velocity IC
+        ut = FirstTimeDerivative(self.wavefield, ord)
+        ut_0 = ut.matrix[:spatial_extent, :]
+        D[spatial_extent : 2 * spatial_extent, :] = ut_0
+
+        # ensure we return a scipy.sparse.csr_matrix (not a csr_array)
+        return D
