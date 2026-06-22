@@ -161,3 +161,14 @@ We have done quite a lot in the last few days, and spread the initial developmen
 - Me: Optimiser classes, discrete loss classes, Wavefield class, SparseOperator classes 
 
 There was a little bit of implementation friction, namely becase my package now has to contain two pathways, one for the forward problem (my focus) and one for the inverse problem (their focus). This requires the use of different optimisers, losses, stencils, et cetera, and is not quite as simple as "just stick the wavespeed model in and optimise". 
+
+## 22/06: Weekly meeting
+
+In this meeting, we walked through our progress from the past week. I informed the supervisors that I would be switching direction. Last week, I introduced a lot of machinery for gradient based optimisation and the inverse problem which I would never use. The scope of my repo blew up beyond that of my project, so I proposed a change:
+
+- Use sparse matrix operators
+- Optimise the loss (single step) via a direct solve
+
+This is quite a significant reframe from the past week and will require quite a lot of refactoring which I have started now. This methodology will be much more efficient, and offer some interesting avenues.
+
+We made good progress last week, and hopefully by the end of this week the scope will be well defined, and the package will be tested and more efficient for my use case. More updates to come.
