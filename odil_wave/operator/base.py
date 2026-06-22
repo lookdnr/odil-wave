@@ -8,6 +8,10 @@ class SparseOperator(ABC):
 
     def __init__(self, wavefield: Wavefield, ord: int = 2) -> None:
         self.wavefield = wavefield
+
+        if ord not in [2, 4, 6, 8]:
+            raise ValueError("accuracy order 'ord' must be one of 2, 4, 6, 8")
+
         self.ord = ord
 
     @abstractmethod
