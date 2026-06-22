@@ -30,7 +30,7 @@ class Laplacian(SparseOperator):
         self.matrix = self.assemble()
 
     def assemble(self) -> sp.dia_matrix:
-        """Assembles the 2D Laplacian operator: Iy otimes Dx + Dy otimes Ix"""
+        """Assembles the 2D Laplacian operator: Dxx otimes Iy + Ix otimes Dyy"""
 
         # extract parameters
         ord = self.ord
@@ -47,4 +47,4 @@ class Laplacian(SparseOperator):
         Ix = sp.eye(nx)
 
         # construct the operator as a Kronecker sum
-        return sp.kron(Iy, Dxx) + sp.kron(Dyy, Ix)
+        return sp.kron(Dxx, Iy) + sp.kron(Ix, Dyy)
