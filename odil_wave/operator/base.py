@@ -11,5 +11,5 @@ class SparseOperator(ABC):
         self.ord = ord
 
     @abstractmethod
-    def assemble(self) -> sp.dia_matrix:
+    def assemble(self) -> sp.csr_matrix:
         pass
