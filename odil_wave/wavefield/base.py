@@ -12,12 +12,6 @@ class Wavefield:
     _amplitude: np.ndarray = field(init=False)
     init_amplitude: np.ndarray | None = None  # optionally initialise amplitude
 
-    _wavespeed: np.ndarray = field(init=False)
-    init_wavespeed: np.ndarray | None = None  # optional initialise speed
-
-    _init_ut: np.ndarray = field(init=False)
-    init_velocity: np.ndarray | None = None  # optional initial velocity field
-
     def __post_init__(self) -> None:
         Nx, Ny = self.grid.shape
         Nt = self.grid.nt
@@ -28,24 +22,6 @@ class Wavefield:
             if self.init_amplitude is None
             else np.asarray(self.init_amplitude)
         )
-
-        # initialise wavespeed as Nx*Ny or provided values
-        self._wavespeed = (
-            np.ones(shape=(Nx, Ny))
-            if self.init_wavespeed is None
-            else np.asarray(self.init_wavespeed)
-        )
-
-        # initialise velocity
-        self._init_ut = (
-            np.zeros(shape=(Nx, Ny))
-            if self.init_velocity is None  # default init is zeros
-            else np.asarray(self.init_velocity)
-        )
-
-    @property
-    def init_ut(self) -> np.ndarray:
-        return self._init_ut
 
     @property
     def amplitude(self) -> np.ndarray:
@@ -58,13 +34,9 @@ class Wavefield:
         self._amplitude = value.reshape(Nt, Nx, Ny)
 
     @property
-    def wavespeed(self) -> np.ndarray:
-        return self._wavespeed
-
-    @property
     def flat_data(self) -> np.ndarray:
         """Return flat parameter vector [amp (nt*nx*ny), wvsp (nx*ny)] as np.ndarray"""
-        return np.concat([self._amplitude.ravel(), self._wavespeed.ravel()])
+        return self._amplitude.ravel()
 
     @flat_data.setter
     def flat_data(self, flat: np.ndarray) -> None:
@@ -72,20 +44,15 @@ class Wavefield:
         Nx, Ny = self.grid.shape
         Nt = self.grid.nt
 
-        n_amp = Nx * Ny * Nt  # num amplitude entries
-        n_wsp = Nx * Ny  # num wavespeed entries
-        total = n_amp + n_wsp  # total
-
-        if flat.shape != (total,):
+        # reshape
+        try:
+            self._amplitude = flat.reshape(Nt, Nx, Ny)
+        except ValueError as e:
             raise ValueError(
-                f"expected flat vector of length {total}, got {flat.shape}"
-            )
+                f"expected flat vector of length {Nt * Nx * Ny}, got {flat.size}"
+            ) from e
 
-        # resahpe and cast to np tensors
-        self._amplitude = flat[:n_amp].reshape(Nt, Nx, Ny)
-        self._wavespeed = flat[n_amp:].reshape(Nx, Ny)
-
-    def show(self, idx: int, title="Wavefield and model", view: str = "xy"):
+    def show(self, idx: int, title="Wavefield", view: str = "xy"):
         assert view in [
             "xy",
             "ty",
@@ -104,38 +71,28 @@ class Wavefield:
 
         amp_data = np.take(self.amplitude, idx, axis=axis)  # extract slice
 
-        fig, axs = plt.subplots(1, 2, figsize=(12, 6))
+        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
         (xmin, xmax), (ymin, ymax) = self.grid.extent
 
-        im1 = axs[0].imshow(
+        im1 = ax.imshow(
             amp_data,
             origin="lower",
             extent=(xmin, xmax, ymin, ymax),
             cmap="RdBu_r",
         )
 
-        im2 = axs[1].imshow(
-            self.wavespeed,
-            origin="lower",
-            extent=(xmin, xmax, ymin, ymax),
-            cmap="viridis",
-        )
-
         i, j = view[0], view[1]  # extract letters for labelling
-        for ax in axs:
-            ax.set_xlabel(i)
-            ax.set_ylabel(j)
+        ax.set_xlabel(i)
+        ax.set_ylabel(j)
 
         slice_plane = ["t", "x", "y"][axis]
-        axs[0].set_title(f"Amplitude field ({view} plane, {slice_plane} = {idx})")
-        axs[1].set_title("Wave speed model")
+        ax.set_title(f"Amplitude field ({view} plane, {slice_plane} = {idx})")
 
-        plt.colorbar(im1, ax=axs[0], label="Amplitude", shrink=0.85)
-        plt.colorbar(im2, ax=axs[1], label=r"Wavespeed ($ms^{-1}$)", shrink=0.85)
+        plt.colorbar(im1, ax=ax, label="Amplitude", shrink=0.85)
 
         fig.suptitle(title)
         fig.tight_layout()
-        plt.show()
+        return fig
 
     def animate(
         self,
@@ -187,6 +144,6 @@ class Wavefield:
 if __name__ == "__main__":
     grid = Grid()
     amp = np.random.rand(grid.nt, *grid.shape)
-    wsp = np.random.rand(*grid.shape)
-    u = Wavefield(grid, init_amplitude=amp, init_wavespeed=wsp)
+    u = Wavefield(grid, init_amplitude=amp)
     u.show(title="Test plot", idx=100)
+    plt.show()
