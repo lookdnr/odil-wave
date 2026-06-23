@@ -1,5 +1,6 @@
 from .base import SparseOperator
 import scipy.sparse as sp
+import numpy as np
 from odil_wave.wavefield import Wavefield
 
 from .stencils import STENCIL_COEFFS_1ST, STENCIL_COEFFS_2ND, STENCIL_OFFSETS
@@ -52,10 +53,10 @@ class FirstTimeDerivative(SparseOperator):
 
         D = _assemble(1, ord, nt, nx, ny, dt)
 
-        # enforce zero amplitude IC
-        spatial_extent = nx * ny
-        D[:spatial_extent, :] = sp.eye(nt * spatial_extent).tocsr()[:spatial_extent, :]
         return D
+
+    def apply(self, u: Wavefield) -> np.ndarray:
+        return self.matrix @ u.amplitude
 
 
 class SecondTimeDerivative(SparseOperator):
@@ -73,15 +74,8 @@ class SecondTimeDerivative(SparseOperator):
         ny, _ = self.wavefield.grid.ny, self.wavefield.grid.dy
 
         D = _assemble(2, ord, nt, nx, ny, dt)  # type: ignore
-        spatial_extent = nx * ny
 
-        # enforce zero amplitude IC
-        D[:spatial_extent, :] = sp.eye(nt * spatial_extent).tocsr()[:spatial_extent, :]
-
-        # enforce zero velocity IC
-        ut = FirstTimeDerivative(self.wavefield, ord)
-        ut_0 = ut.matrix[:spatial_extent, :]
-        D[spatial_extent : 2 * spatial_extent, :] = ut_0
-
-        # ensure we return a scipy.sparse.csr_matrix (not a csr_array)
         return D
+
+    def apply(self, u: Wavefield) -> np.ndarray:
+        return self.matrix @ u.amplitude
