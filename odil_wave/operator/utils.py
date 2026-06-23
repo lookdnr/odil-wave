@@ -27,7 +27,8 @@ class WaveEquation:
         self._utt_op = SecondTimeDerivative(self.wavefield, self.time_order)
         self._lap_op = Laplacian(self.wavefield, self.space_order)
 
-        self.matrix = self.assemble()
+        # assemble global matrix operator once
+        self.A = self.assemble()
 
     def assemble(self) -> sp.csr_matrix:
         grid = self.wavefield.grid
@@ -41,7 +42,7 @@ class WaveEquation:
         I_t = sp.eye(nt, format="csr")  # (nt, nt) identity
         I_xy = sp.eye(nxy, format="csr")  # (nxy, nxy) identity
 
-        c_sqr = sp.diags(self.model.model.ravel() ** 2)  # create C^2 matrix for mult
+        c_sqr = sp.diags(self.model.c.ravel() ** 2)  # create C^2 matrix for mult
         Sigma = grid.sig_mat
 
         # assemble global matrix operator
@@ -66,16 +67,9 @@ class WaveEquation:
         A = sp.csr_matrix(sp.vstack([u0, ut0, A[2 * nxy :, :]], format="csr"))
         return A
 
-    def residual(
-        self, wavefield: Wavefield, c: VelocityModel, source: np.ndarray
-    ) -> np.ndarray:
-        """Compute Au - f, where A encodes the derivatives and PML condition"""
-        # compute pde residual u_tt - c^2 u_xx
-        pde = self._utt_op.apply(wavefield) - c.model**2 @ self._lap_op.apply(wavefield)
+    def residual(self, wavefield: Wavefield, source: np.ndarray) -> np.ndarray:
+        """Compute Au - f, where A encodes the derivatives and PML condition
 
-        # compute PML term Sigma*Ut
-        pml = self.wavefield.grid.sig_mat @ self._ut_op.apply(wavefield)
-
-        # compute residual: Utt + Sigma Ut - c^2(Uxx + Uyy) - f
-        residual = pde + pml - source
-        return residual
+        Note that sources may be a (n_txy * n_shots) matrix encoding each of the shots
+        """
+        return self.A @ wavefield.amplitude - source
