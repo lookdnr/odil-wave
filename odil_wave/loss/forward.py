@@ -1,4 +1,5 @@
 from .base import DiscreteLoss
+from typing import Tuple
 
 import numpy as np
 
@@ -23,7 +24,7 @@ class ForwardLoss(DiscreteLoss):
         A = self.problem.wave_eq.A
         return 2 * A.T @ r
 
-    def evaluate(self, u: np.ndarray) -> np.float64:
+    def evaluate(self, u: np.ndarray) -> Tuple[np.float64, np.ndarray]:
 
         #  get wavespeed separately, we need it to compute the PDE residuals
         sources = self.problem.sources
@@ -36,4 +37,4 @@ class ForwardLoss(DiscreteLoss):
         if self.evaluations % self.callback.log_every == 0:
             self.callback.log(L, residual)
 
-        return L
+        return L, self._grad(residual)
