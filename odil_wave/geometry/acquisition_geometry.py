@@ -95,6 +95,17 @@ class AcquisitionGeometry:
         # broadcast (Nt,) * (Nx, Ny) -> (Nt, 1, 1) * (1, Nx, Ny) => (Nt, Nx, Ny)
         return temporal.reshape(-1, 1, 1) * spatial.reshape(1, *self.grid.shape)
 
+    def source_matrix(self) -> np.ndarray:
+        """precompute source fields for each shot"""
+        n_shots = self.n_sources
+
+        sources = (
+            np.stack([self.source_field(i) for i in range(n_shots)])
+            .reshape(n_shots, -1)
+            .T
+        )  # (nt*nx*ny, n_shots)
+        return sources
+
     def extract_observations(self, U: np.ndarray) -> np.ndarray:
         """Pull (NT, n_receivers) sensor data from a (NT, NX, NY) wavefield."""
         return U[:, self.recv_ij[:, 0], self.recv_ij[:, 1]]
