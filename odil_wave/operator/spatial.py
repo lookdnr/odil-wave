@@ -51,4 +51,4 @@ class Laplacian(SparseOperator):
 
     def apply(self, U: np.ndarray) -> np.ndarray:
         """Apply operator to a (time, space) ndarray"""
-        return self.L @ U
+        return U @ self.L.T
