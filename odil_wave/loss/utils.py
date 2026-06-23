@@ -55,8 +55,7 @@ class LossTape:
 
     def show(self, title: str = "Loss History"):
         assert len(self.history["loss"]) > 0, "No loss history to show."
-        ncols = 3 if len(self.history["data_residuals"]) > 0 else 2
-        fig, axs = plt.subplots(1, ncols, figsize=(6 * ncols, 4))
+        fig, axs = plt.subplots(1, 2, figsize=(12, 4))
 
         # compute residual norms (cached; only new entries recomputed)
         pde_norms = self._norms("pde_residuals", "pde")
