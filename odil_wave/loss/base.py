@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Tuple
-from .utils import LossConfig, LossTape
-import torch
+from .utils import Problem, LossTape
 import numpy as np
 
 
@@ -10,21 +9,13 @@ class DiscreteLoss(ABC):
 
     def __init__(
         self,
-        config: LossConfig,
+        problem: Problem,
         callback: LossTape | None = None,
     ):
-        self.config = config  # loss configuration
+        self.problem = problem  # loss configuration
         self.callback = (
             callback if callback is not None else LossTape()
         )  # loss history callback
-
-        # precompute source fields for each shot
-        self.sources = torch.stack(
-            [
-                self.config.geometry.source_field(i)
-                for i in range(self.config.geometry.n_sources)
-            ]
-        )
 
         self.evaluations = 0  # counter for number of loss evaluations
 
@@ -34,14 +25,10 @@ class DiscreteLoss(ABC):
         pass
 
     @abstractmethod
-    def _eval_loss(self, residuals: torch.Tensor) -> torch.Tensor:
+    def _eval_loss(self, residuals: np.ndarray) -> np.ndarray:
         pass
 
     @abstractmethod
-    def _residuals(self, data: torch.Tensor) -> torch.Tensor:
+    def _residuals(self, data: np.ndarray) -> np.ndarray:
         """Compute the residuals of the loss function given a wavefield."""
-        pass
-
-    @abstractmethod
-    def _eval_pde_loss(self, data: torch.Tensor) -> torch.Tensor:
         pass
