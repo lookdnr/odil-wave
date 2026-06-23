@@ -12,7 +12,7 @@ from .base import VelocityModel
 class HomogeneousModel(VelocityModel):
     """Homeogenous velocity odel: background_c everywhere"""
 
-    def __init__(self, grid: Grid, background_c: float):
+    def __init__(self, grid: Grid, background_c: float = 1.0):
         super().__init__(
             grid, background_c, contrast=1.0
         )  # no contrast for homeogenous model
@@ -62,7 +62,7 @@ class OverDensityModel(VelocityModel):
     def __init__(
         self,
         grid: Grid,
-        background_c: float,
+        background_c: float = 1.0,
         contrast: float = 0.7,
         centre: Tuple[float, float] = (0.0, 0.0),
         radius: float = 0.3,
