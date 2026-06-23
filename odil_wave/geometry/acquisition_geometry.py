@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from odil_wave.grid import Grid
-from odil_wave.models import VelocityModel
+from odil_wave.models.base import VelocityModel
 
 
 class AcquisitionGeometry:
@@ -145,7 +145,7 @@ class AcquisitionGeometry:
         if ax is None:
             _, ax = plt.subplots(figsize=(5.5, 5))
         velocity_model.show(
-            ax=ax, title=f"Acquisition on {velocity_model.profile}", show_pml=True
+            ax=ax, title=f"Acquisition on {velocity_model.name}", show_pml=True
         )
 
         rx = self.grid.x[self.recv_ij[:, 0]]
