@@ -47,11 +47,10 @@ class WaveEquation:
 
         # assemble global matrix operator
         # notes:
-        # - kron(D_tt, I_xy) gives time derivative at all points
-        # - kron(D_t, Sigma) scales velocity across space bydiagonal entries
+        # - D_t @ kron(I_t, Sigma) scales velocity across time by diagonal entries
         # - kron(I_t, c^2*lap) gives lap across all time steps
         A = sp.csr_matrix(
-            sp.kron(D_tt, I_xy) + sp.kron(D_t, Sigma) - sp.kron(I_t, c_sqr @ D_lap)
+            D_tt + D_t @ sp.kron(I_t, Sigma) - sp.kron(I_t, c_sqr @ D_lap)
         )
 
         # enforce BCs
