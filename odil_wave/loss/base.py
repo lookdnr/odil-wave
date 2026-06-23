@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Tuple
-from .utils import Problem, LossTape
+from .utils import LossTape
+from odil_wave.utils import Problem
 import numpy as np
 
 from odil_wave.wavefield import Wavefield

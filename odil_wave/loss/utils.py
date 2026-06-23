@@ -1,31 +1,8 @@
 from dataclasses import dataclass, field
 
-from odil_wave.operator import WaveEquation
-from odil_wave.wavefield import Wavefield
-from odil_wave.geometry import AcquisitionGeometry
-
 import matplotlib.pyplot as plt
 import scipy.optimize as scopt
 import numpy as np
-
-
-@dataclass
-class Problem:
-    """Configuration for the loss function."""
-
-    wave_eq: WaveEquation
-    geometry: AcquisitionGeometry
-
-    def __post_init__(self):
-        wf = self.wave_eq.wavefield
-        (self.Nx, self.Ny), self.Nt = wf.grid.shape, wf.grid.nt
-        self.sources = (
-            self.geometry.source_matrix()
-        )  # precompute (nt*nx*ny, n_shots) source matrix
-
-    @property
-    def wavefield(self) -> Wavefield:
-        return self.wave_eq.wavefield
 
 
 @dataclass
