@@ -3,6 +3,8 @@ from typing import Tuple
 from .utils import Problem, LossTape
 import numpy as np
 
+from odil_wave.wavefield import Wavefield
+
 
 class DiscreteLoss(ABC):
     """Base class for discrete loss functions."""
@@ -20,7 +22,7 @@ class DiscreteLoss(ABC):
         self.evaluations = 0  # counter for number of loss evaluations
 
     @abstractmethod
-    def evaluate(self, data: np.ndarray) -> Tuple[float, np.ndarray]:
+    def evaluate(self, wavefield: Wavefield) -> Tuple[float, np.ndarray]:
         """Evaluate the loss function given a wavefield."""
         pass
 
@@ -29,6 +31,10 @@ class DiscreteLoss(ABC):
         pass
 
     @abstractmethod
-    def _residuals(self, data: np.ndarray) -> np.ndarray:
+    def _residuals(self, wavefield: Wavefield) -> np.ndarray:
         """Compute the residuals of the loss function given a wavefield."""
+        pass
+
+    @abstractmethod
+    def _grad(self, r: np.ndarray) -> np.ndarray:
         pass
