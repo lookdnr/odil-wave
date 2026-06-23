@@ -22,53 +22,44 @@ class WaveEquation:
     _utt_op: SecondTimeDerivative = field(init=False)
     _lap: Laplacian = field(init=False)
 
+    # operator components - we store these instead of assembling the full A
+    S: sp.dia_matrix = field(init=False)  # damping coefficient matrix
+    C2L: sp.csr_matrix = field(init=False)  # c^2 * laplacian
+
     def __post_init__(self):
         self._ut_op = FirstTimeDerivative(self.wavefield, self.time_order)
         self._utt_op = SecondTimeDerivative(self.wavefield, self.time_order)
         self._lap_op = Laplacian(self.wavefield, self.space_order)
 
-        # assemble global matrix operator once
-        self.A = self.assemble()
+        # precompute
+        self.S = self.wavefield.grid.sig_mat
+        c_sqr = sp.diags(self.model.c.ravel() ** 2)
+        self.C2L = sp.diags(c_sqr) @ self._lap.L
 
-    def assemble(self) -> sp.csr_matrix:
-        grid = self.wavefield.grid
-        nt, nxy = grid.nt, grid.nx * grid.ny
+        self.nt = self.wavefield.grid.nt
+        self.nx, self.ny = self.wavefield.grid.shape
 
-        # extrcat matrices for each operator
-        D_t = self._ut_op.matrix
-        D_tt = self._utt_op.matrix
-        D_lap = self._lap_op.matrix
+    def matvec(self, u: np.ndarray) -> np.ndarray:
+        """Compute the matrix vector product Au (no explicit A formation)"""
+        U = u.reshape(self.nt, self.nx * self.ny)
 
-        I_t = sp.eye(nt, format="csr")  # (nt, nt) identity
-        I_xy = sp.eye(nxy, format="csr")  # (nxy, nxy) identity
+        utt = self._utt_op.apply(U)
+        damp = self._ut_op.apply(U @ self.S.T)
+        lap = self._lap.apply(U)
 
-        c_sqr = sp.diags(self.model.c.ravel() ** 2)  # create C^2 matrix for mult
-        Sigma = grid.sig_mat
+        AU = utt + damp - lap
 
-        # assemble global matrix operator
-        # notes:
-        # - D_t @ kron(I_t, Sigma) scales velocity across time by diagonal entries
-        # - kron(I_t, c^2*lap) gives lap across all time steps
-        A = sp.csr_matrix(
-            D_tt + D_t @ sp.kron(I_t, Sigma) - sp.kron(I_t, c_sqr @ D_lap)
-        )
+        # enforce ICs
+        # IC1: u(0) = 0
+        AU[0, :] = U[0, :]
 
-        # enforce BCs
-
-        # IC 1: first Nxy rows are identity
-        u0 = sp.eye(nt * nxy, format="csr").tocsr()[:nxy, :]
-
-        # IC 2: Ut(0) = 0, next nxy rows are t=0 rows of kron(Dt, Ixy)
-        D_t_full = sp.kron(D_t, I_xy)
-        ut0 = D_t_full[nxy : 2 * nxy, :]
-
-        # stack IC rows into global operator
-        A = sp.csr_matrix(sp.vstack([u0, ut0, A[2 * nxy :, :]], format="csr"))
-        return A
+        # IC2: ut(0) = 0
+        AU[1, :] = (self._ut_op.Dt @ U)[1, :]
+        return AU.ravel()
 
     def residual(self, u: np.ndarray, f: np.ndarray) -> np.ndarray:
         """Compute Au - f, where A encodes the derivatives and PML condition
 
         Note that sources may be a (n_txy * n_shots) matrix encoding each of the shots
         """
-        return self.A @ u - f
+        return self.matvec(u) - f
