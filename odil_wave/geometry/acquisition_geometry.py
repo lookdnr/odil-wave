@@ -1,7 +1,6 @@
 from typing import Optional, Tuple
 
 import math
-import torch
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -29,44 +28,50 @@ class AcquisitionGeometry:
         b_frac: float = 0.70,
         ring_center: Tuple[float, float] = (0.0, 0.0),
     ):
+        # inherit geometry from grid
         self.grid = grid
-        # ensure same device and dtype as grid
-        self.device = self.grid.device
-        self.dtype = self.grid.dtype
 
         self.n_receivers = n_receivers
         self.n_sources = n_receivers if n_sources is None else n_sources
-        self.f0 = f0
+
+        # source config
+        self.f0 = f0  # peak frequency
         self.t0 = 1.0 / f0 if t0 is None else t0  # causal Ricker delay [s]
-        self.sigma_s = 1.5 * max(grid.dx, grid.dy) if sigma_s is None else sigma_s
-        self.a_frac = a_frac
-        self.b_frac = b_frac
+        self.sigma_s = (  # spatial spread of the source
+            1.5 * max(grid.dx, grid.dy) if sigma_s is None else sigma_s
+        )
+
+        # ellipse config
+        self.a_frac = a_frac  # aspect ratio
+        self.b_frac = b_frac  # aspect ratio
         self.ring_center = ring_center
 
+        # create geometry
         self.recv_ij = self._place_ellipse(self.n_receivers)
         step = max(1, self.n_receivers // self.n_sources)
         self.src_ij = self.recv_ij[::step][: self.n_sources]
 
-    def _place_ellipse(self, n: int) -> torch.Tensor:
+    def _place_ellipse(self, n: int) -> np.ndarray:
         """Return (n, 2) integer full-grid indices on an ellipse inside the interior."""
         (ix_min, ix_max), (iy_min, iy_max) = self.grid.interior_extent
         cx, cy = self.ring_center
         a = self.a_frac * (ix_max - ix_min) / 2.0
         b = self.b_frac * (iy_max - iy_min) / 2.0
 
-        k = torch.arange(n, dtype=self.dtype, device=self.device)
+        k = np.arange(n)
         theta = 2.0 * math.pi * k / n
-        x_k = cx + a * torch.cos(theta)
-        y_k = cy + b * torch.sin(theta)
+        x_k = cx + a * np.cos(theta)
+        y_k = cy + b * np.sin(theta)
 
         (xmin, _), (ymin, _) = self.grid.extent
-        i = torch.round((x_k - xmin) / self.grid.dx).long().clamp(0, self.grid.nx - 1)
-        j = torch.round((y_k - ymin) / self.grid.dy).long().clamp(0, self.grid.ny - 1)
-        return torch.stack([i, j], dim=-1)
+        i = np.round((x_k - xmin) / self.grid.dx).clip(0, self.grid.nx - 1).astype(int)
+        j = np.round((y_k - ymin) / self.grid.dy).clip(0, self.grid.ny - 1).astype(int)
 
-    def ricker(self, t: torch.Tensor) -> torch.Tensor:
+        return np.stack([i, j], axis=-1)
+
+    def ricker(self, t: np.ndarray) -> np.ndarray:
         arg = (math.pi * self.f0 * (t - self.t0)) ** 2
-        return (1.0 - 2.0 * arg) * torch.exp(-arg)
+        return (1.0 - 2.0 * arg) * np.exp(-arg)
 
     def src_position(self, src_idx: int) -> Tuple[float, float]:
         i, j = int(self.src_ij[src_idx, 0]), int(self.src_ij[src_idx, 1])
@@ -76,19 +81,21 @@ class AcquisitionGeometry:
         i, j = int(self.recv_ij[rcv_idx, 0]), int(self.recv_ij[rcv_idx, 1])
         return float(self.grid.x[i]), float(self.grid.y[j])
 
-    def source_field(self, src_idx: int) -> torch.Tensor:
+    def source_field(self, src_idx: int) -> np.ndarray:
         """(NT, NX, NY) Gaussian-in-space, Ricker-in-time source field."""
         x_src, y_src = self.src_position(src_idx)
-        spatial = torch.exp(
+        spatial = np.exp(
             -(
                 ((self.grid.X - x_src) ** 2 + (self.grid.Y - y_src) ** 2)
                 / self.sigma_s**2
             )
         )
         temporal = self.ricker(self.grid.t)
-        return temporal.view(-1, 1, 1) * spatial.view(1, *self.grid.shape)
 
-    def extract_observations(self, U: torch.Tensor) -> torch.Tensor:
+        # broadcast (Nt,) * (Nx, Ny) -> (Nt, 1, 1) * (1, Nx, Ny) => (Nt, Nx, Ny)
+        return temporal.reshape(-1, 1, 1) * spatial.reshape(1, *self.grid.shape)
+
+    def extract_observations(self, U: np.ndarray) -> np.ndarray:
         """Pull (NT, n_receivers) sensor data from a (NT, NX, NY) wavefield."""
         return U[:, self.recv_ij[:, 0], self.recv_ij[:, 1]]
 
@@ -96,10 +103,10 @@ class AcquisitionGeometry:
         """Plot the Ricker temporal waveform R(t) of the source."""
         if ax is None:
             _, ax = plt.subplots(figsize=(5.5, 3.5))
-        r = self.ricker(self.grid.t).cpu().numpy()
+        r = self.ricker(self.grid.t)
         peak_t = int(np.argmax(np.abs(r)))
-        ax.plot(self.grid.t.cpu().numpy(), r)
-        ax.axvline(self.grid.t[peak_t].item(), color="gray", ls=":", alpha=0.7)
+        ax.plot(self.grid.t, r)
+        ax.axvline(self.grid.t[peak_t], color="gray", ls=":", alpha=0.7)
         ax.set_xlabel("t [s]")
         ax.set_ylabel("R(t) [a.u.]")
         ax.set_title(rf"Ricker pulse ($f_0$={self.f0} Hz, $t_0$={self.t0:.3f} s)")
@@ -113,9 +120,9 @@ class AcquisitionGeometry:
         """
         if ax is None:
             _, ax = plt.subplots(figsize=(5.5, 4.5))
-        src = self.source_field(src_idx).cpu().numpy()
+        src = self.source_field(src_idx)
         if t_idx is None:
-            t_idx = int(np.argmax(np.abs(self.ricker(self.grid.t).cpu().numpy())))
+            t_idx = int(np.argmax(np.abs(self.ricker(self.grid.t))))
         (xmin, xmax), (ymin, ymax) = self.grid.extent
         vmax = float(np.max(np.abs(src))) * 1.05 + 1e-12
         im = ax.imshow(
@@ -129,21 +136,22 @@ class AcquisitionGeometry:
         )
         ax.set_xlabel("x [m]")
         ax.set_ylabel("y [m]")
-        ax.set_title(f"source field s(x, y, t={self.grid.t[t_idx].item():.3f} s)")
+        ax.set_title(f"source field s(x, y, t={self.grid.t[t_idx]:.3f} s)")
         plt.colorbar(im, ax=ax, shrink=0.85, label="amplitude [a.u.]")
         return ax
 
     def show(self, velocity_model: VelocityModel, ax=None):
+        """Plot the acquisition geometry"""
         if ax is None:
             _, ax = plt.subplots(figsize=(5.5, 5))
         velocity_model.show(
-            ax=ax, title=f"acquisition on {velocity_model.profile}", show_pml=True
+            ax=ax, title=f"Acquisition on {velocity_model.profile}", show_pml=True
         )
 
-        rx = self.grid.x[self.recv_ij[:, 0]].cpu().numpy()
-        ry = self.grid.y[self.recv_ij[:, 1]].cpu().numpy()
-        sx = self.grid.x[self.src_ij[:, 0]].cpu().numpy()
-        sy = self.grid.y[self.src_ij[:, 1]].cpu().numpy()
+        rx = self.grid.x[self.recv_ij[:, 0]]
+        ry = self.grid.y[self.recv_ij[:, 1]]
+        sx = self.grid.x[self.src_ij[:, 0]]
+        sy = self.grid.y[self.src_ij[:, 1]]
         ax.scatter(
             rx,
             ry,
