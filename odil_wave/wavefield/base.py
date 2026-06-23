@@ -35,7 +35,7 @@ class Wavefield:
 
     @property
     def flat_data(self) -> np.ndarray:
-        """Return flat parameter vector [amp (nt*nx*ny), wvsp (nx*ny)] as np.ndarray"""
+        """Return flat parameter vector amp (nt*nx*ny) as np.ndarray"""
         return self._amplitude.ravel()
 
     @flat_data.setter
