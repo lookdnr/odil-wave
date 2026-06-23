@@ -1,29 +1,27 @@
 from dataclasses import dataclass, field
-from typing import Tuple
+
 from odil_wave.operator import WaveEquation
 from odil_wave.wavefield import Wavefield
 from odil_wave.geometry import AcquisitionGeometry
+
 import matplotlib.pyplot as plt
-import torch
 import scipy.optimize as scopt
 import numpy as np
 
 
 @dataclass
-class LossConfig:
+class Problem:
     """Configuration for the loss function."""
 
     wave_eq: WaveEquation
     geometry: AcquisitionGeometry
-    speed_offset: int = field(init=False)
-    device: torch.device = field(init=False)
 
     def __post_init__(self):
         wf = self.wave_eq.wavefield
-        (Nx, Ny), Nt = wf.grid.shape, wf.grid.nt
-        self.speed_offset = self.geometry.n_sources * Nx * Ny * Nt
-        self.device = wf.grid.device
-        self.dtype = wf.grid.dtype
+        (self.Nx, self.Ny), self.Nt = wf.grid.shape, wf.grid.nt
+        self.sources = (
+            self.geometry.source_matrix()
+        )  # precompute (nt*nx*ny, n_shots) source matrix
 
     @property
     def wavefield(self) -> Wavefield:
@@ -36,28 +34,24 @@ class LossTape:
 
     name: str = "Default LossTape"
     log_every: int = 5  # log interval
-    history: dict = field(
-        default_factory=lambda: {"loss": [], "pde_residuals": [], "data_residuals": []}
-    )
-    _norm_cache: dict = field(default_factory=lambda: {"pde": [], "data": []})
+    history: dict = field(default_factory=lambda: {"loss": [], "pde_residuals": []})
+    _norm_cache: dict = field(default_factory=lambda: {"pde": []})
     _result: scopt.OptimizeResult = field(init=False)  # store optimisation result
 
     def _norms(self, key: str, cache_key: str) -> list:
         """Return residual norms, computing only entries not already cached."""
         residuals = self.history[key]
         cache = self._norm_cache[cache_key]
+
         for r in residuals[len(cache) :]:
             cache.append(float(np.linalg.norm(r)))
+
         return cache
 
-    def log(self, loss: float, residuals: Tuple[torch.Tensor, ...]) -> None:
+    def log(self, loss: float, residuals: np.ndarray) -> None:
         """Log the loss and residuals."""
         self.history["loss"].append(loss)
-        self.history["pde_residuals"].append(residuals[0].detach().cpu().numpy())
-
-        # forward solver has no data loss
-        if len(residuals) > 1:
-            self.history["data_residuals"].append(residuals[1].detach().cpu().numpy())
+        self.history["pde_residuals"].append(residuals)
 
     def show(self, title: str = "Loss History"):
         assert len(self.history["loss"]) > 0, "No loss history to show."
@@ -76,13 +70,6 @@ class LossTape:
         axs[1].set_title("PDE Residual Norms")
         axs[1].set_xlabel("Iteration")
         axs[1].set_ylabel("Residual Norm")
-
-        if ncols == 3:
-            data_norms = self._norms("data_residuals", "data")
-            axs[2].semilogy(data_norms)
-            axs[2].set_title("Data Residual Norms")
-            axs[2].set_xlabel("Iteration")
-            axs[2].set_ylabel("Residual Norm")
 
         fig.suptitle(title)
         plt.tight_layout()
