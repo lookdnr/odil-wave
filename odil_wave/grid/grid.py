@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
 import numpy as np
+import scipy.sparse as sp
 
 
 @dataclass
@@ -99,6 +100,7 @@ class Grid:
         self.X, self.Y = np.meshgrid(self.x, self.y, indexing="ij")
 
         self.sigma_x, self.sigma_y = self._build_pml_profiles()
+        self.sig_mat = self._sigma_matrix()
 
     @property
     def shape(self) -> Tuple[int, int]:
@@ -152,6 +154,11 @@ class Grid:
         sigma_y = np.broadcast_to(sigma_y_1d.reshape(1, -1), (self.nx, self.ny)).copy()
 
         return sigma_x, sigma_y
+
+    def _sigma_matrix(self):
+        """Compute the diagonal damping matrix for enforcing the PML"""
+        sigma = self.sigma_x + self.sigma_y
+        return sp.diags(sigma.ravel())
 
     def cfl(self, c_max: float) -> float:
         return c_max * self.dt * math.sqrt(1.0 / self.dx**2 + 1.0 / self.dy**2)
