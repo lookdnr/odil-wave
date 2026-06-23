@@ -67,9 +67,9 @@ class WaveEquation:
         A = sp.csr_matrix(sp.vstack([u0, ut0, A[2 * nxy :, :]], format="csr"))
         return A
 
-    def residual(self, wavefield: Wavefield, source: np.ndarray) -> np.ndarray:
+    def residual(self, u: Wavefield, f: np.ndarray) -> np.ndarray:
         """Compute Au - f, where A encodes the derivatives and PML condition
 
         Note that sources may be a (n_txy * n_shots) matrix encoding each of the shots
         """
-        return self.A @ wavefield.amplitude - source
+        return self.A @ u.amplitude - f
