@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
@@ -10,84 +9,62 @@ from odil_wave.grid import Grid
 @dataclass
 class Wavefield:
     grid: Grid
-    _amplitude: torch.Tensor = field(init=False)
-    init_amplitude: torch.Tensor | np.ndarray | None = (
-        None  # optionally initialise field
-    )
+    _amplitude: np.ndarray = field(init=False)
+    init_amplitude: np.ndarray | None = None  # optionally initialise amplitude
 
-    _wavespeed: torch.Tensor = field(init=False)
-    init_wavespeed: torch.Tensor | np.ndarray | None = None  # optional initialise speed
+    _wavespeed: np.ndarray = field(init=False)
+    init_wavespeed: np.ndarray | None = None  # optional initialise speed
 
-    _init_ut: torch.Tensor = field(init=False)
-    init_velocity: torch.Tensor | np.ndarray | None = (
-        None  # optional initial velocity field
-    )
-
-    # ensure device and dataype are consistent
-    device: torch.device = field(init=False)
-    dtype: torch.dtype = field(init=False)
+    _init_ut: np.ndarray = field(init=False)
+    init_velocity: np.ndarray | None = None  # optional initial velocity field
 
     def __post_init__(self) -> None:
         Nx, Ny = self.grid.shape
         Nt = self.grid.nt
 
-        # extract device and dtype from grid for consistency
-        self.device = self.grid.device
-        self.dtype = self.grid.dtype
-
-        # cast inputs to torch Tensors to accept numpy arrays as well
         # initialise amplitude as Nx*Ny*Nt or provided values
         self._amplitude = (
-            torch.zeros(size=(Nt, Nx, Ny), dtype=self.dtype, device=self.device)
+            np.zeros(shape=(Nt, Nx, Ny))
             if self.init_amplitude is None
-            else torch.as_tensor(
-                self.init_amplitude, dtype=self.dtype, device=self.device
-            )
+            else np.asarray(self.init_amplitude)
         )
 
         # initialise wavespeed as Nx*Ny or provided values
         self._wavespeed = (
-            torch.ones(size=(Nx, Ny), dtype=self.dtype, device=self.device)
+            np.ones(shape=(Nx, Ny))
             if self.init_wavespeed is None
-            else torch.as_tensor(
-                self.init_wavespeed, dtype=self.dtype, device=self.device
-            )
+            else np.asarray(self.init_wavespeed)
         )
 
+        # initialise velocity
         self._init_ut = (
-            torch.zeros(
-                size=(Nx, Ny), dtype=self.dtype, device=self.device
-            )  # default init is zeros
-            if self.init_velocity is None
-            else torch.as_tensor(
-                self.init_velocity, dtype=self.dtype, device=self.device
-            )
+            np.zeros(shape=(Nx, Ny))
+            if self.init_velocity is None  # default init is zeros
+            else np.asarray(self.init_velocity)
         )
 
     @property
-    def init_ut(self) -> torch.Tensor:
+    def init_ut(self) -> np.ndarray:
         return self._init_ut
 
     @property
-    def amplitude(self) -> torch.Tensor:
+    def amplitude(self) -> np.ndarray:
         return self._amplitude
 
     @amplitude.setter
-    def amplitude(self, value: np.ndarray | torch.Tensor) -> None:
+    def amplitude(self, value: np.ndarray) -> None:
         Nt = self.grid.nt
         Nx, Ny = self.grid.shape
-        self._amplitude = torch.as_tensor(
-            np.asarray(value).reshape(Nt, Nx, Ny), dtype=self.dtype, device=self.device
-        )
+        self._amplitude = value.reshape(Nt, Nx, Ny)
 
     @property
-    def wavespeed(self) -> torch.Tensor:
+    def wavespeed(self) -> np.ndarray:
         return self._wavespeed
 
     @property
     def flat_data(self) -> np.ndarray:
         """Return flat parameter vector [amp (nt*nx*ny), wvsp (nx*ny)] as np.ndarray"""
-        return torch.cat([self._amplitude.ravel(), self._wavespeed.ravel()]).numpy()
+        return np.concat([self._amplitude.ravel(), self._wavespeed.ravel()])
 
     @flat_data.setter
     def flat_data(self, flat: np.ndarray) -> None:
@@ -104,15 +81,9 @@ class Wavefield:
                 f"expected flat vector of length {total}, got {flat.shape}"
             )
 
-        # resahpe and cast to torch tensors
-        self._amplitude = torch.as_tensor(
-            flat[:n_amp].reshape(Nt, Nx, Ny),
-            dtype=self.dtype,
-            device=self.device,
-        )
-        self._wavespeed = torch.as_tensor(
-            flat[n_amp:].reshape(Nx, Ny), dtype=self.dtype, device=self.device
-        )
+        # resahpe and cast to np tensors
+        self._amplitude = flat[:n_amp].reshape(Nt, Nx, Ny)
+        self._wavespeed = flat[n_amp:].reshape(Nx, Ny)
 
     def show(self, idx: int, title="Wavefield and model", view: str = "xy"):
         assert view in [
@@ -131,22 +102,20 @@ class Wavefield:
         if not (0 <= idx < param):
             raise ValueError(f"idx should be an int in range [0, {param}], got {idx}.")
 
-        amp_data = np.take(
-            self.amplitude.cpu().numpy(), idx, axis=axis
-        )  # extract slice
+        amp_data = np.take(self.amplitude, idx, axis=axis)  # extract slice
 
         fig, axs = plt.subplots(1, 2, figsize=(12, 6))
         (xmin, xmax), (ymin, ymax) = self.grid.extent
 
         im1 = axs[0].imshow(
-            amp_data.T,
+            amp_data,
             origin="lower",
             extent=(xmin, xmax, ymin, ymax),
             cmap="RdBu_r",
         )
 
         im2 = axs[1].imshow(
-            self.wavespeed.cpu().numpy().T,
+            self.wavespeed,
             origin="lower",
             extent=(xmin, xmax, ymin, ymax),
             cmap="viridis",
@@ -177,10 +146,10 @@ class Wavefield:
     ) -> str:
         """Render the amplitude field over all time steps to an animated GIF."""
 
-        amp = self.amplitude.cpu().numpy()  # (Nt, Nx, Ny)
+        amp = self.amplitude  # (Nt, Nx, Ny)
         Nt = self.grid.nt
         (xmin, xmax), (ymin, ymax) = self.grid.extent
-        t = self.grid.t.cpu().numpy()
+        t = self.grid.t
 
         # fixed colour scale
         vmax = float(np.abs(amp).max()) or 1.0
@@ -188,7 +157,7 @@ class Wavefield:
 
         fig, ax = plt.subplots(figsize=(6, 5))
         im = ax.imshow(
-            amp[0].T,
+            amp[0],
             origin="lower",
             extent=(xmin, xmax, ymin, ymax),
             cmap=cmap,
@@ -203,7 +172,7 @@ class Wavefield:
 
         # update for drawing frames
         def update(frame: int):
-            im.set_data(amp[frame].T)
+            im.set_data(amp[frame])
             ttl.set_text(f"{title}  (t = {t[frame]:.3f} s)")
             return im, ttl
 
