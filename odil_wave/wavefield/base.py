@@ -18,20 +18,20 @@ class Wavefield:
 
         # initialise amplitude as Nx*Ny*Nt or provided values
         self._amplitude = (
-            np.zeros(shape=(Nt, Nx, Ny))
+            np.zeros(shape=(Nt, Nx * Ny))  # store as (time, space)
             if self.init_amplitude is None
-            else np.asarray(self.init_amplitude)
+            else np.asarray(self.init_amplitude).reshape(Nt, Nx * Ny)
         )
 
     @property
-    def amplitude(self) -> np.ndarray:
+    def U(self) -> np.ndarray:
         return self._amplitude
 
-    @amplitude.setter
-    def amplitude(self, value: np.ndarray) -> None:
+    @U.setter
+    def U(self, value: np.ndarray) -> None:
         Nt = self.grid.nt
         Nx, Ny = self.grid.shape
-        self._amplitude = value.reshape(Nt, Nx, Ny)
+        self._amplitude = value.reshape(Nt, Nx * Ny)
 
     @property
     def flat_data(self) -> np.ndarray:
@@ -46,7 +46,7 @@ class Wavefield:
 
         # reshape
         try:
-            self._amplitude = flat.reshape(Nt, Nx, Ny)
+            self._amplitude = flat.reshape(Nt, Nx * Ny)
         except ValueError as e:
             raise ValueError(
                 f"expected flat vector of length {Nt * Nx * Ny}, got {flat.size}"
@@ -69,7 +69,9 @@ class Wavefield:
         if not (0 <= idx < param):
             raise ValueError(f"idx should be an int in range [0, {param}], got {idx}.")
 
-        amp_data = np.take(self.amplitude, idx, axis=axis)  # extract slice
+        amp_data = np.take(self._amplitude, idx, axis=axis).reshape(
+            Nx, Ny
+        )  # extract slice
 
         fig, ax = plt.subplots(1, 1, figsize=(8, 8))
         (xmin, xmax), (ymin, ymax) = self.grid.extent
@@ -103,8 +105,9 @@ class Wavefield:
     ) -> str:
         """Render the amplitude field over all time steps to an animated GIF."""
 
-        amp = self.amplitude  # (Nt, Nx, Ny)
+        amp = self._amplitude  # (Nt, Nx, Ny)
         Nt = self.grid.nt
+        Nx, Ny = self.grid.shape
         (xmin, xmax), (ymin, ymax) = self.grid.extent
         t = self.grid.t
 
@@ -114,7 +117,7 @@ class Wavefield:
 
         fig, ax = plt.subplots(figsize=(6, 5))
         im = ax.imshow(
-            amp[0],
+            amp[0].reshape(Nx, Ny),
             origin="lower",
             extent=(xmin, xmax, ymin, ymax),
             cmap=cmap,
@@ -129,7 +132,7 @@ class Wavefield:
 
         # update for drawing frames
         def update(frame: int):
-            im.set_data(amp[frame])
+            im.set_data(amp[frame].reshape(Nx, Ny))
             ttl.set_text(f"{title}  (t = {t[frame]:.3f} s)")
             return im, ttl
 
