@@ -1,5 +1,4 @@
 from .base import DiscreteLoss
-from odil_wave.wavefield import Wavefield
 
 import numpy as np
 
@@ -7,8 +6,8 @@ import numpy as np
 class ForwardLoss(DiscreteLoss):
     """Loss function for the forward problem."""
 
-    def _residuals(self, wavefield: Wavefield, sources: np.ndarray) -> np.ndarray:
-        r_pde = self.problem.wave_eq.residual(wavefield, sources)
+    def _residuals(self, u: np.ndarray, sources: np.ndarray) -> np.ndarray:
+        r_pde = self.problem.wave_eq.residual(u, sources)
         return r_pde
 
     def _eval_loss(self, residuals: np.ndarray) -> np.float64:
@@ -24,12 +23,12 @@ class ForwardLoss(DiscreteLoss):
         A = self.problem.wave_eq.A
         return 2 * A.T @ r
 
-    def evaluate(self, wavefield: Wavefield) -> np.float64:
+    def evaluate(self, u: np.ndarray) -> np.float64:
 
         #  get wavespeed separately, we need it to compute the PDE residuals
         sources = self.problem.sources
 
-        residual = self._residuals(wavefield, sources)
+        residual = self._residuals(u, sources)
         L = self._eval_loss(residual)
 
         self.evaluations += 1
