@@ -20,7 +20,7 @@ class WaveEquation:
 
     _ut_op: FirstTimeDerivative = field(init=False)
     _utt_op: SecondTimeDerivative = field(init=False)
-    _lap: Laplacian = field(init=False)
+    _lap_op: Laplacian = field(init=False)
 
     # operator components - we store these instead of assembling the full A
     S: sp.dia_matrix = field(init=False)  # damping coefficient matrix
@@ -34,7 +34,7 @@ class WaveEquation:
         # precompute
         self.S = self.wavefield.grid.sig_mat
         c_sqr = sp.diags(self.model.c.ravel() ** 2)
-        self.C2L = sp.diags(c_sqr) @ self._lap.L
+        self.C2L = c_sqr @ self._lap_op.L
 
         self.nt = self.wavefield.grid.nt
         self.nx, self.ny = self.wavefield.grid.shape
@@ -45,7 +45,7 @@ class WaveEquation:
 
         utt = self._utt_op.apply(U)
         damp = self._ut_op.apply(U @ self.S.T)
-        lap = self._lap.apply(U)
+        lap = self._lap_op.apply(U)
 
         AU = utt + damp - lap
 
