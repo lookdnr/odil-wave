@@ -27,9 +27,9 @@ class Laplacian(SparseOperator):
 
     def __init__(self, wavefield: Wavefield, ord: int = 2) -> None:
         super().__init__(wavefield, ord)
-        self.matrix = self.assemble()
+        self.L = self.assemble()
 
-    def assemble(self) -> sp.dia_matrix:
+    def assemble(self) -> sp.csr_matrix:
         """Assembles the 2D Laplacian operator: Dxx otimes Iy + Ix otimes Dyy"""
 
         # extract parameters
@@ -48,3 +48,6 @@ class Laplacian(SparseOperator):
 
         # construct the operator as a Kronecker sum
         return sp.kron(Dxx, Iy) + sp.kron(Ix, Dyy)
+
+    def apply(self, U: np.ndarray) -> np.ndarray:
+        return self.L @ U
