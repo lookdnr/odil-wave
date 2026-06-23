@@ -50,4 +50,5 @@ class Laplacian(SparseOperator):
         return sp.kron(Dxx, Iy) + sp.kron(Ix, Dyy)
 
     def apply(self, U: np.ndarray) -> np.ndarray:
+        """Apply operator to a (time, space) ndarray"""
         return self.L @ U

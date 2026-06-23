@@ -1,5 +1,6 @@
 from .base import SparseOperator
 import scipy.sparse as sp
+import numpy as np
 from odil_wave.wavefield import Wavefield
 
 from .stencils import STENCIL_COEFFS_1ST, STENCIL_COEFFS_2ND, STENCIL_OFFSETS
@@ -41,6 +42,10 @@ class FirstTimeDerivative(SparseOperator):
 
         self.Dt = _diff_matrix(derivative=1, ord=ord, n=nt, h=dt)
 
+    def apply(self, U: np.ndarray) -> np.ndarray:
+        """Apply operator to a (time, space) ndarray"""
+        return self.Dt @ U
+
 
 class SecondTimeDerivative(SparseOperator):
     """Second derivative operator"""
@@ -55,3 +60,7 @@ class SecondTimeDerivative(SparseOperator):
         nt, dt = self.wavefield.grid.nt, self.wavefield.grid.dt
 
         self.Dtt = _diff_matrix(derivative=2, ord=ord, n=nt, h=dt)
+
+    def apply(self, U: np.ndarray) -> np.ndarray:
+        """Apply operator to a (time, space) ndarray"""
+        return self.Dtt @ U

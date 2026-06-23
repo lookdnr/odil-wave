@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-import scipy.sparse as sp
+import numpy as np
 from odil_wave.wavefield import Wavefield
 
 
@@ -15,5 +15,11 @@ class SparseOperator(ABC):
         self.ord = ord
 
     @abstractmethod
-    def assemble(self) -> sp.csr_matrix:
+    def assemble(self):
+        """Assemble sparse matrix operator"""
+        pass
+
+    @abstractmethod
+    def apply(self, U: np.ndarray) -> np.ndarray:
+        """Apply operator to a (time, space) ndarray"""
         pass
