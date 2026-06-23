@@ -16,7 +16,7 @@ class HomogeneousModel(VelocityModel):
         super().__init__(
             grid, background_c, contrast=1.0
         )  # no contrast for homeogenous model
-        self.model = self._build()
+        self.c = self._build()
         self.name = "Homogeneous Model"
 
     def _build(self):
@@ -31,7 +31,7 @@ class SheppLoganModel(VelocityModel):
         self.interior_fill = (
             interior_fill  # fraction of the interior grid the model should fill
         )
-        self.model = self._build()
+        self.c = self._build()
         self.name = "Shepp-Logan Phantom Model"
 
     def _build(self):
@@ -93,7 +93,7 @@ class OverDensityModel(VelocityModel):
 
         self.centre = centre
 
-        self.model = self._build()
+        self.c = self._build()
 
     def _build(self) -> np.ndarray:
         # create circular mask
