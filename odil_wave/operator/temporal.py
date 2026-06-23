@@ -27,32 +27,19 @@ def _diff_matrix(derivative: int, ord: int, n: int, h: float) -> sp.dia_matrix:
     return D
 
 
-def _assemble(
-    deriv_ord: int, acc_ord: int, nt: int, nx: int, ny: int, dt: float
-) -> sp.csr_matrix:
-    """Helper for assembling the sparse deriv_ord derivative operator"""
-    D = _diff_matrix(deriv_ord, acc_ord, nt, dt)
-    Ixy = sp.eye(nx * ny)
-    return sp.kron(D, Ixy).tocsr()  # type: ignore
-
-
 class FirstTimeDerivative(SparseOperator):
     """First derivative operator"""
 
     def __init__(self, wavefield: Wavefield, ord: int = 2) -> None:
         super().__init__(wavefield, ord)
-        self.matrix = self.assemble()
+        self.assemble()
 
-    def assemble(self) -> sp.csr_matrix:
+    def assemble(self) -> None:
         """Assembles the time operator: Dt otimes Ixy"""
         ord = self.ord
         nt, dt = self.wavefield.grid.nt, self.wavefield.grid.dt
-        nx, _ = self.wavefield.grid.nx, self.wavefield.grid.dx
-        ny, _ = self.wavefield.grid.ny, self.wavefield.grid.dy
 
-        D = _assemble(1, ord, nt, nx, ny, dt)
-
-        return D
+        self.Dt = _diff_matrix(derivative=1, ord=ord, n=nt, h=dt)
 
 
 class SecondTimeDerivative(SparseOperator):
@@ -62,13 +49,9 @@ class SecondTimeDerivative(SparseOperator):
         super().__init__(wavefield, ord)
         self.matrix = self.assemble()
 
-    def assemble(self) -> sp.csr_matrix:
+    def assemble(self) -> None:
         """Assembles the time operator: Dt otimes Ixy"""
         ord = self.ord
         nt, dt = self.wavefield.grid.nt, self.wavefield.grid.dt
-        nx, _ = self.wavefield.grid.nx, self.wavefield.grid.dx
-        ny, _ = self.wavefield.grid.ny, self.wavefield.grid.dy
 
-        D = _assemble(2, ord, nt, nx, ny, dt)  # type: ignore
-
-        return D
+        self.Dtt = _diff_matrix(derivative=2, ord=ord, n=nt, h=dt)
