@@ -17,7 +17,7 @@ class VelocityModel(ABC):
     grid: Grid  # discrete grid
     background_c: float = 1.0  # background wave speed
     contrast: float = 0.7  # anomaly constrast vs background
-    model: np.ndarray = field(init=False)  # data
+    c: np.ndarray = field(init=False)  # data
     name: str = field(init=False)  # identifier
 
     def __post_init__(self):
@@ -46,11 +46,11 @@ class VelocityModel(ABC):
 
     @property
     def c_max(self) -> float:
-        return float(self.model.max())
+        return float(self.c.max())
 
     @property
     def c_min(self) -> float:
-        return float(self.model.min())
+        return float(self.c.min())
 
     def show(
         self,
@@ -66,7 +66,7 @@ class VelocityModel(ABC):
 
         (xmin, xmax), (ymin, ymax) = self.grid.extent
         im = ax.imshow(
-            self.model,
+            self.c,
             origin="lower",
             extent=(xmin, xmax, ymin, ymax),
             cmap="viridis",
