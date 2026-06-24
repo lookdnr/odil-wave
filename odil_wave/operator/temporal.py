@@ -46,6 +46,10 @@ class FirstTimeDerivative(SparseOperator):
         """Apply operator to a (time, space) ndarray"""
         return self.Dt @ U
 
+    def apply_transpose(self, U: np.ndarray) -> np.ndarray:
+        """Apply transposed operator to a (time, space) array"""
+        return self.Dt.T @ U
+
 
 class SecondTimeDerivative(SparseOperator):
     """Second derivative operator"""
@@ -64,3 +68,7 @@ class SecondTimeDerivative(SparseOperator):
     def apply(self, U: np.ndarray) -> np.ndarray:
         """Apply operator to a (time, space) ndarray"""
         return self.Dtt @ U
+
+    def apply_transpose(self, U: np.ndarray) -> np.ndarray:
+        """Apply transposed operator to a (time, space) array"""
+        return self.Dtt.T @ U

@@ -59,6 +59,29 @@ class WaveEquation:
         AU[1, :] = (self._ut_op.Dt @ U)[1, :]
         return AU.ravel()
 
+    def rmatvec(self, r: np.ndarray) -> np.ndarray:
+        """Compute the transposed matrix vector product A^T r
+        (no explicit A formation)"""
+        R = r.reshape(self.nt, self.nx * self.ny)
+
+        Rz = R.copy()
+        Rz[0, :] = 0.0  # adjoint of overwriting output rows 0,1:
+        Rz[1, :] = 0.0  # the PDE terms must not see R[0], R[1]
+
+        utt_t = self._utt_op.apply_transpose(Rz)  # Dtt.T @ R
+
+        damp_t = self._ut_op.apply_transpose(Rz) @ self.S  # Dt.T @ R
+
+        lap_t = Rz @ self.C2L
+
+        ATv = utt_t + damp_t - lap_t
+
+        # transpose of IC constraints
+        ATv[0, :] += R[0, :]
+        ATv += self._ut_op.Dt.T[:, [1]] @ R[[1], :]
+
+        return ATv.ravel()
+
     def residual(self, u: np.ndarray, f: np.ndarray) -> np.ndarray:
         """Compute Au - f, where A encodes the derivatives and PML condition
 
