@@ -5,7 +5,8 @@ from typing import Optional, Tuple
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-import torch
+import numpy as np
+import scipy.sparse as sp
 
 
 @dataclass
@@ -23,41 +24,44 @@ class Grid:
         (-1.0, 1.0),
         (-1.0, 1.0),
     )
-    c_ref: float = 1.5
-    cfl_safety: float = 0.8
-    pml_width: int = 10  # extra cells per side wrapping the interior
-    pml_power: int = 3  # sigma(d) = sigma_max * (d / L_pml)^pml_power
-    pml_R0: float = 1e-6  # target theoretical reflection coefficient
-    t_max: Optional[float] = None
-    init_nt: Optional[int] = None  # optional override; derived from CFL if None
-    # TODO: DEVICE and DTYPE should be set in a config file
-    device: torch.device = field(init=False)
-    dtype: torch.dtype = torch.float32
-    # device: str = DEVICE
-    # dtype: torch.dtype = DTYPE
 
-    # derived
+    # grid layout
     interior_nx: int = field(init=False)
     interior_ny: int = field(init=False)
+
     nx: int = field(init=False)
     ny: int = field(init=False)
     nt: int = field(init=False)
-    extent: Tuple[Tuple[float, float], Tuple[float, float]] = field(init=False)
+
     dx: float = field(init=False)
     dy: float = field(init=False)
     dt: float = field(init=False)
-    x: torch.Tensor = field(init=False, repr=False)
-    y: torch.Tensor = field(init=False, repr=False)
-    t: torch.Tensor = field(init=False, repr=False)
-    X: torch.Tensor = field(init=False, repr=False)
-    Y: torch.Tensor = field(init=False, repr=False)
-    sigma_x: torch.Tensor = field(init=False, repr=False)
-    sigma_y: torch.Tensor = field(init=False, repr=False)
+
+    t_max: Optional[float] = None  # total simulation duration
+    init_nt: Optional[int] = None  # optional override; derived from CFL if None
+
+    extent: Tuple[Tuple[float, float], Tuple[float, float]] = field(init=False)
+
+    # coordinate grids (for usage elsewhere)
+    x: np.ndarray = field(init=False, repr=False)
+    y: np.ndarray = field(init=False, repr=False)
+    t: np.ndarray = field(init=False, repr=False)
+    X: np.ndarray = field(init=False, repr=False)
+    Y: np.ndarray = field(init=False, repr=False)
+
+    # PML damping coefficients in each direction
+    sigma_x: np.ndarray = field(init=False, repr=False)
+    sigma_y: np.ndarray = field(init=False, repr=False)
+
+    c_ref: float = 1.5  # reference wavespeed
+    cfl_safety: float = 0.8  # fraction of theoretical safety to use for dt
+    pml_width: int = 10  # extra cells per side wrapping the interior
+    pml_power: int = 3  # sigma(d) = sigma_max * (d / L_pml)^pml_power
+    pml_R0: float = 1e-6  # target theoretical reflection coefficient
 
     def __post_init__(self):
         self.interior_nx, self.interior_ny = self.interior_shape
         (ix_min, ix_max), (iy_min, iy_max) = self.interior_extent
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.dx = (ix_max - ix_min) / (self.interior_nx - 1)
         self.dy = (iy_max - iy_min) / (self.interior_ny - 1)
@@ -82,18 +86,21 @@ class Grid:
             self.nt = self.init_nt
         self.dt = self.t_max / (self.nt - 1)
 
-        self.x = torch.linspace(
-            x_min, x_max, self.nx, dtype=self.dtype, device=self.device
+        self.x = np.linspace(x_min, x_max, self.nx)
+        self.y = np.linspace(
+            y_min,
+            y_max,
+            self.ny,
         )
-        self.y = torch.linspace(
-            y_min, y_max, self.ny, dtype=self.dtype, device=self.device
+        self.t = np.linspace(
+            0.0,
+            self.t_max,
+            self.nt,
         )
-        self.t = torch.linspace(
-            0.0, self.t_max, self.nt, dtype=self.dtype, device=self.device
-        )
-        self.X, self.Y = torch.meshgrid(self.x, self.y, indexing="ij")
+        self.X, self.Y = np.meshgrid(self.x, self.y, indexing="ij")
 
         self.sigma_x, self.sigma_y = self._build_pml_profiles()
+        self.sig_mat = self._sigma_matrix()
 
     @property
     def shape(self) -> Tuple[int, int]:
@@ -102,7 +109,7 @@ class Grid:
 
     @property
     def interior_slice(self) -> Tuple[slice, slice]:
-        """Slice into a full-grid tensor that picks out the interior."""
+        """Slice into a full-grid ndarray that picks out the interior."""
         p = self.pml_width
         return (slice(p, p + self.interior_nx), slice(p, p + self.interior_ny))
 
@@ -123,29 +130,35 @@ class Grid:
         """sigma_x(i, j), sigma_y(i, j) on the full grid; zero in the interior."""
         p = self.pml_width
         if p == 0:
-            zeros = torch.zeros(self.nx, self.ny, dtype=self.dtype, device=self.device)
+            zeros = np.zeros((self.nx, self.ny))
             return zeros, zeros
         L_pml_x = p * self.dx
         L_pml_y = p * self.dy
         sigma_max_x = self._sigma_max(L_pml_x)
         sigma_max_y = self._sigma_max(L_pml_y)
 
-        i = torch.arange(self.nx, dtype=self.dtype, device=self.device)
-        j = torch.arange(self.ny, dtype=self.dtype, device=self.device)
+        i = np.arange(self.nx)
+        j = np.arange(self.ny)
 
         d_x = (
-            torch.clamp(p - i, min=0.0) + torch.clamp(i - (self.nx - 1 - p), min=0.0)
+            np.maximum(p - i, 0.0) + np.maximum(i - (self.nx - 1 - p), 0.0)
         ) * self.dx
         d_y = (
-            torch.clamp(p - j, min=0.0) + torch.clamp(j - (self.ny - 1 - p), min=0.0)
+            np.maximum(p - j, 0.0) + np.maximum(j - (self.ny - 1 - p), 0.0)
         ) * self.dy
 
         sigma_x_1d = sigma_max_x * (d_x / L_pml_x) ** self.pml_power
         sigma_y_1d = sigma_max_y * (d_y / L_pml_y) ** self.pml_power
 
-        sigma_x = sigma_x_1d.view(-1, 1).expand(self.nx, self.ny).contiguous()
-        sigma_y = sigma_y_1d.view(1, -1).expand(self.nx, self.ny).contiguous()
+        sigma_x = np.broadcast_to(sigma_x_1d.reshape(-1, 1), (self.nx, self.ny)).copy()
+        sigma_y = np.broadcast_to(sigma_y_1d.reshape(1, -1), (self.nx, self.ny)).copy()
+
         return sigma_x, sigma_y
+
+    def _sigma_matrix(self):
+        """Compute the diagonal damping matrix for enforcing the damping."""
+        sigma = self.sigma_x + self.sigma_y
+        return sp.diags(sigma.ravel())
 
     def cfl(self, c_max: float) -> float:
         return c_max * self.dt * math.sqrt(1.0 / self.dx**2 + 1.0 / self.dy**2)
@@ -156,7 +169,7 @@ class Grid:
             _, ax = plt.subplots(figsize=(5.5, 4.5))
         (xmin, xmax), (ymin, ymax) = self.extent
         im = ax.imshow(
-            (self.sigma_x + self.sigma_y).cpu().numpy().T,
+            (self.sigma_x + self.sigma_y),
             origin="lower",
             extent=(xmin, xmax, ymin, ymax),
             cmap="magma",

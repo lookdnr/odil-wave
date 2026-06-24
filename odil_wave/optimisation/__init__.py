@@ -1,3 +1,3 @@
-from .base import LBFGSB
+from .scipy import LBFGSB
 
 __all__ = ["LBFGSB"]

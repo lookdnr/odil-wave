@@ -1,35 +1,25 @@
 from abc import ABC, abstractmethod
-import scipy.sparse as sp
-import torch
+import numpy as np
 from odil_wave.wavefield import Wavefield
 
 
 class SparseOperator(ABC):
     """Base class for sparse operators used in direct solves"""
 
-    def __init__(self, grid) -> None:
-        self.grid = grid
-
-    @abstractmethod
-    def _stencil(self) -> sp.csr_matrix:
-        pass
-
-    @abstractmethod
-    def assemble(self) -> None:
-        pass
-
-    @abstractmethod
-    def apply(self, wavefield) -> torch.Tensor:
-        pass
-
-
-class DenseOperator(ABC):
-    """Matrix-free operator using local stencils (e.g. ``torch.roll``)."""
-
-    def __init__(self, wavefield: Wavefield) -> None:
+    def __init__(self, wavefield: Wavefield, ord: int = 2) -> None:
         self.wavefield = wavefield
 
+        if ord not in [2, 4, 6, 8]:
+            raise ValueError("accuracy order 'ord' must be one of 2, 4, 6, 8")
+
+        self.ord = ord
+
     @abstractmethod
-    def apply(self, u: torch.Tensor, **kwargs) -> torch.Tensor:
-        """Apply the discrete operator to field u."""
+    def assemble(self):
+        """Assemble sparse matrix operator"""
+        pass
+
+    @abstractmethod
+    def apply(self, U: np.ndarray) -> np.ndarray:
+        """Apply operator to a (time, space) ndarray"""
         pass

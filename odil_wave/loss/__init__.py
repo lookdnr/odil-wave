@@ -1,6 +1,5 @@
-from .utils import LossConfig, LossTape
+from .utils import LossTape
 from .base import DiscreteLoss
 from .forward import ForwardLoss
-from .inverse import InverseLoss
 
-__all__ = ["LossConfig", "LossTape", "DiscreteLoss", "ForwardLoss", "InverseLoss"]
+__all__ = ["LossTape", "DiscreteLoss", "ForwardLoss"]

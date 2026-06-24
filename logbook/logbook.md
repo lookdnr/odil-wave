@@ -161,3 +161,56 @@ We have done quite a lot in the last few days, and spread the initial developmen
 - Me: Optimiser classes, discrete loss classes, Wavefield class, SparseOperator classes 
 
 There was a little bit of implementation friction, namely becase my package now has to contain two pathways, one for the forward problem (my focus) and one for the inverse problem (their focus). This requires the use of different optimisers, losses, stencils, et cetera, and is not quite as simple as "just stick the wavespeed model in and optimise". 
+
+## 22/06: Weekly meeting
+
+In this meeting, we walked through our progress from the past week. I informed the supervisors that I would be switching direction. Last week, I introduced a lot of machinery for gradient based optimisation and the inverse problem which I would never use. The scope of my repo blew up beyond that of my project, so I proposed a change:
+
+- Use sparse matrix operators
+- Optimise the loss (single step) via a direct solve
+
+This is quite a significant reframe from the past week and will require quite a lot of refactoring which I have started now. This methodology will be much more efficient, and offer some interesting avenues.
+
+We made good progress last week, and hopefully by the end of this week the scope will be well defined, and the package will be tested and more efficient for my use case. More updates to come.
+
+# 24/06: Progress update
+
+Over the last 3 days, I have performed a major restructure and validation of the core components of the library:
+
+- Operators employ sparse matrices
+- WaveEquation has a .matvec function which applies the above without ever forming the global operator matrix explicitly. For a 40x40 problem, this contributes a ~25% reduction in memory.
+- Unit tests have been written that verify the Operators in the following manner:
+    - Smoke tests for all operators
+    - Tests for constant (1st derivative) and linear (2nd derivative) fields
+    - Tests for polynomial exactness
+    - Convergence tests for operators of all orders
+    - Method of Manufactured solution for full wave equation
+    - IC and BC enforcement checks
+
+There are more tests that can be written, but it opens the door for us to proceed with the optimisation.
+
+### Note on the MMS test
+
+The wave equation operator is validated via a method of manufactured solution test.
+
+I set
+
+$$u_{\text{exact}} = t^2(x^2 + y^2),$$
+
+such that
+
+$$u_{tt} = c^2(u_{xx} + u_{yy}) - f \Leftrightarrow 2(x^2 + y^2) = 4c^2t^2 - f,$$
+
+and 
+
+$$f =  2(x^2 + y^2) - 4c^2 t^2.$$
+
+Then I compute $Au$ for the given $u_{\text{exact}}$ and check that $Au \approx f$ as above. This validates that the operator does what I say it does.
+
+### Note on project direction
+
+In the last few days, I have realised that solving the forward problem using Gauss-Newton is actually just equivalent to solving the forward problem normally. The authors of the original paper basically say the same thing, which is nice, but it doesn't really offer anything novel at all. Thus, I should look at things like
+
+- iterative optimisation
+- non-linear forms that might emerge in other wave equations
+- multi grid methods

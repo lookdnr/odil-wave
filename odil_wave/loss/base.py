@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Tuple
-from .utils import LossConfig, LossTape
-import torch
+from .utils import LossTape
+from odil_wave.utils import Problem
 import numpy as np
+
+from odil_wave.wavefield import Wavefield
 
 
 class DiscreteLoss(ABC):
@@ -10,38 +12,30 @@ class DiscreteLoss(ABC):
 
     def __init__(
         self,
-        config: LossConfig,
+        problem: Problem,
         callback: LossTape | None = None,
     ):
-        self.config = config  # loss configuration
+        self.problem = problem  # loss configuration
         self.callback = (
             callback if callback is not None else LossTape()
         )  # loss history callback
 
-        # precompute source fields for each shot
-        self.sources = torch.stack(
-            [
-                self.config.geometry.source_field(i)
-                for i in range(self.config.geometry.n_sources)
-            ]
-        )
-
         self.evaluations = 0  # counter for number of loss evaluations
 
     @abstractmethod
-    def evaluate(self, data: np.ndarray) -> Tuple[float, np.ndarray]:
+    def evaluate(self, wavefield: Wavefield) -> Tuple[float, np.ndarray]:
         """Evaluate the loss function given a wavefield."""
         pass
 
     @abstractmethod
-    def _eval_loss(self, residuals: torch.Tensor) -> torch.Tensor:
+    def _eval_loss(self, residuals: np.ndarray) -> np.ndarray:
         pass
 
     @abstractmethod
-    def _residuals(self, data: torch.Tensor) -> torch.Tensor:
+    def _residuals(self, wavefield: Wavefield) -> np.ndarray:
         """Compute the residuals of the loss function given a wavefield."""
         pass
 
     @abstractmethod
-    def _eval_pde_loss(self, data: torch.Tensor) -> torch.Tensor:
+    def _grad(self, r: np.ndarray) -> np.ndarray:
         pass
