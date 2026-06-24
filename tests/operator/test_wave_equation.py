@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import scipy.sparse as sp
 from odil_wave import WaveEquation, Grid, Wavefield
 from odil_wave.models.base import VelocityModel
 
@@ -73,3 +74,39 @@ def test_wave_eq_mms(grid, model, w_eq):
     slices = (slice(2, -1), slice(1, -1), slice(1, -1))
 
     np.testing.assert_allclose(out[slices], f[slices], rtol=1e-9, atol=1e-9)
+
+
+# ===== Matvec validation =====
+
+
+def test_matvec_equals_assembled_A(w_eq):
+    """WaveEquation.matvec() applies the full wave equation operator
+    A without ever forming it explicitly. This tests it is equivalent
+    to computing Au using the explicitly formed A.
+    """
+    nt, nx, ny = w_eq.nt, w_eq.nx, w_eq.ny
+    ns = nx * ny  # number of spatial points
+    It, Is = sp.eye(nt), sp.eye(ns)
+
+    # extract operator matrices
+    Dt = w_eq._ut_op.Dt  # ut op
+    Dtt = w_eq._utt_op.Dtt  # utt op
+    C2L = w_eq.C2L  # Laplacian op
+    S = w_eq.S  # damping matrix
+
+    # assemble full A matrix
+    # A = Dtt + Dt + c^2 L
+    # Kronecker products expand time operators across space and vice verse
+    A = sp.kron(Dtt, Is) + sp.kron(Dt, S) - sp.kron(It, C2L)
+
+    # apply same ICs
+    A[0:ns, :] = sp.kron(sp.eye(1, nt, 0), Is)  # row block t=0,
+    A[ns : 2 * ns, :] = sp.kron(Dt.tocsr()[1, :], Is)  # row block t=1: (Dt row 1) ⊗ I
+    A = A.tocsr()
+
+    # evaluate for random input
+    rng = np.random.default_rng(0)
+    u = rng.standard_normal(nt * ns)
+
+    # test matvec(u) ~~ Au for full A
+    np.testing.assert_allclose(A @ u, w_eq.matvec(u), rtol=1e-10, atol=1e-10)
