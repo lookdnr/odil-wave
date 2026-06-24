@@ -79,11 +79,9 @@ def test_wave_eq_mms(grid, model, w_eq):
 # ===== Matvec validation =====
 
 
-def test_matvec_equals_assembled_A(w_eq):
-    """WaveEquation.matvec() applies the full wave equation operator
-    A without ever forming it explicitly. This tests it is equivalent
-    to computing Au using the explicitly formed A.
-    """
+@pytest.fixture
+def A(w_eq):
+    """Construct the full linear operator for the wave equation"""
     nt, nx, ny = w_eq.nt, w_eq.nx, w_eq.ny
     ns = nx * ny  # number of spatial points
     It, Is = sp.eye(nt), sp.eye(ns)
@@ -102,7 +100,16 @@ def test_matvec_equals_assembled_A(w_eq):
     # apply same ICs
     A[0:ns, :] = sp.kron(sp.eye(1, nt, 0), Is)  # row block t=0,
     A[ns : 2 * ns, :] = sp.kron(Dt.tocsr()[1, :], Is)  # row block t=1: (Dt row 1) ⊗ I
-    A = A.tocsr()
+    return A.tocsr()
+
+
+def test_matvec_equals_assembled_A(A, w_eq):
+    """WaveEquation.matvec() applies the full wave equation operator
+    A without ever forming it explicitly. This tests it is equivalent
+    to computing Au using the explicitly formed A.
+    """
+    nt, nx, ny = w_eq.nt, w_eq.nx, w_eq.ny
+    ns = nx * ny  # number of spatial points
 
     # evaluate for random input
     rng = np.random.default_rng(0)
@@ -110,3 +117,47 @@ def test_matvec_equals_assembled_A(w_eq):
 
     # test matvec(u) ~~ Au for full A
     np.testing.assert_allclose(A @ u, w_eq.matvec(u), rtol=1e-10, atol=1e-10)
+
+
+# ===== Memory validation =====
+
+
+def sparse_bytes(M):
+    M = M.tocsr()
+    # compute and return total byte count for sparse storage
+    return M.data.nbytes + M.indices.nbytes + M.indptr.nbytes
+
+
+def test_less_memory(A):
+    """Test forming A is more expensive"""
+    # use more realistic setup
+    grid = Grid(interior_shape=(40, 40), pml_width=10)
+    wf, model = Wavefield(grid), SmoothModel(grid)
+    w_eq = WaveEquation(wf, model)
+
+    # extract operator matrices
+    components = {
+        "Dt": w_eq._ut_op.Dt,
+        "Dtt": w_eq._utt_op.Dtt,
+        "C2L": w_eq.C2L,
+        "S": w_eq.S,
+    }
+
+    print(f"\n[MEMORY] Full A: nnz = {A.nnz}, memory = {sparse_bytes(A)} bytes")
+
+    tot_nnz, tot_bytes = 0, 0
+    print("[MEMORY] Individual components:")
+    for name, M in components.items():
+        b = sparse_bytes(M)
+        tot_nnz += M.nnz
+        tot_bytes += b
+        print(f"\tComponent {name}: nnz = {M.nnz}, memory = {b} bytes")
+
+    print(
+        f"[MEMORY] Individual components total: nnz = {tot_nnz},"
+        + f" memory = {tot_bytes} bytes."
+    )
+    print(
+        f"[MEMORY] Improvement: {((A.nnz - tot_nnz) / A.nnz * 100):.2f}% in nnz, "
+        + f"{((sparse_bytes(A) - tot_bytes) / sparse_bytes(A) * 100):.2f}% in memory"
+    )
