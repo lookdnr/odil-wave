@@ -119,6 +119,81 @@ def test_matvec_equals_assembled_A(A, w_eq):
     np.testing.assert_allclose(A @ u, w_eq.matvec(u), rtol=1e-10, atol=1e-10)
 
 
+def test_matvec_equals_assembled_A_pml():
+    """Same as above but with PML on (S != 0) so the damping
+    transpose term is exercised too."""
+
+    grid = Grid(interior_shape=(10, 10), pml_width=4)  # PML ON
+    w_eq = WaveEquation(Wavefield(grid), SmoothModel(grid))
+
+    nt, nx, ny = w_eq.nt, w_eq.nx, w_eq.ny
+    ns = nx * ny  # number of spatial points
+
+    # rebuild A for this config
+    nt, nx, ny = w_eq.nt, w_eq.nx, w_eq.ny
+    ns = nx * ny
+    It, Is = sp.eye(nt), sp.eye(ns)
+
+    A = (
+        sp.kron(w_eq._utt_op.Dtt, Is)
+        + sp.kron(w_eq._ut_op.Dt, w_eq.S)
+        - sp.kron(It, w_eq.C2L)
+    )
+
+    A[0:ns, :] = sp.kron(sp.eye(1, nt, 0), Is)
+    A[ns : 2 * ns, :] = sp.kron(w_eq._ut_op.Dt.tocsr()[1, :], Is)
+    A = A.tocsr()
+
+    # evaluate for random input
+    rng = np.random.default_rng(0)
+    u = rng.standard_normal(nt * ns)
+
+    # test matvec(u) ~~ Au for full A
+    np.testing.assert_allclose(A @ u, w_eq.matvec(u), rtol=1e-10, atol=1e-10)
+
+
+def test_rmatvec_equals_assembled_AT(A, w_eq):
+    """WaveEquation.rmatvec() applies the transposed operator A^T without
+    ever forming it explicitly. This tests it is equivalent to computing
+    A.T v using the explicitly formed A.
+    """
+    nt, nx, ny = w_eq.nt, w_eq.nx, w_eq.ny
+    ns = nx * ny  # number of spatial points
+
+    # evaluate for random input
+    rng = np.random.default_rng(0)
+    v = rng.standard_normal(nt * ns)
+
+    # test rmatvec(v) ~~ A^T v for full A
+    np.testing.assert_allclose(A.T @ v, w_eq.rmatvec(v), rtol=1e-10, atol=1e-10)
+
+
+def test_rmatvec_equals_assembled_AT_pml():
+    """Same as above but with PML on (S != 0) so the damping
+    transpose term is exercised too."""
+    grid = Grid(interior_shape=(10, 10), pml_width=4)  # PML ON
+    w_eq = WaveEquation(Wavefield(grid), SmoothModel(grid))
+
+    # rebuild A for this config
+    nt, nx, ny = w_eq.nt, w_eq.nx, w_eq.ny
+    ns = nx * ny
+    It, Is = sp.eye(nt), sp.eye(ns)
+
+    A = (
+        sp.kron(w_eq._utt_op.Dtt, Is)
+        + sp.kron(w_eq._ut_op.Dt, w_eq.S)
+        - sp.kron(It, w_eq.C2L)
+    )
+
+    A[0:ns, :] = sp.kron(sp.eye(1, nt, 0), Is)
+    A[ns : 2 * ns, :] = sp.kron(w_eq._ut_op.Dt.tocsr()[1, :], Is)
+    A = A.tocsr()
+
+    rng = np.random.default_rng(0)
+    v = rng.standard_normal(nt * ns)
+    np.testing.assert_allclose(A.T @ v, w_eq.rmatvec(v), rtol=1e-10, atol=1e-10)
+
+
 # ===== Memory validation =====
 
 
