@@ -161,3 +161,24 @@ def test_less_memory(A):
         f"[MEMORY] Improvement: {((A.nnz - tot_nnz) / A.nnz * 100):.2f}% in nnz, "
         + f"{((sparse_bytes(A) - tot_bytes) / sparse_bytes(A) * 100):.2f}% in memory"
     )
+
+
+# ===== Conditions (damping BC, IC) =====
+
+
+def test_IC(w_eq):
+    nt, nx, ny = w_eq.nt, w_eq.nx, w_eq.ny
+    ns = nx * ny
+
+    rng = np.random.default_rng(0)
+    u = rng.standard_normal(nt * ns)
+    U = u.reshape(nt, ns)  # same layout matvec uses
+
+    Au = w_eq.matvec(u).reshape(nt, ns)
+
+    # IC1: row 0 returns u(t=0)
+    np.testing.assert_allclose(Au[0], U[0], rtol=1e-12, atol=1e-12)
+
+    # IC2: row 1 returns the discrete first time derivative at t=0
+    Dt = w_eq._ut_op.Dt
+    np.testing.assert_allclose(Au[1], (Dt @ U)[1], rtol=1e-12, atol=1e-12)
