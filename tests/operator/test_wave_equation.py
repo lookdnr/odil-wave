@@ -182,3 +182,16 @@ def test_IC(w_eq):
     # IC2: row 1 returns the discrete first time derivative at t=0
     Dt = w_eq._ut_op.Dt
     np.testing.assert_allclose(Au[1], (Dt @ U)[1], rtol=1e-12, atol=1e-12)
+
+
+def test_IC_enforced_by_solve(A, w_eq):
+    nt, ns = w_eq.nt, w_eq.nx * w_eq.ny
+    rng = np.random.default_rng(0)
+    f = rng.standard_normal(nt * ns)
+    f[:ns] = 0.0  # IC1 rhs
+    f[ns : 2 * ns] = 0.0  # IC2 rhs
+
+    u = sp.linalg.spsolve(A, f).reshape(nt, ns)
+
+    np.testing.assert_allclose(u[0], 0.0, atol=1e-10)  # u(t=0) = 0
+    np.testing.assert_allclose((w_eq._ut_op.Dt @ u)[1], 0.0, atol=1e-10)  # u_t(t=0) = 0
