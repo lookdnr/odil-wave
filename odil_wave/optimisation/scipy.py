@@ -1,10 +1,10 @@
-from typing import Tuple, List
+from typing import Tuple
 
 import scipy.optimize as scopt
 import numpy as np
 
 from .base import Optimiser
-from odil_wave.loss import DiscreteLoss, ForwardLoss
+from odil_wave.loss import DiscreteLoss
 from odil_wave.wavefield import Wavefield
 from odil_wave.loss.utils import LossTape
 
@@ -12,77 +12,57 @@ from odil_wave.loss.utils import LossTape
 class ScipyOptimiser(Optimiser):
     """Wrapper around scipy.optimize.minimize"""
 
-    def __init__(
-        self, wavefield: Wavefield, loss: DiscreteLoss, method: str = "L-BFGS-B", **opts
-    ) -> None:
-        super().__init__(wavefield, loss)
+    def __init__(self, loss: DiscreteLoss, method: str = "L-BFGS-B", **opts) -> None:
+        super().__init__(loss)
         self.method = method  # e.g., 'L-BFGS-B', 'Newton-CG'
         self.opts = opts  # e.g., maxiter, ftol
 
     def minimise(
-        self, maxiter=500, ftol=1e-8, gtol=1e-10, callback=None
-    ) -> Tuple[List[Wavefield], LossTape]:
+        self,
+        u0: Wavefield | np.ndarray | None = None,
+        maxiter=500,
+        ftol=1e-8,
+        gtol=1e-10,
+        callback=None,
+    ) -> Tuple[Wavefield, LossTape]:
 
-        # apply specified config
-        self.opts["maxiter"] = maxiter
-        self.opts["ftol"] = ftol
-        self.opts["gtol"] = gtol
+        self.opts.update(maxiter=maxiter, ftol=ftol, gtol=gtol)
 
-        # use amplitude data only for the forward
-        if isinstance(self.loss, ForwardLoss):
-            # tile amplitude for each shot, since forward loss only optimises amplitude
-            u0 = np.tile(
-                self.wavefield.amplitude.cpu().numpy().ravel(),
-                self.loss.config.geometry.n_sources,
+        grid = self.loss.problem.wavefield.grid
+        N = grid.nt * grid.nx * grid.ny
+
+        if u0 is None:
+            u0 = np.zeros(N)
+        elif isinstance(u0, Wavefield):
+            u0 = u0.flat_data
+        elif isinstance(u0, np.ndarray):
+            u0 = np.asarray(u0).ravel()
+        else:
+            raise TypeError(
+                "arg `u0` must be one of Wavefield, np.ndarray, None, got"
+                + f" {type(u0)}"
             )
 
         result = scopt.minimize(
             fun=self.loss.evaluate,
             x0=u0,
             method=self.method,
-            jac=True,  # gradient provided by torch through .evaluate
+            jac=True,  # analytic gradient via rmatvec in ForwardLoss._grad
             callback=callback,
             options=self.opts,
         )
-        self.loss.callback.result = result  # store optimisation result in loss callback
+        self.loss.callback.result = result
 
         if not result.success:
-            print(f"Warning: Optimisation did not converge: {result.message}")
+            print(f"Warning: optimisation did not converge: {result.message}")
 
-        # cast result into list of per-shot wavefields
-        outputs = []
-        if isinstance(self.loss, ForwardLoss):
-            n_shots = self.loss.config.geometry.n_sources
-            chunks = result.x.reshape(n_shots, -1)  # (n_shots, Nt*Nx*Ny)
-
-            for s in range(n_shots):
-                wf = Wavefield(
-                    grid=self.wavefield.grid, init_wavespeed=self.wavefield.wavespeed
-                )
-                wf.amplitude = chunks[s]
-                outputs.append(wf)
-
-        return outputs, self.loss.callback
+        wf = Wavefield(grid=grid)
+        wf.flat_data = result.x
+        return wf, self.loss.callback
 
 
 class LBFGSB(ScipyOptimiser):
-    """Subclass for L-BFGS method"""
+    """Subclass for L-BFGS-B"""
 
-    def __init__(
-        self,
-        wavefield: Wavefield,
-        loss: DiscreteLoss,
-        maxiter: int = 500,
-        ftol: float = 1e-8,
-        gtol: float = 1e-10,
-        **opts,
-    ) -> None:
-        super().__init__(
-            wavefield,
-            loss,
-            method="L-BFGS-B",
-            maxiter=maxiter,
-            ftol=ftol,
-            gtol=gtol,
-            **opts,
-        )
+    def __init__(self, loss: DiscreteLoss, **opts) -> None:
+        super().__init__(loss, method="L-BFGS-B", **opts)
