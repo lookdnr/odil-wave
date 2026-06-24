@@ -156,7 +156,7 @@ class Grid:
         return sigma_x, sigma_y
 
     def _sigma_matrix(self):
-        """Compute the diagonal damping matrix for enforcing the PML"""
+        """Compute the diagonal damping matrix for enforcing the damping."""
         sigma = self.sigma_x + self.sigma_y
         return sp.diags(sigma.ravel())
 

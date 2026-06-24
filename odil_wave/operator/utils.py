@@ -32,7 +32,7 @@ class WaveEquation:
         self._lap_op = Laplacian(self.wavefield, self.space_order)
 
         # precompute
-        self.S = self.wavefield.grid.sig_mat
+        self.S = self.wavefield.grid.sig_mat  # damping coefficients
         c_sqr = sp.diags(self.model.c.ravel() ** 2)
         self.C2L = c_sqr @ self._lap_op.L
 
@@ -44,8 +44,10 @@ class WaveEquation:
         U = u.reshape(self.nt, self.nx * self.ny)
 
         utt = self._utt_op.apply(U)
-        damp = self._ut_op.apply(U @ self.S.T)
-        lap = self._lap_op.apply(U)
+        damp = self._ut_op.apply(
+            U @ self.S.T
+        )  # damping is only applied in the boundary region
+        lap = U @ self.C2L.T
 
         AU = utt + damp - lap
 
