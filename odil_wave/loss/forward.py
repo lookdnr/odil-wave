@@ -21,8 +21,7 @@ class ForwardLoss(DiscreteLoss):
 
         This is required for scipy.minimize
         """
-        A = self.problem.wave_eq.A
-        return 2 * A.T @ r
+        return 2 * self.problem.wave_eq.rmatvec(r)
 
     def evaluate(self, u: np.ndarray) -> Tuple[np.float64, np.ndarray]:
 
