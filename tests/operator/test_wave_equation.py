@@ -195,3 +195,27 @@ def test_IC_enforced_by_solve(A, w_eq):
 
     np.testing.assert_allclose(u[0], 0.0, atol=1e-10)  # u(t=0) = 0
     np.testing.assert_allclose((w_eq._ut_op.Dt @ u)[1], 0.0, atol=1e-10)  # u_t(t=0) = 0
+
+
+def test_boundary_damping():
+    grid = Grid(interior_shape=(10, 10), pml_width=4)  # PML ON
+    wf, model = Wavefield(grid), SmoothModel(grid)
+    w_eq = WaveEquation(wf, model)
+
+    nt, ns = grid.nt, grid.nx * grid.ny
+
+    rng = np.random.default_rng(0)
+    U = rng.standard_normal((nt, ns))
+
+    # isolated damping term in matvec  Dt @ (U @ S.T)
+    damp = w_eq._ut_op.apply(U @ w_eq.S.T)
+
+    sigma = (grid.sigma_x + grid.sigma_y).ravel()
+    interior = sigma == 0.0  # interior mask
+
+    np.testing.assert_allclose(
+        damp[:, interior], 0.0, atol=1e-14
+    )  # should be silent in interior
+    assert (
+        np.linalg.norm(damp[:, ~interior]) > 0
+    )  # and active in the ring (~ is bitwise NOT)
