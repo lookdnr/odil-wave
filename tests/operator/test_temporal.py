@@ -41,3 +41,13 @@ def test_first_derivative_of_constant_is_zero(wf):
     out = FirstTimeDerivative(wf).apply(wf.U)
 
     assert np.allclose(out[1:-1], 0.0, atol=1e-12)  # take interior
+
+
+def test_second_derivative_of_linear_is_zero(wf):
+    t = wf.grid.t[:, None]  # reshape to (nt, 1) so can be broadcasted
+    wf.U = np.broadcast_to(
+        t, wf.U.shape
+    ).copy()  # set u = t (const in space, linear in time)
+    out = SecondTimeDerivative(wf).apply(wf.U)  # should be zero
+
+    assert np.allclose(out[1:-1], 0.0, atol=1e-10)
