@@ -26,7 +26,7 @@ class ForwardLoss(DiscreteLoss):
     def evaluate(self, u: np.ndarray) -> Tuple[np.float64, np.ndarray]:
 
         #  get wavespeed separately, we need it to compute the PDE residuals
-        sources = self.problem.sources
+        sources = self.problem.sources[:, 0]  # TODO single shot for now
 
         residual = self._residuals(u, sources)
         L = self._eval_loss(residual)
