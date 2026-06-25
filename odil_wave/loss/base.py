@@ -26,7 +26,7 @@ class DiscreteLoss(ABC):
         pass
 
     @abstractmethod
-    def _eval_loss(self, residuals: np.ndarray) -> np.ndarray:
+    def _eval_loss(self, residuals: np.ndarray) -> np.float64:
         pass
 
     @abstractmethod
