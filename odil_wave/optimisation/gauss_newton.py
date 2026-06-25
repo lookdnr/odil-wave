@@ -67,8 +67,8 @@ class GaussNewtonOptimiser(Optimiser):
         # create A operator and assign operations
         Aop = spl.LinearOperator(
             shape=(N, N),
-            matvec=lambda x: we.matvec(x),  # type: ignore
-            rmatvec=lambda x: we.rmatvec(x),  # type: ignore
+            matvec=we.matvec,  # type: ignore
+            rmatvec=we.rmatvec,  # type: ignore
             dtype=np.float64,
         )
 
@@ -105,7 +105,7 @@ class GaussNewtonOptimiser(Optimiser):
                 du = spl.lsmr(Aop, -r, atol=atol, btol=btol, maxiter=inner_maxiter)[0]
 
             else:
-                du = spl.lsqr(Aop, -r, atol=atol, btol=btol)[0]
+                du = spl.lsqr(Aop, -r, atol=atol, btol=btol, iter_lim=inner_maxiter)[0]
 
             # update
             u = u + du  # alpha = 1 (exact for linear)
