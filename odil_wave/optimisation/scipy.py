@@ -8,6 +8,8 @@ from odil_wave.loss import DiscreteLoss
 from odil_wave.wavefield import Wavefield
 from odil_wave.loss.utils import LossTape
 
+from .utils import create_u0
+
 
 class ScipyOptimiser(Optimiser):
     """Wrapper around scipy.optimize.minimize"""
@@ -31,17 +33,7 @@ class ScipyOptimiser(Optimiser):
         grid = self.loss.problem.wavefield.grid
         N = grid.nt * grid.nx * grid.ny
 
-        if u0 is None:
-            u0 = np.zeros(N)
-        elif isinstance(u0, Wavefield):
-            u0 = u0.flat_data
-        elif isinstance(u0, np.ndarray):
-            u0 = np.asarray(u0).ravel()
-        else:
-            raise TypeError(
-                "arg `u0` must be one of Wavefield, np.ndarray, None, got"
-                + f" {type(u0)}"
-            )
+        u0 = create_u0(u0, N)
 
         result = scopt.minimize(
             fun=self.loss.evaluate,
