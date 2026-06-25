@@ -83,3 +83,212 @@ We also discussed how we would split into individual avenues for investigation i
 Option 1 is far more implementation focussed and will require a significant degree of software development, whereas option 2 is more specialised and will require a lot more experimentation around weighting, et cetera. Both are equally impactful.
 
 This week I am focussing on writing up my project plan, starting a literature review, and drafting implementation ideas.
+
+## 15/06: Weekly meeting
+
+This is the first of the weekly meetings following our splitting into our separate avenues for the project. We began with a discussion of how we will collaborate. Specifically:
+
+- We should work together to build a solid baseline
+- We should consider the basic test cases we should implement. These will be shared.
+    - Next two days: decide on spacings, models, geometries, and reference solutions (probably start with homogenous models with analytic solutions)
+    - Plotting tools e.g., colour schemes should be unanimous
+    - Define maximum problem sizes that are feasible to run locally
+    - Source frequency vs target size
+- Reference solutions should be comuted with stride
+    - Forward modelling at a very fine grid
+    - FWI for water start and perfect start
+    - Probably use the Shepp-Logan phantom model
+
+The others will rely on my forward solver. The others will probably tell me things to implement which I should follow. They should assume my main branch does what they want and pull from it. My work is the common point for each project.
+
+Ben suggest that development should focus on modularity in the context of what we want to experiment with, for now. Our priority should be to be able to play around easily with models, grids, et cetera.
+
+### Quick note on implementing sparse operators
+
+Consider the 2D wave equation,
+
+$$u_{tt} = c^2(u_{xx} + u_{yy}) = c^2 \nabla^2 u.$$
+
+Now let
+
+$$\nabla^2 = \delta_{xx} + \delta_{yy}.$$
+
+We must find some way to represent this as a matrix operation.
+
+Consider a simple central difference
+
+$$\nabla^2 u \approx \frac {u_{i+1, j} -2 u_{i, j} + u_{i-1, j}}{\Delta x^2} + \frac {u_{i, j+i-1} -2 u_{i, j} + u_{i, j-1}}{\Delta y^2} := D_x +D_y.$$
+
+We can represent $D_x$ as
+
+$$\alpha\begin{bmatrix}
+0 & 1 & 0\\
+1 & -2 & 1\\
+0 & 1 & 0\\
+\end{bmatrix},$$
+
+where $\alpha = \frac 1 {\Delta x^2}$. In this case then $D_y$ is simply
+
+$$\frac \beta \alpha D_x,$$
+
+where $\beta = \frac 1 {\Delta y^2}$. To turn this into the Laplacian operator, we need
+
+$$
+\begin{align*}
+&\delta_{xx} = D_x \otimes I_{N_y},\\
+&\delta_{yy} = D_y \otimes I_{N_x},\\
+\Rightarrow\ &\nabla^2 = \delta_{xx} + \delta_{yy}
+\end{align*}.$$
+
+The core components we will intially implement are
+
+- Optimiser
+- DiscreteLoss
+- DiscreteOperator
+- Model
+- Grid
+- AcqusitionGeometry
+- Domain
+
+I am largely handling the optimisers, operators (w Milica), and losses.
+
+## 17/06: Progress update
+
+We have done quite a lot in the last few days, and spread the initial development between us. This should be recorded in the commit history, but this serves as a recognition of their contribution either way. Here is a breakdown
+
+- Anton: Grid, AcqusitionGeometry, and VelocityModel classes
+- Melica: various classes relating to conditions and stencil application
+- Me: Optimiser classes, discrete loss classes, Wavefield class, SparseOperator classes 
+
+There was a little bit of implementation friction, namely becase my package now has to contain two pathways, one for the forward problem (my focus) and one for the inverse problem (their focus). This requires the use of different optimisers, losses, stencils, et cetera, and is not quite as simple as "just stick the wavespeed model in and optimise". 
+
+## 22/06: Weekly meeting
+
+In this meeting, we walked through our progress from the past week. I informed the supervisors that I would be switching direction. Last week, I introduced a lot of machinery for gradient based optimisation and the inverse problem which I would never use. The scope of my repo blew up beyond that of my project, so I proposed a change:
+
+- Use sparse matrix operators
+- Optimise the loss (single step) via a direct solve
+
+This is quite a significant reframe from the past week and will require quite a lot of refactoring which I have started now. This methodology will be much more efficient, and offer some interesting avenues.
+
+We made good progress last week, and hopefully by the end of this week the scope will be well defined, and the package will be tested and more efficient for my use case. More updates to come.
+
+# 24/06: Progress update
+
+Over the last 3 days, I have performed a major restructure and validation of the core components of the library:
+
+- Operators employ sparse matrices
+- WaveEquation has a .matvec function which applies the above without ever forming the global operator matrix explicitly. For a 40x40 problem, this contributes a ~25% reduction in memory.
+- Unit tests have been written that verify the Operators in the following manner:
+    - Smoke tests for all operators
+    - Tests for constant (1st derivative) and linear (2nd derivative) fields
+    - Tests for polynomial exactness
+    - Convergence tests for operators of all orders
+    - Method of Manufactured solution for full wave equation
+    - IC and BC enforcement checks
+
+There are more tests that can be written, but it opens the door for us to proceed with the optimisation.
+
+### Note on the MMS test
+
+The wave equation operator is validated via a method of manufactured solution test.
+
+I set
+
+$$u_{\text{exact}} = t^2(x^2 + y^2),$$
+
+such that
+
+$$u_{tt} = c^2(u_{xx} + u_{yy}) - f \Leftrightarrow 2(x^2 + y^2) = 4c^2t^2 - f,$$
+
+and 
+
+$$f =  2(x^2 + y^2) - 4c^2 t^2.$$
+
+Then I compute $Au$ for the given $u_{\text{exact}}$ and check that $Au \approx f$ as above. This validates that the operator does what I say it does.
+
+### Note on project direction
+
+In the last few days, I have realised that solving the forward problem using Gauss-Newton is actually just equivalent to solving the forward problem normally. The authors of the original paper basically say the same thing, which is nice, but it doesn't really offer anything novel at all. Thus, I should look at things like
+
+- iterative optimisation
+- non-linear forms that might emerge in other wave equations
+- multi grid methods
+
+## Progress update: 25/06
+
+Right, so I have done some maths and (I think) proved that solving the GN forward problem is functionally equivalent to solving Au = f, which is not novel at all. It goes as follows:
+
+The wave equation can be written
+
+$$Au = f,$$
+
+where $A$ is a matrix operator, $u$ is the amplitude vector, and $f$ is the source term vector.
+
+Under ODIL, we seek to minimise
+
+$$L(u) = \|r(u)\|^2,$$
+
+where $r(u) = Au - f$ is teh residual vector. We can minimise this using a Gauss-Newton method.
+
+GN approximates
+
+$$r(u + \delta u) = r_k - J_k \delta u,$$
+
+by a Taylor expansion. Here, $J_k$ is the Jacobian, and $\delta u$ is a vector point such that the residual is approximated at $u + \delta u$. Note however that in our (linear) case, the Jacobian is
+
+$$\frac{\partial}{\partial u} r(u) = A,$$
+
+the matrix operator. We will come back to this later.
+
+Under this formulation, we can rewrite the loss as
+
+$$L(u) = \|r_k - J_k \delta u\|^2.$$
+
+Expanding this using the fact that $\|x\|^2 = x^Tx$, we get
+
+$$L(u) = (r_k - J_k \delta u)^T(r_k - J_k \delta u).$$
+
+This is a quadratic problem in $\delta u$.
+
+Now, we want 
+
+$$\nabla_{\delta u} L = J^T_k (r_k + J_k\delta u) = 0.$$
+
+Rearranging, we arrive at
+
+$$J^TJ \delta u = - J^T r,$$
+
+which is the Gauss Newton normal equation. 
+
+We can cancel the $J^T$ terms by multiplying both sides by $(J^T)^{-1}$:
+
+$$\underbrace{(J^T)^{-1}J^T}_{= I} \ J \delta u = -\underbrace{(J^T)^{-1}J^T}_{= I}\ r$$
+
+$$\Rightarrow J \delta u = -r.$$
+
+But recall that $J \equiv A$ is constant, so $\delta u$ must be the exact minimiser of the loss. Sounds good so far, but if we realise that the residual for the current iterate $u_0$ is
+
+$$r_0 = Au_0 - f,$$
+
+and that 
+$$\delta u = u_1 - u_0$$
+
+then this becomes
+
+$$J \delta u = - r \Rightarrow A(u_1 - u_0) = -(Au_0 - f),$$
+
+which simplifies to 
+
+$$Au_1 = f$$
+
+thus, after a single GN step the updated iterate solves $Au = f$ exactly, so this approach is functionally equivalent to solving the forward problem directly. 
+
+The issue with this is it is not novel at all, and is just a less efficient way around solving the problem directly. My direction needs to change. 
+
+ODIL is specifically designed to solve inverse or non-linear problems. Here are some ideas:
+
+- WRI
+- Non-linear physics
+
+More on this later :-\
