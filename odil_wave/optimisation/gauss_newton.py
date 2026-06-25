@@ -114,6 +114,6 @@ class GaussNewtonOptimiser(Optimiser):
                 callback(u)
 
         # return Wavefield object
-        wf = Wavefield(grid=grid)
+        wf = Wavefield(self.loss.problem.wave_eq.wavefield.grid)
         wf.flat_data = u
         return wf, self.loss.callback
