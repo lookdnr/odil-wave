@@ -214,3 +214,81 @@ In the last few days, I have realised that solving the forward problem using Gau
 - iterative optimisation
 - non-linear forms that might emerge in other wave equations
 - multi grid methods
+
+## Progress update: 25/06
+
+Right, so I have done some maths and (I think) proved that solving the GN forward problem is functionally equivalent to solving Au = f, which is not novel at all. It goes as follows:
+
+The wave equation can be written
+
+$$Au = f,$$
+
+where $A$ is a matrix operator, $u$ is the amplitude vector, and $f$ is the source term vector.
+
+Under ODIL, we seek to minimise
+
+$$L(u) = \|r(u)\|^2,$$
+
+where $r(u) = Au - f$ is teh residual vector. We can minimise this using a Gauss-Newton method.
+
+GN approximates
+
+$$r(u + \delta u) = r_k - J_k \delta u,$$
+
+by a Taylor expansion. Here, $J_k$ is the Jacobian, and $\delta u$ is a vector point such that the residual is approximated at $u + \delta u$. Note however that in our (linear) case, the Jacobian is
+
+$$\frac{\partial}{\partial u} r(u) = A,$$
+
+the matrix operator. We will come back to this later.
+
+Under this formulation, we can rewrite the loss as
+
+$$L(u) = \|r_k - J_k \delta u\|^2.$$
+
+Expanding this using the fact that $\|x\|^2 = x^Tx$, we get
+
+$$L(u) = (r_k - J_k \delta u)^T(r_k - J_k \delta u).$$
+
+This is a quadratic problem in $\delta u$.
+
+Now, we want 
+
+$$\nabla_{\delta u} L = J^T_k (r_k + J_k\delta u) = 0.$$
+
+Rearranging, we arrive at
+
+$$J^TJ \delta u = - J^T r,$$
+
+which is the Gauss Newton normal equation. 
+
+We can cancel the $J^T$ terms by multiplying both sides by $(J^T)^{-1}$:
+
+$$\underbrace{(J^T)^{-1}J^T}_{= I} \ J \delta u = -\underbrace{(J^T)^{-1}J^T}_{= I}\ r$$
+
+$$\Rightarrow J \delta u = -r.$$
+
+But recall that $J \equiv A$ is constant, so $\delta u$ must be the exact minimiser of the loss. Sounds good so far, but if we realise that the residual for the current iterate $u_0$ is
+
+$$r_0 = Au_0 - f,$$
+
+and that 
+$$\delta u = u_1 - u_0$$
+
+then this becomes
+
+$$J \delta u = - r \Rightarrow A(u_1 - u_0) = -(Au_0 - f),$$
+
+which simplifies to 
+
+$$Au_1 = f$$
+
+thus, after a single GN step the updated iterate solves $Au = f$ exactly, so this approach is functionally equivalent to solving the forward problem directly. 
+
+The issue with this is it is not novel at all, and is just a less efficient way around solving the problem directly. My direction needs to change. 
+
+ODIL is specifically designed to solve inverse or non-linear problems. Here are some ideas:
+
+- WRI
+- Non-linear physics
+
+More on this later :-\
