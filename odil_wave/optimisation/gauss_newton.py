@@ -64,20 +64,19 @@ class GaussNewtonOptimiser(Optimiser):
                 f"method must be one of {list(self.methods)}, got {method}"
             )
 
-        # lambdas for spl.LinearOperator
-        matvec = lambda x: we.matvec(x)  # noqa
-        rmatvec = lambda x: we.rmatvec(x)  # noqa
-
         # create A operator and assign operations
-        Aop = spl.LinearOperator(np.float64, (N, N))
-        Aop.matvec = matvec  # , rmatvec=rmatvec, dtype=np.float64)
-        Aop.rmatvec = rmatvec
+        Aop = spl.LinearOperator(
+            shape=(N, N),
+            matvec=lambda x: we.matvec(x),
+            rmatvec=lambda x: we.rmatvec(x),
+            dtype=np.float64,
+        )
 
         # normal-equations operator for cg: Hv ~ JᵀJ v
         # lambda below computes JTJ (x)
-        matvec = lambda x: we.rmatvec(we.matvec(x))  # noqa
-        H = spl.LinearOperator(np.float64, (N, N))
-        H.matvec = matvec
+        H = spl.LinearOperator(
+            shape=(N, N), matvec=lambda x: we.rmatvec(we.matvec(x)), dtype=np.float64
+        )
 
         L_prev = np.inf
         u = u0
@@ -100,10 +99,11 @@ class GaussNewtonOptimiser(Optimiser):
                     H, -g, rtol=rtol, maxiter=inner_maxiter
                 )  # different callsite
 
-            else:  # lsmr / lsqr: min ‖A·du + r‖²
-                du = self.methods[method](
-                    Aop, -r, atol=atol, btol=btol, maxiter=inner_maxiter
-                )[0]
+            elif method == "lsmr":  # lsmr / lsqr: min ‖A·du + r‖²
+                du = spl.lsmr(Aop, -r, atol=atol, btol=btol, maxiter=inner_maxiter)[0]
+
+            else:
+                du = spl.lsqr(Aop, -r, atol=atol, btol=btol)[0]
 
             # update
             u = u + du  # alpha = 1 (exact for linear)
