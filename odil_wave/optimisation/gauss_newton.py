@@ -67,15 +67,17 @@ class GaussNewtonOptimiser(Optimiser):
         # create A operator and assign operations
         Aop = spl.LinearOperator(
             shape=(N, N),
-            matvec=lambda x: we.matvec(x),
-            rmatvec=lambda x: we.rmatvec(x),
+            matvec=lambda x: we.matvec(x),  # type: ignore
+            rmatvec=lambda x: we.rmatvec(x),  # type: ignore
             dtype=np.float64,
         )
 
         # normal-equations operator for cg: Hv ~ JᵀJ v
         # lambda below computes JTJ (x)
         H = spl.LinearOperator(
-            shape=(N, N), matvec=lambda x: we.rmatvec(we.matvec(x)), dtype=np.float64
+            shape=(N, N),
+            matvec=lambda x: we.rmatvec(we.matvec(x)),  # type: ignore
+            dtype=np.float64,
         )
 
         L_prev = np.inf
