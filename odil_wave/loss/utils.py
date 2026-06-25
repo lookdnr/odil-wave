@@ -13,7 +13,9 @@ class LossTape:
     log_every: int = 5  # log interval
     history: dict = field(default_factory=lambda: {"loss": [], "pde_residuals": []})
     _norm_cache: dict = field(default_factory=lambda: {"pde": []})
-    _result: scopt.OptimizeResult = field(init=False)  # store optimisation result
+    _result: scopt.OptimizeResult | None = field(
+        init=False
+    )  # store optimisation result
 
     def _norms(self, key: str, cache_key: str) -> list:
         """Return residual norms, computing only entries not already cached."""
@@ -52,7 +54,10 @@ class LossTape:
         plt.show()
 
     @property
-    def result(self) -> scopt.OptimizeResult:
+    def result(self) -> scopt.OptimizeResult | None:
+        if self._result is None:
+            print("Result only recorded for scipy optimisers")
+            return None
         return self._result
 
     @result.setter
