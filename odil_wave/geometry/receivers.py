@@ -6,6 +6,16 @@ from .utils import build_weight_matrix, place_ellipse
 
 
 class Receivers:
+    """Create an array of receivers on a Grid.
+
+    If mode == "custom", custom placement (in spatial coordinates) can be used
+    else if mode == "ring", receivers will be placed in an ellipse controlled by
+    the ring_centre and a_frac/ b_frac.
+
+    Receiver extraction is handled by sinc interpolation over an n_sinc window in
+    each spatial direction.
+    """
+
     def __init__(
         self,
         grid: Grid,
