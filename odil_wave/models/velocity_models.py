@@ -26,8 +26,14 @@ class HomogeneousModel(VelocityModel):
 class SheppLoganModel(VelocityModel):
     """Shepp-Logan phantom velocity model"""
 
-    def __init__(self, grid, base, contrast, interior_fill: float = 0.7):
-        super().__init__(grid, base, contrast)
+    def __init__(
+        self,
+        grid,
+        background_c: float = 1.0,
+        contrast: float = 1.0,
+        interior_fill: float = 0.7,
+    ):
+        super().__init__(grid, background_c, contrast)
         self.interior_fill = (
             interior_fill  # fraction of the interior grid the model should fill
         )
