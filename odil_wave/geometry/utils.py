@@ -55,8 +55,15 @@ def _sinc_weights(grid, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
     wi = np.sinc(fi - i_win)
     wj = np.sinc(fj - j_win)
 
+    patch = np.outer(wi[i_mask], wj[j_mask])  # weights (before write)
+
+    # normalize so the discrete integral sum(w*dx*dy) = 1 (unit Dirac delta),
+    # correcting for sinc tail truncation and boundary clipping
+
+    patch /= patch.sum() * grid.dx * grid.dy  # weights (normalised)
+
     W = np.zeros((grid.nx, grid.ny))
-    W[np.ix_(i_win[i_mask], j_win[j_mask])] = np.outer(wi[i_mask], wj[j_mask])
+    W[np.ix_(i_win[i_mask], j_win[j_mask])] = patch
     return W
 
 
