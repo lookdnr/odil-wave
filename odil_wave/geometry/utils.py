@@ -5,7 +5,7 @@ from typing import Tuple
 from odil_wave import Grid
 
 
-def _place_ellipse(
+def place_ellipse(
     grid: Grid,
     n_locations: int,
     ring_centre: Tuple[float, float] = (0.0, 0.0),
@@ -28,3 +28,43 @@ def _place_ellipse(
     j = np.round((y_k - ymin) / grid.dy).clip(0, grid.ny - 1).astype(int)
 
     return np.stack([i, j], axis=-1)
+
+
+def _sinc_weights(grid, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
+    """(nx, ny) sinc interpolation weights for a point source at (x_s, y_s).
+
+    Each weight is sinc((x_s - x[i])/dx) * sinc((y_s - y[j])/dy), computed
+    over a window of n_sinc nodes per dimension centred on the nearest node.
+    """
+    (xmin, _), (ymin, _) = grid.extent
+
+    # grid indices of the source position
+    fi = (x_s - xmin) / grid.dx
+    fj = (y_s - ymin) / grid.dy
+
+    # window of node indices centred on nearest node
+    half = n_sinc // 2
+    i_win = np.arange(int(round(fi)) - half, int(round(fi)) + half)
+    j_win = np.arange(int(round(fj)) - half, int(round(fj)) + half)
+
+    # mask out indices that fall outside the grid
+    i_mask = (i_win >= 0) & (i_win < grid.nx)
+    j_mask = (j_win >= 0) & (j_win < grid.ny)
+
+    # 1-D sinc weights
+    wi = np.sinc(fi - i_win)
+    wj = np.sinc(fj - j_win)
+
+    W = np.zeros((grid.nx, grid.ny))
+    W[np.ix_(i_win[i_mask], j_win[j_mask])] = np.outer(wi[i_mask], wj[j_mask])
+    return W
+
+
+def build_weight_matrix(grid, xy, n_objects, n_sinc: int) -> np.ndarray:
+    """Precompute (nx*ny, n_sources) sinc injection weight matrix."""
+    W = np.zeros((grid.nx * grid.ny, n_objects))
+
+    for s in range(n_objects):
+        x_s, y_s = xy[s]
+        W[:, s] = _sinc_weights(grid, x_s, y_s, n_sinc).ravel()
+    return W
