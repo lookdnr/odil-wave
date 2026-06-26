@@ -82,10 +82,10 @@ class OverDensityModel(VelocityModel):
         if not (x_min <= centre[0] <= x_max):
             raise ValueError(
                 f"x-component of arg 'centre' must be between {x_min, x_max},"
-                + " got {centre[0]}."
+                + f" got {centre[0]}."
             )
 
-        if not (y_min <= centre[0] <= y_max):
+        if not (y_min <= centre[1] <= y_max):
             raise ValueError(
                 f"y-component of arg 'centre' must be between {y_min, y_max},"
                 + " got {centre[1]}."

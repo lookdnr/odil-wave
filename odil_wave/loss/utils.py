@@ -14,7 +14,7 @@ class LossTape:
     history: dict = field(default_factory=lambda: {"loss": [], "pde_residuals": []})
     _norm_cache: dict = field(default_factory=lambda: {"pde": []})
     _result: scopt.OptimizeResult | None = field(
-        init=False
+        init=False, default=None
     )  # store optimisation result
 
     def _norms(self, key: str, cache_key: str) -> list:

@@ -55,8 +55,9 @@ class WaveEquation:
         # IC1: u(0) = 0
         AU[0, :] = U[0, :]
 
-        # IC2: ut(0) = 0
-        AU[1, :] = (self._ut_op.Dt @ U)[1, :]
+        # IC2: ut(0) = 0 - U[1] = U[0]  (1st-order forward diff from t=0)
+        AU[1, :] = U[1, :]
+
         return AU.ravel()
 
     def rmatvec(self, r: np.ndarray) -> np.ndarray:
@@ -78,7 +79,7 @@ class WaveEquation:
 
         # transpose of IC constraints
         ATv[0, :] += R[0, :]
-        ATv += self._ut_op.Dt.T[:, [1]] @ R[[1], :]
+        ATv[1, :] += R[1, :]
 
         return ATv.ravel()
 

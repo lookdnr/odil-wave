@@ -56,7 +56,7 @@ class SecondTimeDerivative(SparseOperator):
 
     def __init__(self, wavefield: Wavefield, ord: int = 2) -> None:
         super().__init__(wavefield, ord)
-        self.matrix = self.assemble()
+        self.assemble()
 
     def assemble(self) -> None:
         """Assembles the time operator: Dt otimes Ixy"""
