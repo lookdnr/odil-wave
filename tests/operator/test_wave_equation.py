@@ -98,8 +98,8 @@ def A(w_eq):
     A = sp.kron(Dtt, Is) + sp.kron(Dt, S) - sp.kron(It, C2L)
 
     # apply same ICs
-    A[0:ns, :] = sp.kron(sp.eye(1, nt, 0), Is)  # row block t=0,
-    A[ns : 2 * ns, :] = sp.kron(Dt.tocsr()[1, :], Is)  # row block t=1: (Dt row 1) ⊗ I
+    A[0:ns, :] = sp.kron(sp.eye(1, nt, 0), Is)  # row block t=0: identity → IC1
+    A[ns : 2 * ns, :] = sp.kron(sp.eye(1, nt, 1), Is)  # row block t=1: identity → IC2
     return A.tocsr()
 
 
@@ -141,7 +141,7 @@ def test_matvec_equals_assembled_A_pml():
     )
 
     A[0:ns, :] = sp.kron(sp.eye(1, nt, 0), Is)
-    A[ns : 2 * ns, :] = sp.kron(w_eq._ut_op.Dt.tocsr()[1, :], Is)
+    A[ns : 2 * ns, :] = sp.kron(sp.eye(1, nt, 1), Is)
     A = A.tocsr()
 
     # evaluate for random input
@@ -186,7 +186,7 @@ def test_rmatvec_equals_assembled_AT_pml():
     )
 
     A[0:ns, :] = sp.kron(sp.eye(1, nt, 0), Is)
-    A[ns : 2 * ns, :] = sp.kron(w_eq._ut_op.Dt.tocsr()[1, :], Is)
+    A[ns : 2 * ns, :] = sp.kron(sp.eye(1, nt, 1), Is)
     A = A.tocsr()
 
     rng = np.random.default_rng(0)
@@ -254,9 +254,8 @@ def test_IC(w_eq):
     # IC1: row 0 returns u(t=0)
     np.testing.assert_allclose(Au[0], U[0], rtol=1e-12, atol=1e-12)
 
-    # IC2: row 1 returns the discrete first time derivative at t=0
-    Dt = w_eq._ut_op.Dt
-    np.testing.assert_allclose(Au[1], (Dt @ U)[1], rtol=1e-12, atol=1e-12)
+    # IC2: row 1 returns u(t=1) unchanged
+    np.testing.assert_allclose(Au[1], U[1], rtol=1e-12, atol=1e-12)
 
 
 def test_IC_enforced_by_solve(A, w_eq):
@@ -269,7 +268,7 @@ def test_IC_enforced_by_solve(A, w_eq):
     u = sp.linalg.spsolve(A, f).reshape(nt, ns)
 
     np.testing.assert_allclose(u[0], 0.0, atol=1e-10)  # u(t=0) = 0
-    np.testing.assert_allclose((w_eq._ut_op.Dt @ u)[1], 0.0, atol=1e-10)  # u_t(t=0) = 0
+    np.testing.assert_allclose(u[1], 0.0, atol=1e-10)  # u(t=1) = 0
 
 
 def test_boundary_damping():
