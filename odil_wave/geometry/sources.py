@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from odil_wave.grid import Grid
 from odil_wave.models.base import VelocityModel
 
-from .utils import _place_ellipse
+from .utils import place_ellipse, build_weight_matrix
 
 
 class Sources:
@@ -89,7 +89,7 @@ class Sources:
 
             self.ring_centre = ring_centre
 
-            self.src_ij = _place_ellipse(grid, n_sources, ring_centre, a_frac, b_frac)
+            self.src_ij = place_ellipse(grid, n_sources, ring_centre, a_frac, b_frac)
             # physical coords for sinc injection
             self.src_xy = np.array(
                 [[grid.x[i], grid.y[j]] for i, j in self.src_ij], dtype=float
@@ -136,45 +136,9 @@ class Sources:
         self.f0 = f0  # peak frequency
         self.t0 = 1.0 / f0 if t0 is None else t0  # causal Ricker delay [s]
 
-        self.W = self._build_weight_matrix(n_sinc)  # (nx*ny, n_sources)
-
-    def _sinc_weights(self, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
-        """(nx, ny) sinc interpolation weights for a point source at (x_s, y_s).
-
-        Each weight is sinc((x_s - x[i])/dx) * sinc((y_s - y[j])/dy), computed
-        over a window of n_sinc nodes per dimension centred on the nearest node.
-        """
-        (xmin, _), (ymin, _) = self.grid.extent
-
-        # grid indices of the source position
-        fi = (x_s - xmin) / self.grid.dx
-        fj = (y_s - ymin) / self.grid.dy
-
-        # window of node indices centred on nearest node
-        half = n_sinc // 2
-        i_win = np.arange(int(round(fi)) - half, int(round(fi)) + half)
-        j_win = np.arange(int(round(fj)) - half, int(round(fj)) + half)
-
-        # mask out indices that fall outside the grid
-        i_mask = (i_win >= 0) & (i_win < self.grid.nx)
-        j_mask = (j_win >= 0) & (j_win < self.grid.ny)
-
-        # 1-D sinc weights
-        wi = np.sinc(fi - i_win)
-        wj = np.sinc(fj - j_win)
-
-        W = np.zeros((self.grid.nx, self.grid.ny))
-        W[np.ix_(i_win[i_mask], j_win[j_mask])] = np.outer(wi[i_mask], wj[j_mask])
-        return W
-
-    def _build_weight_matrix(self, n_sinc: int) -> np.ndarray:
-        """Precompute (nx*ny, n_sources) sinc injection weight matrix."""
-        W = np.zeros((self.grid.nx * self.grid.ny, self.n_sources))
-
-        for s in range(self.n_sources):
-            x_s, y_s = self.src_xy[s]
-            W[:, s] = self._sinc_weights(x_s, y_s, n_sinc).ravel()
-        return W
+        self.W = build_weight_matrix(
+            grid, self.src_xy, self.n_sources, n_sinc
+        )  # (nx*ny, n_sources)
 
     def ricker(self, t: np.ndarray) -> np.ndarray:
         arg = (math.pi * self.f0 * (t - self.t0)) ** 2
