@@ -79,6 +79,7 @@ class Receivers:
             self.ring_centre = ring_centre
 
             self.recv_ij = place_ellipse(grid, n_receivers, ring_centre, a_frac, b_frac)
+
             # physical coords for sinc injection
             self.recv_xy = np.array(
                 [[grid.x[i], grid.y[j]] for i, j in self.recv_ij], dtype=float
@@ -123,6 +124,6 @@ class Receivers:
         )  # (nx*ny, n_recv)
 
     def extract_observations(self, U: np.ndarray) -> np.ndarray:
-        """Project (NT, NX, NY) wavefield onto receivers → (NT, n_recv)."""
+        """Project (NT, NX, NY) wavefield onto receivers -> (NT, n_recv)."""
         nt = U.shape[0]
         return U.reshape(nt, -1) @ self.W  # (nt, n_recv)

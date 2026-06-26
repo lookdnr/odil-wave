@@ -61,7 +61,11 @@ def _sinc_weights(grid, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
 
 
 def build_weight_matrix(grid, xy, n_objects, n_sinc: int) -> np.ndarray:
-    """Precompute (nx*ny, n_sources) sinc injection weight matrix."""
+    """Precompute (nx*ny, n_sources) sinc injection weight matrix.
+    The weight matrix is built such that multiplication by W encodes injection
+    and multplication by W.T encodes extraction. This gives adjoint-safety for the
+    inverse problem.
+    """
     W = np.zeros((grid.nx * grid.ny, n_objects))
 
     for s in range(n_objects):
