@@ -7,6 +7,13 @@ from .receivers import Receivers
 
 
 class AcquisitionGeometry:
+    """
+    Convenience class for collecting Sources and Receivers into a unified object.
+
+    TODO: Downstream functionality operates on AcquistionGeometry instances, need to
+    check functionality interfacing
+    """
+
     def __init__(self, sources: Sources, receivers: Receivers):
         self.sources = sources
         self.receivers = receivers
