@@ -1,7 +1,7 @@
 from .base import Optimiser
 from odil_wave.wavefield import Wavefield
 from odil_wave.loss import DiscreteLoss
-from .utils import create_u0
+from .utils import create_u0, OptimisationResult, InnerSolveInfo
 
 from typing import Dict, Callable
 import numpy as np
@@ -82,7 +82,11 @@ class GaussNewtonOptimiser(Optimiser):
 
         L_prev = np.inf
         u = u0
-        for _ in range(self.outer_maxiter):
+        success = False
+        message = f"Maximum outer iterations ({self.outer_maxiter}) reached"
+        nit = 0
+        inner_history: list[InnerSolveInfo] = []
+        for nit in range(1, self.outer_maxiter + 1):
             # compute residual and gradient
             r = we.residual(u, f)  # compute residual vector
             g = we.rmatvec(r)  # J^T r (grad)
@@ -91,21 +95,45 @@ class GaussNewtonOptimiser(Optimiser):
             L = self.loss._eval_loss(r)
             self.loss.callback.log(L, r)
 
-            if np.linalg.norm(g) < self.outer_gtol or abs(L_prev - L) < self.outer_ftol:
+            if np.linalg.norm(g) < self.outer_gtol:
+                success, message = True, "Gradient norm below outer_gtol"
+                break
+            if abs(L_prev - L) < self.outer_ftol:
+                success, message = True, "Loss change below outer_ftol"
                 break
             L_prev = L
 
             # cg and lsmr/lsqr expose different controls, so branch methods here
             if method == "cg":
-                du, _ = spl.cg(
-                    H, -g, rtol=rtol, maxiter=inner_maxiter
-                )  # different callsite
+                du, info = spl.cg(H, -g, rtol=rtol, maxiter=inner_maxiter)
+                inner_history.append(
+                    InnerSolveInfo(
+                        itn=info if info > 0 else inner_maxiter,
+                        normr=None,
+                        normar=None,
+                        converged=(info == 0),
+                    )
+                )
 
             elif method == "lsmr":  # lsmr / lsqr: min ‖A·du + r‖²
-                du = spl.lsmr(Aop, -r, atol=atol, btol=btol, maxiter=inner_maxiter)[0]
+                du, istop, itn, normr, normar, *_ = spl.lsmr(
+                    Aop, -r, atol=atol, btol=btol, maxiter=inner_maxiter
+                )
+                inner_history.append(
+                    InnerSolveInfo(
+                        itn=itn, normr=normr, normar=normar, converged=(istop != 7)
+                    )
+                )
 
             else:
-                du = spl.lsqr(Aop, -r, atol=atol, btol=btol, iter_lim=inner_maxiter)[0]
+                du, istop, itn, r1norm, _, _, _, arnorm, *_ = spl.lsqr(
+                    Aop, -r, atol=atol, btol=btol, iter_lim=inner_maxiter
+                )
+                inner_history.append(
+                    InnerSolveInfo(
+                        itn=itn, normr=r1norm, normar=arnorm, converged=(istop != 7)
+                    )
+                )
 
             # update
             u = u + du  # alpha = 1 (exact for linear)
@@ -113,7 +141,13 @@ class GaussNewtonOptimiser(Optimiser):
             if callback is not None:
                 callback(u)
 
-        # return Wavefield object
         wf = Wavefield(self.loss.problem.wave_eq.wavefield.grid)
         wf.flat_data = u
-        return wf, self.loss.callback
+        return OptimisationResult(
+            wf,
+            self.loss.callback,
+            nit=nit,
+            success=success,
+            message=message,
+            inner_history=inner_history,
+        )
