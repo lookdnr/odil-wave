@@ -117,7 +117,7 @@ class Wavefield:
 
         fig, ax = plt.subplots(figsize=(6, 5))
         im = ax.imshow(
-            amp[0].reshape(Nx, Ny),
+            amp[0].reshape(Nx, Ny).T,
             origin="lower",
             extent=(xmin, xmax, ymin, ymax),
             cmap=cmap,
@@ -132,7 +132,7 @@ class Wavefield:
 
         # update for drawing frames
         def update(frame: int):
-            im.set_data(amp[frame].reshape(Nx, Ny))
+            im.set_data(amp[frame].reshape(Nx, Ny).T)
             ttl.set_text(f"{title}  (t = {t[frame]:.3f} s)")
             return im, ttl
 

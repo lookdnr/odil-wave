@@ -66,7 +66,7 @@ class VelocityModel(ABC):
 
         (xmin, xmax), (ymin, ymax) = self.grid.extent
         im = ax.imshow(
-            self.c,
+            self.c.T,
             origin="lower",
             extent=(xmin, xmax, ymin, ymax),
             cmap="viridis",
