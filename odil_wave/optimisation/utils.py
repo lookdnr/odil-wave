@@ -100,13 +100,13 @@ class OptimisationResult(OptimizeResult):
         ax_idx = 1
         if normrs:
             axs[ax_idx].semilogy(range(1, len(normrs) + 1), normrs, marker="o")
-            axs[ax_idx].set_title(r"$\|b - Ax\|$ at exit")
+            axs[ax_idx].set_title(r"$\|J^\top J \delta u - J^\T r\|$ at exit")
             axs[ax_idx].set_xlabel("Outer iteration")
             ax_idx += 1
 
         if normars:
             axs[ax_idx].semilogy(range(1, len(normars) + 1), normars, marker="o")
-            axs[ax_idx].set_title(r"$\|A^\top(b - Ax)\|$ at exit")
+            axs[ax_idx].set_title(r"$\|A^\top(J^\top J \delta u - J^\T r)\|$ at exit")
             axs[ax_idx].set_xlabel("Outer iteration")
 
         fig.suptitle(title)
