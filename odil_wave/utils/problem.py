@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from odil_wave import WaveEquation, AcquisitionGeometry, Wavefield
+from odil_wave.geometry import Sources
 
 
 @dataclass
@@ -8,7 +9,7 @@ class Problem:
     """Configuration for the loss function."""
 
     wave_eq: WaveEquation
-    geometry: AcquisitionGeometry
+    geometry: AcquisitionGeometry | Sources
 
     def __post_init__(self):
         wf = self.wave_eq.wavefield
