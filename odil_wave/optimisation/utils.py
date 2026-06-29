@@ -106,7 +106,7 @@ class OptimisationResult(OptimizeResult):
 
         if normars:
             axs[ax_idx].semilogy(range(1, len(normars) + 1), normars, marker="o")
-            axs[ax_idx].set_title(r"$\|A^\top(J^\top J \delta u - J^\T r)\|$ at exit")
+            axs[ax_idx].set_title(r"$\|A^\top(J^\top J \delta u - J^\top r)\|$ at exit")
             axs[ax_idx].set_xlabel("Outer iteration")
 
         fig.suptitle(title)
