@@ -67,7 +67,7 @@ def test_wave_eq_mms(grid, model, w_eq):
 
     # compute exact f
     c2 = model.c**2
-    f = 2 * (X**2 + Y**2)[None] - 4 * c2[None] * (t[:, None, None] ** 2)
+    f = w_eq.dt2 * (2 * (X**2 + Y**2)[None] - 4 * c2[None] * (t[:, None, None] ** 2))
 
     # create slices that skip IC rows and truncated edges
     # rows 0-1 are IC-overwritten, so only include 2:-1
@@ -93,9 +93,8 @@ def A(w_eq):
     S = w_eq.S  # damping matrix
 
     # assemble full A matrix
-    # A = Dtt + Dt + c^2 L
-    # Kronecker products expand time operators across space and vice verse
-    A = sp.kron(Dtt, Is) + sp.kron(Dt, S) - sp.kron(It, C2L)
+    # A = dt^2 * (Dtt + Dt + c^2 L)
+    A = w_eq.dt2 * (sp.kron(Dtt, Is) + sp.kron(Dt, S) - sp.kron(It, C2L))
 
     # apply same ICs
     A[0:ns, :] = sp.kron(sp.eye(1, nt, 0), Is)  # row block t=0: identity → IC1
@@ -135,14 +134,16 @@ def test_matvec_equals_assembled_A_pml():
     It, Is = sp.eye(nt), sp.eye(ns)
 
     A = (
-        sp.kron(w_eq._utt_op.Dtt, Is)
-        + sp.kron(w_eq._ut_op.Dt, w_eq.S)
-        - sp.kron(It, w_eq.C2L)
+        w_eq.dt2
+        * (
+            sp.kron(w_eq._utt_op.Dtt, Is)
+            + sp.kron(w_eq._ut_op.Dt, w_eq.S)
+            - sp.kron(It, w_eq.C2L)
+        ).tocsr()
     )
 
     A[0:ns, :] = sp.kron(sp.eye(1, nt, 0), Is)
     A[ns : 2 * ns, :] = sp.kron(sp.eye(1, nt, 1), Is)
-    A = A.tocsr()
 
     # evaluate for random input
     rng = np.random.default_rng(0)
@@ -180,14 +181,16 @@ def test_rmatvec_equals_assembled_AT_pml():
     It, Is = sp.eye(nt), sp.eye(ns)
 
     A = (
-        sp.kron(w_eq._utt_op.Dtt, Is)
-        + sp.kron(w_eq._ut_op.Dt, w_eq.S)
-        - sp.kron(It, w_eq.C2L)
+        w_eq.dt2
+        * (
+            sp.kron(w_eq._utt_op.Dtt, Is)
+            + sp.kron(w_eq._ut_op.Dt, w_eq.S)
+            - sp.kron(It, w_eq.C2L)
+        ).tocsr()
     )
 
     A[0:ns, :] = sp.kron(sp.eye(1, nt, 0), Is)
     A[ns : 2 * ns, :] = sp.kron(sp.eye(1, nt, 1), Is)
-    A = A.tocsr()
 
     rng = np.random.default_rng(0)
     v = rng.standard_normal(nt * ns)
