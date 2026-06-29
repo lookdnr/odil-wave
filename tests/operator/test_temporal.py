@@ -39,30 +39,27 @@ def test_invalid_order_raises(wf, Operator, ord):
 @pytest.mark.parametrize("ord", VALID_ORDERS)
 def test_first_derivative_of_constant_is_zero(wf, ord):
     wf.U = np.full_like(wf.U, 10)  # constant field
-    out = FirstTimeDerivative(wf).apply(wf.U)
-
-    assert np.allclose(out[ord // 2 : ord // 2], 0.0, atol=1e-12)  # take interior
+    out = FirstTimeDerivative(wf, ord=ord).apply(wf.U)
+    half = ord // 2
+    assert np.allclose(out[half:-half], 0.0, atol=1e-12)
 
 
 @pytest.mark.parametrize("ord", VALID_ORDERS)
 def test_first_derivative_of_linear(wf, ord):
     t = wf.grid.t[:, None]
     wf.U = np.broadcast_to(t, wf.U.shape).copy()  # u = t
-    out = FirstTimeDerivative(wf).apply(wf.U)
-    assert np.allclose(
-        out[ord // 2 : ord // 2], 1.0, atol=1e-10
-    )  # should be 1 on the interior
+    out = FirstTimeDerivative(wf, ord=ord).apply(wf.U)
+    half = ord // 2
+    assert np.allclose(out[half:-half], 1.0, atol=1e-10)
 
 
 @pytest.mark.parametrize("ord", VALID_ORDERS)
 def test_second_derivative_of_linear_is_zero(wf, ord):
-    t = wf.grid.t[:, None]  # reshape to (nt, 1) so can be broadcasted
-    wf.U = np.broadcast_to(
-        t, wf.U.shape
-    ).copy()  # set u = t (const in space, linear in time)
-    out = SecondTimeDerivative(wf).apply(wf.U)  # should be zero
-
-    assert np.allclose(out[ord // 2 : ord // 2], 0.0, atol=1e-10)
+    t = wf.grid.t[:, None]
+    wf.U = np.broadcast_to(t, wf.U.shape).copy()  # u = t
+    out = SecondTimeDerivative(wf, ord=ord).apply(wf.U)
+    half = ord // 2
+    assert np.allclose(out[half:-half], 0.0, atol=1e-10)
 
 
 # ===== test polynomial exactness =====
