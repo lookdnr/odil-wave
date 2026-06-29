@@ -2,8 +2,10 @@ from dataclasses import dataclass, field
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from typing import Sequence
 
 from odil_wave.grid import Grid
+from odil_wave.models.base import VelocityModel
 
 
 @dataclass
@@ -100,10 +102,24 @@ class Wavefield:
         self,
         filename: str = "wavefield.gif",
         fps: int = 20,
-        cmap: str = "RdBu_r",
+        cmap: str = "seismic",
         title: str = "Wavefield history",
+        model: "VelocityModel | np.ndarray | None" = None,
+        model_levels: int | Sequence[float] = 1,
+        model_colour: str = "k",
+        model_alpha: float = 0.35,
+        model_linewidth: float = 0.9,
+        model_linestyle: str = "--",
     ) -> str:
-        """Render the amplitude field over all time steps to an animated GIF."""
+        """Render the amplitude field over all time steps to an animated GIF.
+
+        Optionally overlays dashed contours from a velocity model to give
+        structural context without competing with the wavefield colours.
+
+        model can be either:
+        - a VelocityModel instance (uses model.c), or
+        - a raw ndarray with shape (Nx, Ny) or (Ny, Nx).
+        """
 
         amp = self._amplitude  # (Nt, Nx, Ny)
         Nt = self.grid.nt
@@ -129,6 +145,48 @@ class Wavefield:
         ax.set_ylabel("y")
         ttl = ax.set_title(f"{title}  (t = {t[0]:.3f} s)")
         plt.colorbar(im, ax=ax, label="Amplitude", shrink=0.85)
+
+        if model is not None:
+            if isinstance(model, np.ndarray):
+                model_data = model
+            else:
+                model_data = getattr(model, "c", None)
+                if model_data is None:
+                    raise TypeError("model must be a VelocityModel or ndarray")
+            model_arr = np.asarray(model_data)
+            if model_arr.shape == (Nx, Ny):
+                model_plot = model_arr.T
+            elif model_arr.shape == (Ny, Nx):
+                model_plot = model_arr
+            else:
+                raise ValueError(
+                    "model must be a VelocityModel or ndarray with shape "
+                    + f"{(Nx, Ny)} or {(Ny, Nx)}, got {model_arr.shape}"
+                )
+
+            mmin, mmax = float(model_plot.min()), float(model_plot.max())
+            if mmax > mmin:
+                if isinstance(model_levels, int):
+                    if model_levels <= 1:
+                        levels = [(mmin + mmax) * 0.5]
+                    else:
+                        levels = np.linspace(mmin, mmax, model_levels + 2)[1:-1]
+                else:
+                    levels = np.asarray(model_levels, dtype=float)
+
+                x = np.linspace(xmin, xmax, Nx)
+                y = np.linspace(ymin, ymax, Ny)
+                ax.contour(
+                    x,
+                    y,
+                    model_plot,
+                    levels=levels,
+                    colors=model_colour,
+                    linewidths=model_linewidth,
+                    linestyles=model_linestyle,
+                    alpha=model_alpha,
+                    zorder=3,
+                )
 
         # update for drawing frames
         def update(frame: int):
