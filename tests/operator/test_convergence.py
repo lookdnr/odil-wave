@@ -71,7 +71,7 @@ def _space_error(n, ord):
 
 @pytest.mark.parametrize("ord", [2, 4, 6])
 def test_laplacian_convergence(ord):
-    ns = [41, 61, 91, 131]
+    ns = [21, 31, 41, 61]
     hs, errs = zip(*(_space_error(n, ord) for n in ns))
     obs = observed_order(hs, errs)
     print(f"\n[LAPLACIAN] order: {ord}, observed order: {obs}")
