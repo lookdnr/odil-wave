@@ -72,15 +72,17 @@ class HigdonBC:
             Dxx_full = sp.csr_matrix(sp.kron(Dxx, sp.eye(ny)) @ Gx)
 
             if self.boundary == "left":
-                self.bdry_cols = np.arange(ny)  # i=0, all j
-                self.sign = -1.0  # left outward normal is -x
-                self.Dn = Dx_full[:ny, :]  # 1st normal derivative
-                self.Dnn = Dxx_full[:ny, :]  # 2nd normal derivative
+                # i=0, j=1..ny-2: corners (j=0, j=ny-1) owned by bottom/top
+                self.bdry_cols = np.arange(1, ny - 1)
+                self.sign = -1.0
+                self.Dn = Dx_full[1 : ny - 1, :]
+                self.Dnn = Dxx_full[1 : ny - 1, :]
             else:
-                self.bdry_cols = np.arange((nx - 1) * ny, nx * ny)  # i=nx-1
-                self.sign = 1.0  # right normal is +x
-                self.Dn = Dx_full[(nx - 1) * ny :, :]
-                self.Dnn = Dxx_full[(nx - 1) * ny :, :]
+                # i=nx-1, j=1..ny-2: corners owned by bottom/top
+                self.bdry_cols = np.arange((nx - 1) * ny + 1, nx * ny - 1)
+                self.sign = 1.0
+                self.Dn = Dx_full[(nx - 1) * ny + 1 : nx * ny - 1, :]
+                self.Dnn = Dxx_full[(nx - 1) * ny + 1 : nx * ny - 1, :]
 
         else:  # "bottom" | "top"
             Dy = _first_diff_spatial(self.space_order, ny, grid.dy, g)
