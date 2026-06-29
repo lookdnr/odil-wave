@@ -7,7 +7,7 @@ from odil_wave import Grid, Wavefield
 @pytest.fixture
 def wf():
     # asymmetric on purpose: distinct nx/ny and dx/dy
-    grid = Grid(interior_shape=(11, 13), pml_width=0)
+    grid = Grid(nx=11, ny=13)
     return Wavefield(grid)
 
 

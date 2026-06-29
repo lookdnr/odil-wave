@@ -22,7 +22,7 @@ class SmoothModel(VelocityModel):
 # ===== Problem components =====
 @pytest.fixture
 def grid():
-    return Grid(interior_shape=(10, 10), pml_width=0)
+    return Grid(nx=10, ny=10)
 
 
 @pytest.fixture
@@ -118,41 +118,6 @@ def test_matvec_equals_assembled_A(A, w_eq):
     np.testing.assert_allclose(A @ u, w_eq.matvec(u), rtol=1e-10, atol=1e-10)
 
 
-def test_matvec_equals_assembled_A_pml():
-    """Same as above but with PML on (S != 0) so the damping
-    transpose term is exercised too."""
-
-    grid = Grid(interior_shape=(10, 10), pml_width=4)  # PML ON
-    w_eq = WaveEquation(Wavefield(grid), SmoothModel(grid))
-
-    nt, nx, ny = w_eq.nt, w_eq.nx, w_eq.ny
-    ns = nx * ny  # number of spatial points
-
-    # rebuild A for this config
-    nt, nx, ny = w_eq.nt, w_eq.nx, w_eq.ny
-    ns = nx * ny
-    It, Is = sp.eye(nt), sp.eye(ns)
-
-    A = (
-        w_eq.dt2
-        * (
-            sp.kron(w_eq._utt_op.Dtt, Is)
-            + sp.kron(w_eq._ut_op.Dt, w_eq.S)
-            - sp.kron(It, w_eq.C2L)
-        ).tocsr()
-    )
-
-    A[0:ns, :] = sp.kron(sp.eye(1, nt, 0), Is)
-    A[ns : 2 * ns, :] = sp.kron(sp.eye(1, nt, 1), Is)
-
-    # evaluate for random input
-    rng = np.random.default_rng(0)
-    u = rng.standard_normal(nt * ns)
-
-    # test matvec(u) ~~ Au for full A
-    np.testing.assert_allclose(A @ u, w_eq.matvec(u), rtol=1e-10, atol=1e-10)
-
-
 def test_rmatvec_equals_assembled_AT(A, w_eq):
     """WaveEquation.rmatvec() applies the transposed operator A^T without
     ever forming it explicitly. This tests it is equivalent to computing
@@ -167,78 +132,6 @@ def test_rmatvec_equals_assembled_AT(A, w_eq):
 
     # test rmatvec(v) ~~ A^T v for full A
     np.testing.assert_allclose(A.T @ v, w_eq.rmatvec(v), rtol=1e-10, atol=1e-10)
-
-
-def test_rmatvec_equals_assembled_AT_pml():
-    """Same as above but with PML on (S != 0) so the damping
-    transpose term is exercised too."""
-    grid = Grid(interior_shape=(10, 10), pml_width=4)  # PML ON
-    w_eq = WaveEquation(Wavefield(grid), SmoothModel(grid))
-
-    # rebuild A for this config
-    nt, nx, ny = w_eq.nt, w_eq.nx, w_eq.ny
-    ns = nx * ny
-    It, Is = sp.eye(nt), sp.eye(ns)
-
-    A = (
-        w_eq.dt2
-        * (
-            sp.kron(w_eq._utt_op.Dtt, Is)
-            + sp.kron(w_eq._ut_op.Dt, w_eq.S)
-            - sp.kron(It, w_eq.C2L)
-        ).tocsr()
-    )
-
-    A[0:ns, :] = sp.kron(sp.eye(1, nt, 0), Is)
-    A[ns : 2 * ns, :] = sp.kron(sp.eye(1, nt, 1), Is)
-
-    rng = np.random.default_rng(0)
-    v = rng.standard_normal(nt * ns)
-    np.testing.assert_allclose(A.T @ v, w_eq.rmatvec(v), rtol=1e-10, atol=1e-10)
-
-
-# ===== Memory validation =====
-
-
-def sparse_bytes(M):
-    M = M.tocsr()
-    # compute and return total byte count for sparse storage
-    return M.data.nbytes + M.indices.nbytes + M.indptr.nbytes
-
-
-def test_less_memory(A):
-    """Test forming A is more expensive"""
-    # use more realistic setup
-    grid = Grid(interior_shape=(40, 40), pml_width=10)
-    wf, model = Wavefield(grid), SmoothModel(grid)
-    w_eq = WaveEquation(wf, model)
-
-    # extract operator matrices
-    components = {
-        "Dt": w_eq._ut_op.Dt,
-        "Dtt": w_eq._utt_op.Dtt,
-        "C2L": w_eq.C2L,
-        "S": w_eq.S,
-    }
-
-    print(f"\n[MEMORY] Full A: nnz = {A.nnz}, memory = {sparse_bytes(A)} bytes")
-
-    tot_nnz, tot_bytes = 0, 0
-    print("[MEMORY] Individual components:")
-    for name, M in components.items():
-        b = sparse_bytes(M)
-        tot_nnz += M.nnz
-        tot_bytes += b
-        print(f"\tComponent {name}: nnz = {M.nnz}, memory = {b} bytes")
-
-    print(
-        f"[MEMORY] Individual components total: nnz = {tot_nnz},"
-        + f" memory = {tot_bytes} bytes."
-    )
-    print(
-        f"[MEMORY] Improvement: {((A.nnz - tot_nnz) / A.nnz * 100):.2f}% in nnz, "
-        + f"{((sparse_bytes(A) - tot_bytes) / sparse_bytes(A) * 100):.2f}% in memory"
-    )
 
 
 # ===== Conditions (damping BC, IC) =====
@@ -272,27 +165,3 @@ def test_IC_enforced_by_solve(A, w_eq):
 
     np.testing.assert_allclose(u[0], 0.0, atol=1e-10)  # u(t=0) = 0
     np.testing.assert_allclose(u[1], 0.0, atol=1e-10)  # u(t=1) = 0
-
-
-def test_boundary_damping():
-    grid = Grid(interior_shape=(10, 10), pml_width=4)  # PML ON
-    wf, model = Wavefield(grid), SmoothModel(grid)
-    w_eq = WaveEquation(wf, model)
-
-    nt, ns = grid.nt, grid.nx * grid.ny
-
-    rng = np.random.default_rng(0)
-    U = rng.standard_normal((nt, ns))
-
-    # isolated damping term in matvec  Dt @ (U @ S.T)
-    damp = w_eq._ut_op.apply(U @ w_eq.S.T)
-
-    sigma = (grid.sigma_x + grid.sigma_y).ravel()
-    interior = sigma == 0.0  # interior mask
-
-    np.testing.assert_allclose(
-        damp[:, interior], 0.0, atol=1e-14
-    )  # should be silent in interior
-    assert (
-        np.linalg.norm(damp[:, ~interior]) > 0
-    )  # and active in the ring (~ is bitwise NOT)

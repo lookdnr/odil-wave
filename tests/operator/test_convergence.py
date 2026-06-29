@@ -15,7 +15,7 @@ def observed_order(hs, errs):
 
 
 def _time_error(nt, ord, deriv):
-    grid = Grid(interior_shape=(20, 30), pml_width=0, init_nt=nt, t_max=1.0)
+    grid = Grid(nx=20, ny=30, t_max=1.0)
     wf = Wavefield(grid)
     t = grid.t
     w = 2 * np.pi
@@ -51,7 +51,7 @@ def test_temporal_convergence(ord, deriv):
 
 
 def _space_error(n, ord):
-    grid = Grid(interior_shape=(n, n + 4), pml_width=0)
+    grid = Grid(nx=n, ny=n + 4)
     wf = Wavefield(grid)
     X, Y = grid.X, grid.Y
     a, b = np.pi, np.pi

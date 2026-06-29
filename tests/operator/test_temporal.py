@@ -12,7 +12,7 @@ INVALID_ORDERS = [0, 1, 3, 5, -2]
 # test wavefield
 @pytest.fixture
 def wf():
-    grid = Grid(interior_shape=(10, 20), pml_width=0)  # odd, distinct sizes
+    grid = Grid(nx=10, ny=20)  # odd, distinct sizes
     return Wavefield(grid)
 
 
