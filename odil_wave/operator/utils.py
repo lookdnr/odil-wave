@@ -1,9 +1,11 @@
 from dataclasses import dataclass, field
+from typing import List
 
 from odil_wave.wavefield import Wavefield
 from .temporal import SecondTimeDerivative
 from .spatial import Laplacian
 from odil_wave.models.base import VelocityModel
+from .boundaries import HigdonBC
 
 import numpy as np
 import scipy.sparse as sp
@@ -23,6 +25,8 @@ class WaveEquation:
 
     C2L: sp.csr_matrix = field(init=False)  # c^2 * laplacian
 
+    _bcs: List[HigdonBC] = field(init=False)  # Higdon ABC
+
     def __post_init__(self):
         self._utt_op = SecondTimeDerivative(self.wavefield, self.time_order)
         self._lap_op = Laplacian(self.wavefield, self.space_order)
@@ -39,6 +43,14 @@ class WaveEquation:
         # this balances the least-squares system without changing its solution
         self.dt2 = self.wavefield.grid.dt**2
 
+        # create BC objects for each boundary
+        bcs = ("left", "right", "top", "bottom")
+        for b in bcs:
+            bc = HigdonBC(
+                self.wavefield, self.model, self.space_order, self.time_order, b
+            )
+            self._bcs.append(bc)
+
     def matvec(self, u: np.ndarray) -> np.ndarray:
         """Compute the matrix vector product Au (no explicit A formation)"""
         U = u.reshape(self.nt, self.nx * self.ny)
@@ -48,6 +60,10 @@ class WaveEquation:
 
         # apply dt**2 scaling
         AU = self.dt2 * (utt - lap)
+
+        # apply Higdon ABCs
+        for bc in self._bcs:
+            AU[:, bc.bdry_cols] = bc.apply(U)
 
         # enforce ICs
         # IC1: u(0) = 0
@@ -67,6 +83,10 @@ class WaveEquation:
         Rz[0, :] = 0.0  # adjoint of overwriting output rows 0,1:
         Rz[1, :] = 0.0  # the PDE terms must not see R[0], R[1]
 
+        # zero boundary columns
+        for bc in self._bcs:
+            Rz[:, bc.bdry_cols] = 0.0
+
         utt_t = self._utt_op.apply_transpose(Rz)  # Dtt.T @ R
 
         lap_t = Rz @ self.C2L
@@ -76,6 +96,10 @@ class WaveEquation:
         # transpose of IC constraints
         ATv[0, :] += R[0, :]
         ATv[1, :] += R[1, :]
+
+        # apply tranpose BCs
+        for bc in self._bcs:
+            ATv += bc.apply_transpose(R)
 
         return ATv.ravel()
 
