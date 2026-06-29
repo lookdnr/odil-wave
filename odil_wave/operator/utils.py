@@ -39,6 +39,11 @@ class WaveEquation:
         self.nt = self.wavefield.grid.nt
         self.nx, self.ny = self.wavefield.grid.shape
 
+        # row scaling: multiplying the PDE block by dt^2 brings every
+        # term to O(1) (dt^2 * c^2 / dx^2 = c^2 * CFL^2),
+        # this balances the least-squares system without changing its solution
+        self.dt2 = self.wavefield.grid.dt**2
+
     def matvec(self, u: np.ndarray) -> np.ndarray:
         """Compute the matrix vector product Au (no explicit A formation)"""
         U = u.reshape(self.nt, self.nx * self.ny)
@@ -49,7 +54,8 @@ class WaveEquation:
         )  # damping is only applied in the boundary region
         lap = U @ self.C2L.T
 
-        AU = utt + damp - lap
+        # apply dt**2 scaling
+        AU = self.dt2 * (utt + damp - lap)
 
         # enforce ICs
         # IC1: u(0) = 0
@@ -75,7 +81,7 @@ class WaveEquation:
 
         lap_t = Rz @ self.C2L
 
-        ATv = utt_t + damp_t - lap_t
+        ATv = self.dt2 * (utt_t + damp_t - lap_t)
 
         # transpose of IC constraints
         ATv[0, :] += R[0, :]
@@ -88,4 +94,9 @@ class WaveEquation:
 
         Note that sources may be a (n_txy * n_shots) matrix encoding each of the shots
         """
-        return self.matvec(u) - f
+        # apply dt**2 scaling to source term
+        F = f.reshape(self.nt, self.nx * self.ny)
+        Ff = self.dt2 * F
+        Ff[0, :] = F[0, :]
+        Ff[1, :] = F[1, :]
+        return self.matvec(u) - Ff.ravel()
