@@ -98,9 +98,13 @@ class WaveEquation:
         ATv[0, :] += R[0, :]
         ATv[1, :] += R[1, :]
 
-        # apply tranpose BCs
+        # zero IC rows before calling apply_transpose to avoid spurious contributions
+        R_higdon = R.copy()
+        R_higdon[0, :] = 0.0
+        R_higdon[1, :] = 0.0
+
         for bc in self._bcs:
-            ATv += bc.apply_transpose(R)
+            ATv += bc.apply_transpose(R_higdon)
 
         return ATv.ravel()
 
