@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 from odil_wave.wavefield import Wavefield
-from .temporal import FirstTimeDerivative, SecondTimeDerivative
+from .temporal import SecondTimeDerivative
 from .spatial import Laplacian
 from odil_wave.models.base import VelocityModel
 
@@ -18,21 +18,16 @@ class WaveEquation:
     time_order: int = 2
     space_order: int = 2
 
-    _ut_op: FirstTimeDerivative = field(init=False)
     _utt_op: SecondTimeDerivative = field(init=False)
     _lap_op: Laplacian = field(init=False)
 
-    # operator components - we store these instead of assembling the full A
-    S: sp.dia_matrix = field(init=False)  # damping coefficient matrix
     C2L: sp.csr_matrix = field(init=False)  # c^2 * laplacian
 
     def __post_init__(self):
-        self._ut_op = FirstTimeDerivative(self.wavefield, self.time_order)
         self._utt_op = SecondTimeDerivative(self.wavefield, self.time_order)
         self._lap_op = Laplacian(self.wavefield, self.space_order)
 
         # precompute
-        self.S = self.wavefield.grid.sig_mat  # damping coefficients
         c_sqr = sp.diags(self.model.c.ravel() ** 2)
         self.C2L = c_sqr @ self._lap_op.L
 
@@ -49,13 +44,10 @@ class WaveEquation:
         U = u.reshape(self.nt, self.nx * self.ny)
 
         utt = self._utt_op.apply(U)
-        damp = self._ut_op.apply(
-            U @ self.S.T
-        )  # damping is only applied in the boundary region
         lap = U @ self.C2L.T
 
         # apply dt**2 scaling
-        AU = self.dt2 * (utt + damp - lap)
+        AU = self.dt2 * (utt - lap)
 
         # enforce ICs
         # IC1: u(0) = 0
@@ -77,11 +69,9 @@ class WaveEquation:
 
         utt_t = self._utt_op.apply_transpose(Rz)  # Dtt.T @ R
 
-        damp_t = self._ut_op.apply_transpose(Rz) @ self.S  # Dt.T @ R
-
         lap_t = Rz @ self.C2L
 
-        ATv = self.dt2 * (utt_t + damp_t - lap_t)
+        ATv = self.dt2 * (utt_t - lap_t)
 
         # transpose of IC constraints
         ATv[0, :] += R[0, :]
