@@ -7,7 +7,7 @@ import numpy as np
 from .stencils import STENCIL_OFFSETS, STENCIL_COEFFS_2ND
 
 
-def _diff_matrix(ord: int, n: int, h: float, ghost_width: int = 0) -> sp.dia_matrix:
+def _diff_matrix(ord: int, n: int, h: float, ghost_width: int = 0) -> sp.csr_matrix:
     """Return the n x n+2g differentiation matrix of order `ord` that represents the
     action of the second spatial derivative.
     """
@@ -26,6 +26,10 @@ def _diff_matrix(ord: int, n: int, h: float, ghost_width: int = 0) -> sp.dia_mat
 class Laplacian(SparseOperator):
     """2D Laplacian Operator"""
 
+    L: sp.csr_matrix
+    Dxx: sp.csr_matrix  # second x derivative
+    Dyy: sp.csr_matrix  # second y derivative
+
     def __init__(self, wavefield: Wavefield, ord: int = 2) -> None:
         super().__init__(wavefield, ord)
         self.L = self.assemble()
@@ -42,6 +46,10 @@ class Laplacian(SparseOperator):
         # construct differentiation matrics
         Dxx = _diff_matrix(ord, n=nx, h=dx, ghost_width=g)  # (nx, nx + 2g)
         Dyy = _diff_matrix(ord, n=ny, h=dy, ghost_width=g)  # (ny, ny + 2g)
+
+        # store for use in Higdon BC
+        self.Dxx = Dxx
+        self.Dyy = Dyy
 
         # ghost fill operators
         Gx = GhostFill(nx, g).expand_x(ny)  # (ny*(nx + 2g), ny*ny)
