@@ -44,6 +44,7 @@ class WaveEquation:
         self.dt2 = self.wavefield.grid.dt**2
 
         # create BC objects for each boundary
+        self._bcs = []
         bcs = ("left", "right", "top", "bottom")
         for b in bcs:
             bc = HigdonBC(
