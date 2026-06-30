@@ -292,3 +292,20 @@ ODIL is specifically designed to solve inverse or non-linear problems. Here are 
 - Non-linear physics
 
 More on this later :-\
+
+## 29/06: Weekly meeting
+
+Again in this meeting we all presented our progress from the past week. This will probably be the last joint meeting before we break off into one on one sessions with supervisors to boost productivity. There is not much to note from this one, I have a clear direction now.
+
+I had a meeting with Carlos, and I explained the above issue I encountered. It turns out that this is not really an issue at all. In essence, there are many ways to solve a linear system, and proving what I have validates the ODIL approach: it is a new way of approximating a solution to the forward wave equation.
+
+What has become clear in the past few days is that the whole task is not the outer optimisation loop at all. For a linear system, GN should trivially converge in a single step. The problem is that the conditioning number of the normal equations system is massive, so the inner solve crawls and GN does not converge.
+
+In the ODIL paper, they mainly explore parabolic systems. However, the 2D wave equation is hyperbolic. The ODIL paper suggests that multigrid methods can accelerate convergence signfiicantly. However, MG methods are known to struggle for hyperbolic equations, since they tend to produce large, highly nonsymmetric systems [see here](https://excalibur-neptune.github.io/Documents/_static/TN-03_AReviewTimeSteppingTechniquesPreconditioningHyperbolicAnisotropicEllipticProblem.pdf). Thus, MG methods are not suitable for my problem, and the task remains to find a robsut preconditioner that allows for quick convergence for large systems.
+
+The circumstance warrants a two legged approach:
+
+- For small/medium systems, assemble the full operator matrix and do a sparse LU decomposition on A.
+- For larger systems, use a [ParaDiag](https://icms.ac.uk/wp-content/uploads/2025/06/Josh-Hope-Collins.pdf)/ [block circulant](https://onlinelibrary.wiley.com/doi/full/10.1002/nla.2386) approach. Multigrid can be an ambitious arm of comparison, and if it fails in comparison to some preconditioner then this is still a nice thing to write about.
+
+The framing then becomes: multigrid is the standard accelerator for least squares PDE discretisations (ODIL, FOSLS), but it doesn't transfer cleanly to the hyperbolic case, here's a wave-tailored preconditioner that does, characterised against a direct-solve ground truth.
