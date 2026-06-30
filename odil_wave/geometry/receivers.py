@@ -119,8 +119,10 @@ class Receivers:
             )
             self.recv_ij = np.stack([i, j], axis=-1)
 
+            self.n_receivers = self.recv_xy.shape[0]
+
         self.W = build_weight_matrix(
-            grid, self.recv_xy, n_receivers, n_sinc
+            grid, self.recv_xy, self.n_receivers, n_sinc
         )  # (nx*ny, n_recv)
 
     def extract_observations(self, U: np.ndarray) -> np.ndarray:

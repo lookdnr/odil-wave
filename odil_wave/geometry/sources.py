@@ -129,6 +129,8 @@ class Sources:
             )
             self.src_ij = np.stack([i, j], axis=-1)
 
+            self.n_sources = self.src_xy.shape[0]
+
         if f0 < 0:
             raise ValueError(f"arg f0 must be greater than 0, got {f0}.")
 
