@@ -1,9 +1,11 @@
 from dataclasses import dataclass, field
+from typing import List
 
 from odil_wave.wavefield import Wavefield
-from .temporal import FirstTimeDerivative, SecondTimeDerivative
+from .temporal import SecondTimeDerivative
 from .spatial import Laplacian
 from odil_wave.models.base import VelocityModel
+from .boundaries import HigdonBC
 
 import numpy as np
 import scipy.sparse as sp
@@ -18,38 +20,51 @@ class WaveEquation:
     time_order: int = 2
     space_order: int = 2
 
-    _ut_op: FirstTimeDerivative = field(init=False)
     _utt_op: SecondTimeDerivative = field(init=False)
     _lap_op: Laplacian = field(init=False)
 
-    # operator components - we store these instead of assembling the full A
-    S: sp.dia_matrix = field(init=False)  # damping coefficient matrix
     C2L: sp.csr_matrix = field(init=False)  # c^2 * laplacian
 
+    _bcs: List[HigdonBC] = field(init=False)  # Higdon ABC
+
     def __post_init__(self):
-        self._ut_op = FirstTimeDerivative(self.wavefield, self.time_order)
         self._utt_op = SecondTimeDerivative(self.wavefield, self.time_order)
         self._lap_op = Laplacian(self.wavefield, self.space_order)
 
         # precompute
-        self.S = self.wavefield.grid.sig_mat  # damping coefficients
         c_sqr = sp.diags(self.model.c.ravel() ** 2)
         self.C2L = c_sqr @ self._lap_op.L
 
         self.nt = self.wavefield.grid.nt
         self.nx, self.ny = self.wavefield.grid.shape
 
+        # row scaling: multiplying the PDE block by dt^2 brings every
+        # term to O(1) (dt^2 * c^2 / dx^2 = c^2 * CFL^2),
+        # this balances the least-squares system without changing its solution
+        self.dt2 = self.wavefield.grid.dt**2
+
+        # create BC objects for each boundary
+        self._bcs = []
+        bcs = ("left", "right", "top", "bottom")
+        for b in bcs:
+            bc = HigdonBC(
+                self.wavefield, self.model, self.space_order, self.time_order, b
+            )
+            self._bcs.append(bc)
+
     def matvec(self, u: np.ndarray) -> np.ndarray:
         """Compute the matrix vector product Au (no explicit A formation)"""
         U = u.reshape(self.nt, self.nx * self.ny)
 
         utt = self._utt_op.apply(U)
-        damp = self._ut_op.apply(
-            U @ self.S.T
-        )  # damping is only applied in the boundary region
         lap = U @ self.C2L.T
 
-        AU = utt + damp - lap
+        # apply dt**2 scaling
+        AU = self.dt2 * (utt - lap)
+
+        # apply Higdon ABCs
+        for bc in self._bcs:
+            AU[:, bc.bdry_cols] = bc.apply(U)
 
         # enforce ICs
         # IC1: u(0) = 0
@@ -69,17 +84,27 @@ class WaveEquation:
         Rz[0, :] = 0.0  # adjoint of overwriting output rows 0,1:
         Rz[1, :] = 0.0  # the PDE terms must not see R[0], R[1]
 
-        utt_t = self._utt_op.apply_transpose(Rz)  # Dtt.T @ R
+        # zero boundary columns
+        for bc in self._bcs:
+            Rz[:, bc.bdry_cols] = 0.0
 
-        damp_t = self._ut_op.apply_transpose(Rz) @ self.S  # Dt.T @ R
+        utt_t = self._utt_op.apply_transpose(Rz)  # Dtt.T @ R
 
         lap_t = Rz @ self.C2L
 
-        ATv = utt_t + damp_t - lap_t
+        ATv = self.dt2 * (utt_t - lap_t)
 
         # transpose of IC constraints
         ATv[0, :] += R[0, :]
         ATv[1, :] += R[1, :]
+
+        # zero IC rows before calling apply_transpose to avoid spurious contributions
+        R_higdon = R.copy()
+        R_higdon[0, :] = 0.0
+        R_higdon[1, :] = 0.0
+
+        for bc in self._bcs:
+            ATv += bc.apply_transpose(R_higdon)
 
         return ATv.ravel()
 
@@ -88,4 +113,9 @@ class WaveEquation:
 
         Note that sources may be a (n_txy * n_shots) matrix encoding each of the shots
         """
-        return self.matvec(u) - f
+        # apply dt**2 scaling to source term
+        F = f.reshape(self.nt, self.nx * self.ny)
+        Ff = self.dt2 * F
+        Ff[0, :] = F[0, :]
+        Ff[1, :] = F[1, :]
+        return self.matvec(u) - Ff.ravel()

@@ -32,11 +32,14 @@ class SheppLoganModel(VelocityModel):
         background_c: float = 1.0,
         contrast: float = 1.0,
         interior_fill: float = 0.7,
+        mask_skull: bool = False,
     ):
         super().__init__(grid, background_c, contrast)
         self.interior_fill = (
             interior_fill  # fraction of the interior grid the model should fill
         )
+        # we might want to mask the skull for forward modelling purposes
+        self.mask_skull = mask_skull
         self.c = self._build()
         self.name = "Shepp-Logan Phantom Model"
 
@@ -49,6 +52,14 @@ class SheppLoganModel(VelocityModel):
         # Rotate 90deg so the phantom's long axis aligns with the
         # AcquisitionGeometry ellipse's semi-major axis (y).
         phantom = np.rot90(phantom, k=1).copy()
+
+        if self.mask_skull:
+            # remove skull by thresholding
+            skull = phantom >= 0.9 * phantom.max()
+            brain = phantom[(phantom > 0.0) & ~skull]
+            fill = np.median(brain) if brain.size else 0.0
+            phantom[skull] = fill
+
         phantom = resize(phantom, (s_nx, s_ny), anti_aliasing=True, mode="reflect")
 
         # compute centre point
