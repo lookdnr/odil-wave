@@ -3,6 +3,7 @@ repos:
     rev: 26.5.1
     hooks:
       - id: black
+        args: [--target-version, py313]
 
   - repo: https://github.com/pycqa/flake8
     rev: 7.3.0
