@@ -5,7 +5,6 @@ import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 
 from odil_wave.grid import Grid
 
@@ -58,7 +57,7 @@ class VelocityModel(ABC):
         title: Optional[str] = None,
         vmin: Optional[float] = None,
         vmax: Optional[float] = None,
-        show_pml: bool = True,
+        cmap: str = "cividis",
     ):
         # create ax if not specified
         if ax is None:
@@ -69,7 +68,7 @@ class VelocityModel(ABC):
             self.c.T,
             origin="lower",
             extent=(xmin, xmax, ymin, ymax),
-            cmap="viridis",
+            cmap=cmap,
             vmin=vmin,
             vmax=vmax,
         )
@@ -81,21 +80,5 @@ class VelocityModel(ABC):
         ax.set_title(title or f"c(x, y) [{self.name}]")
 
         plt.colorbar(im, ax=ax, shrink=0.85, label="c [m/s]")
-
-        # add patch on plot indicating PML
-        if show_pml:
-            (ix0, ix1), (iy0, iy1) = self.grid.interior_extent
-            ax.add_patch(
-                Rectangle(
-                    (ix0, iy0),
-                    ix1 - ix0,
-                    iy1 - iy0,
-                    fill=False,
-                    edgecolor="white",
-                    linestyle="--",
-                    linewidth=1.0,
-                    label="non-PML interior",
-                )
-            )
 
         return ax

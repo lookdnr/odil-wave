@@ -45,8 +45,8 @@ class SheppLoganModel(VelocityModel):
 
     def _build(self):
 
-        s_nx = max(2, int(self.grid.interior_nx * self.interior_fill))
-        s_ny = max(2, int(self.grid.interior_ny * self.interior_fill))
+        s_nx = max(2, int(self.grid.nx * self.interior_fill))
+        s_ny = max(2, int(self.grid.ny * self.interior_fill))
         phantom = shepp_logan_phantom().astype(np.float32)
 
         # Rotate 90deg so the phantom's long axis aligns with the
@@ -63,9 +63,8 @@ class SheppLoganModel(VelocityModel):
         phantom = resize(phantom, (s_nx, s_ny), anti_aliasing=True, mode="reflect")
 
         # compute centre point
-        p = self.grid.pml_width
-        i0 = p + (self.grid.interior_nx - s_nx) // 2
-        j0 = p + (self.grid.interior_ny - s_ny) // 2
+        i0 = (self.grid.nx - s_nx) // 2
+        j0 = (self.grid.ny - s_ny) // 2
 
         # create base and add anomalies
         c = np.full(self.grid.shape, self.background_c)
