@@ -110,7 +110,7 @@ class Grid:
 
     @property
     def shape(self) -> Tuple[int, int]:
-        """Total grid shape (interior + PML)."""
+        """Spatial grid shape (nx, ny)."""
         return (self.nx, self.ny)
 
     @property

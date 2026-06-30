@@ -12,7 +12,7 @@ def place_ellipse(
     a_frac: float = 0.5,
     b_frac: float = 0.5,
 ) -> np.ndarray:
-    """Return (n, 2) integer full-grid indices on an ellipse inside the interior."""
+    """Return (n, 2) integer grid indices on an ellipse within the domain."""
     (xmin, xmax), (ymin, ymax) = grid.extent
     cx, cy = ring_centre
     a = a_frac * (xmax - xmin) / 2.0

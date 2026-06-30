@@ -28,9 +28,7 @@ class AcquisitionGeometry:
         """Plot the acquisition geometry"""
         if ax is None:
             _, ax = plt.subplots(figsize=(5.5, 5))
-        velocity_model.show(
-            ax=ax, title=f"Acquisition on {velocity_model.name}", show_pml=True
-        )
+        velocity_model.show(ax=ax, title=f"Acquisition on {velocity_model.name}")
         x = self.sources.grid.x
         y = self.sources.grid.y
 

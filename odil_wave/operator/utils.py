@@ -109,7 +109,7 @@ class WaveEquation:
         return ATv.ravel()
 
     def residual(self, u: np.ndarray, f: np.ndarray) -> np.ndarray:
-        """Compute Au - f, where A encodes the derivatives and PML condition
+        """Compute Au - f, where A encodes the derivatives and boundary conditions
 
         Note that sources may be a (n_txy * n_shots) matrix encoding each of the shots
         """

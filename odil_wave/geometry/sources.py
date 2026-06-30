@@ -208,9 +208,7 @@ class Sources:
         """Plot the source geometry"""
         if ax is None:
             _, ax = plt.subplots(figsize=(5.5, 5))
-        velocity_model.show(
-            ax=ax, title=f"Sources on {velocity_model.name}", show_pml=True
-        )
+        velocity_model.show(ax=ax, title=f"Sources on {velocity_model.name}")
 
         sx = self.grid.x[self.src_ij[:, 0]]
         sy = self.grid.y[self.src_ij[:, 1]]
