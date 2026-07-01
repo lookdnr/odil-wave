@@ -32,15 +32,15 @@ class GaussNewtonOptimiser(Optimiser):
 
         # methods for solving normal equation
         self.methods: Dict[str, Callable] = {
+            "gmres": spl.gmres,
             "lsmr": spl.lsmr,
             "lsqr": spl.lsqr,
-            "cg": spl.cg,
         }
 
     def minimise(
         self,
         u0: Wavefield | np.ndarray | None = None,
-        method: str = "lsmr",
+        method: str = "gmres",
         inner_maxiter: int = 20,
         atol: float = 1e-8,
         btol: float = 1e-8,
@@ -50,6 +50,14 @@ class GaussNewtonOptimiser(Optimiser):
         """Minimise a DiscreteLoss using Gauss-Newton.
 
         Inner solves are orchestrated by spl.linalg iterative methods
+
+        This implementation relies on the fact that for a nonsingular A,
+        the exact minimiser of 1/2 ||A du + r||^2 is the solution to the
+        linear problem A du = - r. This is the 'inner' problem we solve
+        using an iterative method.
+
+        This allows us to apply our block circulant preconditioner M that
+        is an approximation of A-1.
         """
         we = self.loss.problem.wave_eq
         grid = self.loss.problem.wavefield.grid
@@ -69,14 +77,6 @@ class GaussNewtonOptimiser(Optimiser):
             shape=(N, N),
             matvec=we.matvec,  # type: ignore
             rmatvec=we.rmatvec,  # type: ignore
-            dtype=np.float64,
-        )
-
-        # normal-equations operator for cg: Hv ~ JᵀJ v
-        # lambda below computes JTJ (x)
-        H = spl.LinearOperator(
-            shape=(N, N),
-            matvec=lambda x: we.rmatvec(we.matvec(x)),  # type: ignore
             dtype=np.float64,
         )
 
@@ -103,9 +103,10 @@ class GaussNewtonOptimiser(Optimiser):
                 break
             L_prev = L
 
-            # cg and lsmr/lsqr expose different controls, so branch methods here
-            if method == "cg":
-                du, info = spl.cg(H, -g, rtol=rtol, maxiter=inner_maxiter)
+            # gmres and lsmr/lsqr expose different controls, so branch methods here
+
+            if method == "gmres":
+                du, info = spl.gmres(Aop, -r, M=None, rtol=rtol, maxiter=inner_maxiter)
                 inner_history.append(
                     InnerSolveInfo(
                         itn=info if info > 0 else inner_maxiter,
