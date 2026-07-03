@@ -220,8 +220,8 @@ class WaveEquation:
             """Matirx-vector product AU for the reduced system (IC rows clipped)"""
             U = np.zeros((self.nt, ns))
             U[2:] = u.reshape(ntm2, ns)  # clip to (nt-2, ns)
-            AU, U = self.apply_pde(U.ravel())[1 : self.nt - 1]  # apply PDE
-            return AU.ravel()
+            AU, U = self.apply_pde(U.ravel())  # apply PDE
+            return AU[1 : self.nt - 1].ravel()
 
         return LinearOperator(
             shape=(ntm2 * ns, ntm2 * ns),
