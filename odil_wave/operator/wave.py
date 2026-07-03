@@ -52,7 +52,7 @@ class WaveEquation:
             )
             self._bcs.append(bc)
 
-    def apply_pde(self, u: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def _apply_interior(self, u: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Compute the action of the discrete operator A on a LHS vector u"""
         U = u.reshape(self.nt, self.nx * self.ny)
 
@@ -63,28 +63,33 @@ class WaveEquation:
         AU = self.dt2 * (utt - lap)
         return AU, U
 
-    def _apply_conditions(self, AU: np.ndarray, U: np.ndarray) -> np.ndarray:
-        """Apply second order Higdon BCs and velocity and amplitude ICs to
-        the operator-amplitude product AU.
-        """
+    def _apply_bcs(self, AU: np.ndarray, U: np.ndarray) -> np.ndarray:
+        """Apply 2nd order Higdon ABCs to matrix-vector product AU"""
         # apply Higdon ABCs
         for bc in self._bcs:
             AU[:, bc.bdry_cols] = bc.apply(U)
+        return AU
 
-        # enforce ICs
+    def _apply_ic(self, AU: np.ndarray, U: np.ndarray) -> np.ndarray:
+        """Apply velocity and amplitude ICs U_t(0) = U(0) = 0"""
         # IC1: u(0) = 0
         AU[0, :] = U[0, :]
 
         # IC2: ut(0) = 0 - U[1] = U[0]  (1st-order forward diff from t=0)
         AU[1, :] = U[1, :]
-
         return AU.ravel()
 
+    def apply_pde(self, u: np.ndarray) -> np.ndarray:
+        """Apply the operator A to a vector u and Higdon BCs. This is the
+        Toeplitz form of the product (no ICs, required separately for precond)
+        """
+        AU, U = self._apply_interior(u)
+        return self._apply_bcs(AU, U)
+
     def matvec(self, u: np.ndarray) -> np.ndarray:
-        """Compute the matrix vector product Au (no explicit A formation)"""
+        """Compute the matrix vector product Au with IC and BC application"""
         AU, U = self.apply_pde(u)
-        AU = self._apply_conditions(AU, U)
-        return AU
+        return self._apply_ic(AU, U)
 
     def rmatvec(self, r: np.ndarray) -> np.ndarray:
         """Compute the transposed matrix vector product A^T r
