@@ -79,12 +79,12 @@ class WaveEquation:
         AU[1, :] = U[1, :]
         return AU.ravel()
 
-    def apply_pde(self, u: np.ndarray) -> np.ndarray:
+    def apply_pde(self, u: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Apply the operator A to a vector u and Higdon BCs. This is the
         Toeplitz form of the product (no ICs, required separately for precond)
         """
         AU, U = self._apply_interior(u)
-        return self._apply_bcs(AU, U)
+        return self._apply_bcs(AU, U), U
 
     def matvec(self, u: np.ndarray) -> np.ndarray:
         """Compute the matrix vector product Au with IC and BC application"""
