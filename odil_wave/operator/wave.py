@@ -10,6 +10,7 @@ from .boundaries import HigdonBC
 
 import numpy as np
 import scipy.sparse as sp
+from scipy.sparse.linalg import LinearOperator
 
 
 @dataclass
@@ -206,3 +207,24 @@ class WaveEquation:
         # next term (1 in time stencil) plus higdon
         B2 = (ident - dt * Dn).tocsr()
         return B0, B1, B2
+
+    def reduced_operator(self) -> LinearOperator:
+        """Return the BTTB operator for unknowns u_2 ... u_{nt-1}
+        IC rows are clipped since they break the BTTB structure.
+
+        Returned as scipy.sparse.linalg.LinearOperator for application in GMRES
+        """
+        ntm2, ns = self.nt - 2, self.nx * self.ny
+
+        def matvec(u: np.ndarray) -> np.ndarray:
+            """Matirx-vector product AU for the reduced system (IC rows clipped)"""
+            U = np.zeros((self.nt, ns))
+            U[2:] = u.reshape(ntm2, ns)  # clip to (nt-2, ns)
+            AU, U = self.apply_pde(U.ravel())[1 : self.nt - 1]  # apply PDE
+            return AU.ravel()
+
+        return LinearOperator(
+            shape=(ntm2 * ns, ntm2 * ns),
+            matvec=matvec,  # type: ignore
+            dtype=np.float64,
+        )
