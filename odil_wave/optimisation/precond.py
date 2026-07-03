@@ -37,9 +37,7 @@ class AlphaCirculantPreconditioner:
 
         # LU decomposition paid once for solve at each frequency
         self._lus = [
-            splu(sum(zk**idx * B for idx, B in enumerate(self.blocks)))
-            .astype(np.complex128)
-            .tocsr()
+            splu(sum(zk**idx * B for idx, B in enumerate(self.blocks)).tocsc())
             for zk in z[: n // 2 + 1]
         ]
 
