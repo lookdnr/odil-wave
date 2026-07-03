@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Tuple
 
 from odil_wave.wavefield import Wavefield
 from .temporal import SecondTimeDerivative
@@ -52,8 +52,8 @@ class WaveEquation:
             )
             self._bcs.append(bc)
 
-    def matvec(self, u: np.ndarray) -> np.ndarray:
-        """Compute the matrix vector product Au (no explicit A formation)"""
+    def apply_pde(self, u: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Compute the action of the discrete operator A on a LHS vector u"""
         U = u.reshape(self.nt, self.nx * self.ny)
 
         utt = self._utt_op.apply(U)
@@ -61,7 +61,12 @@ class WaveEquation:
 
         # apply dt**2 scaling
         AU = self.dt2 * (utt - lap)
+        return AU, U
 
+    def _apply_conditions(self, AU: np.ndarray, U: np.ndarray) -> np.ndarray:
+        """Apply second order Higdon BCs and velocity and amplitude ICs to
+        the operator-amplitude product AU.
+        """
         # apply Higdon ABCs
         for bc in self._bcs:
             AU[:, bc.bdry_cols] = bc.apply(U)
@@ -74,6 +79,12 @@ class WaveEquation:
         AU[1, :] = U[1, :]
 
         return AU.ravel()
+
+    def matvec(self, u: np.ndarray) -> np.ndarray:
+        """Compute the matrix vector product Au (no explicit A formation)"""
+        AU, U = self.apply_pde(u)
+        AU = self._apply_conditions(AU, U)
+        return AU
 
     def rmatvec(self, r: np.ndarray) -> np.ndarray:
         """Compute the transposed matrix vector product A^T r
