@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple
+from functools import cached_property
 
 from odil_wave.wavefield import Wavefield
 from .temporal import SecondTimeDerivative
@@ -41,7 +42,8 @@ class WaveEquation:
         # row scaling: multiplying the PDE block by dt^2 brings every
         # term to O(1) (dt^2 * c^2 / dx^2 = c^2 * CFL^2),
         # this balances the least-squares system without changing its solution
-        self.dt2 = self.wavefield.grid.dt**2
+        self.dt = self.wavefield.grid.dt
+        self.dt2 = self.dt**2
 
         # create BC objects for each boundary
         self._bcs = []
@@ -135,3 +137,72 @@ class WaveEquation:
         Ff[0, :] = F[0, :]
         Ff[1, :] = F[1, :]
         return self.matvec(u) - Ff.ravel()
+
+    @cached_property
+    def reduced_blocks(self) -> Tuple[sp.csr_array, ...]:
+        """Build the time stencil blocks of the reduced system:
+
+            B0 u_{m+1} + B1 u_m + B2 u_{m-1} = dt^2 f_m
+
+        B0, B1, and B2 make up the time stencil, they are the block stencil
+        coefficients where
+
+            - B0 is whatever multiplies the next slice u_{m+1}
+            - B1 is whatever multiplies the current slice u_{m}
+            - B2 is whatever multiplies the previous slice u_{m-1}
+
+        Building these separately is required for the downstream preconditioner
+        since they allow us to build the Block Toeplitz with Toeplitz Blocks
+        (BTTB) system
+
+        TODO: currently hardcoded for 2nd order in time, generalising is a bigger task
+        """
+        if self.time_order > 2:
+            raise NotImplementedError(
+                "reduced blocks with time order > 2 are non-square."
+            )
+
+        ns, dt = self.nx * self.ny, self.dt
+        ident = sp.identity(ns, format="csr")  # nxny, nxny identity
+
+        # create a mask for BC application
+        mask = np.ones(ns)
+        for bc in self._bcs:
+            mask[bc.bdry_cols] = 0.0
+
+        # normal derivative weighted by local wavespeed
+        # combine into (ns, ns) sparse matrix using elementwise sum()
+        Dn = sum(
+            bc.sign
+            * (
+                ident[bc.bdry_cols].T  # type: ignore direction * scatter (ns, n_bdry)
+                @ sp.diags(bc.c_bdry)  # local c weights
+                @ bc.Dn
+            )  # normal derivative
+            for bc in self._bcs
+        )
+
+        # normal second derivative weighted by c^2
+        Dnn = sum(
+            bc.sign
+            * (
+                ident[bc.bdry_cols].T  # type: ignore direction * scatter (ns, n_bdry)
+                @ sp.diags(bc.c_bdry**2)  # local c weights, squared
+                @ bc.Dnn
+            )  # second normal derivative
+            for bc in self._bcs
+        )
+
+        # build blocks
+        # previous term (1 in the time stencil - I) plus higdon
+        B0 = (ident + dt * Dn).tocsr()
+
+        # current term (-2 in time stencil) plus Laplacian term masked at boundaries
+        # for BC application
+        B1 = (
+            -2 * ident - self.dt2 * (sp.diags(mask) @ self.C2L) + self.dt2 * Dnn
+        ).tocsr()
+
+        # next term (1 in time stencil) plus higdon
+        B2 = (ident - dt * Dn).tocsr()
+        return B0, B1, B2
