@@ -228,3 +228,22 @@ class WaveEquation:
             matvec=matvec,  # type: ignore
             dtype=np.float64,
         )
+
+    def reduced_rhs(self, f: np.ndarray) -> Tuple[np.ndarray, ...]:
+        """RHS of Au = f woth known IC slices eliminated from the RHS"""
+        F = f.reshape(self.nt, self.nx * self.ny)
+        f0, f1 = F[0], F[1]  # extract terms corresponding to IC
+
+        # get reduced block operators
+        _, B1, B2 = self.reduced_blocks
+
+        # transfer known IC values to dt2 scaled rhs
+        rhs = (self.dt2 * F[1 : self.nt - 1]).copy()
+
+        # B0 u_{m-1} + B1 u_m + B2 u_{m+1} = dt2 f_m
+        # put unknowns (beyond u_1) on LHS and knowns on RHS:
+        # m = 1: B0 u_2 = dt2 f1 - B1 u_1 - B2 u_0
+        # m = 2: B0 u_3  + B2 u_1= dt2 f2 - B1 u_2
+        rhs[0] -= B1 @ f1 @ B2 @ f0
+        rhs[1] -= B2 @ f1
+        return rhs.ravel(), f0, f1
