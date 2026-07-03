@@ -33,7 +33,7 @@ SUBMODULES = [
     "odil_wave.operator.spatial",
     "odil_wave.operator.stencils",
     "odil_wave.operator.temporal",
-    "odil_wave.operator.utils",
+    "odil_wave.operator.wave",
     "odil_wave.loss.base",
     "odil_wave.loss.forward",
     "odil_wave.loss.utils",
