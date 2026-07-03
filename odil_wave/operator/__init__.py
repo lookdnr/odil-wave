@@ -1,6 +1,6 @@
 from .spatial import Laplacian
 from .temporal import FirstTimeDerivative, SecondTimeDerivative
-from .utils import WaveEquation
+from .wave import WaveEquation
 
 __all__ = [
     "Laplacian",
