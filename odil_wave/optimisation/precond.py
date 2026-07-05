@@ -13,7 +13,7 @@ class AlphaCirculantPreconditioner:
     The wrap makes it block-circulant, and hence invertible by FFT-in-time
     + one small spatial solve per mode.
 
-    Differs from the true operator only in two corner block-rows.
+    Differs from the true operator only in two corner block rows.
 
     alpha trades approximation error against taper roundoff
     """
@@ -31,28 +31,37 @@ class AlphaCirculantPreconditioner:
         self.blocks, self.n, self.alpha = list(blocks), n, alpha
         self.ns = blocks[0].shape[0]
 
+        # set up the taper to undo the periodicity
+        # this is basically an absorbing layer in time
         gamma = alpha ** (1.0 / n)
         self._d = gamma ** np.arange(n)
         z = gamma * np.exp(-2j * np.pi * np.arange(n) / n)
 
         # LU decomposition paid once for solve at each frequency
+        # we factorise each block to solve the N independent scalar equations
+        # for each time level
         B0, B1, B2 = self.blocks
         self._lus = [
             splu((B0 + zk * B1 + zk**2 * B2).astype(np.complex128).tocsc()) for zk in z
         ]
 
     def matvec(self, v: np.ndarray) -> np.ndarray:
+        """Compute the action of the preconditioner on a vector v"""
         V = v.reshape(self.n, self.ns) * self._d[:, None]
         Vh = np.fft.fft(V, axis=0)  # fft in time
 
+        # in the Fourier basis, the linear solve reduces
+        # to solving N scalar equations for a block in time
+        # we solve each time block below
         Wh = np.empty_like(Vh)
         for k in range(self.n):
-            Wh[k] = self._lus[k].solve(Vh[k])
+            Wh[k] = self._lus[k].solve(Vh[k])  # solve the LU factorisation for du
 
         W = np.fft.ifft(Wh, axis=0) / self._d[:, None]  # transform back
         return W.real.ravel()
 
     def as_linear_operator(self) -> LinearOperator:
+        """Return the preconditioner as a scipy.sparse.linalg.LinearOperator"""
         N = self.n * self.ns
         return LinearOperator(
             shape=(N, N), matvec=self.matvec, dtype=np.float64  # type: ignore
@@ -60,4 +69,5 @@ class AlphaCirculantPreconditioner:
 
     @classmethod
     def from_wave_equation(cls, we: WaveEquation, alpha=1e-3):
+        """Build the preconditioner from a WaveEquation object"""
         return cls(we.reduced_blocks, we.nt - 2, alpha)
