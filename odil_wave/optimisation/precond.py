@@ -36,9 +36,9 @@ class AlphaCirculantPreconditioner:
         z = gamma * np.exp(-2j * np.pi * np.arange(n) / n)
 
         # LU decomposition paid once for solve at each frequency
+        B0, B1, B2 = self.blocks
         self._lus = [
-            splu(sum(zk**idx * B for idx, B in enumerate(self.blocks)).tocsc())
-            for zk in z[: n // 2 + 1]
+            splu((B0 + zk * B1 + zk**2 * B2).astype(np.complex128).tocsc()) for zk in z
         ]
 
     def matvec(self, v: np.ndarray) -> np.ndarray:
@@ -46,11 +46,8 @@ class AlphaCirculantPreconditioner:
         Vh = np.fft.fft(V, axis=0)  # fft in time
 
         Wh = np.empty_like(Vh)
-        for k in range(self.n // 2 + 1):
+        for k in range(self.n):
             Wh[k] = self._lus[k].solve(Vh[k])
-
-        for k in range(self.n // 2 + 1, self.n):
-            Wh[k] = np.conj(self._lus[self.n - k].solve(np.conj(Vh[k])))
 
         W = np.fft.ifft(Wh, axis=0) / self._d[:, None]  # transform back
         return W.real.ravel()
