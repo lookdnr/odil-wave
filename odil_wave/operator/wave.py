@@ -185,9 +185,8 @@ class WaveEquation:
 
         # normal second derivative weighted by c^2
         Dnn = sum(
-            bc.sign
-            * (
-                ident[bc.bdry_cols].T  # type: ignore direction * scatter (ns, n_bdry)
+            (
+                ident[bc.bdry_cols].T  # type: ignore scatter (ns, n_bdry)
                 @ sp.diags(bc.c_bdry**2)  # local c weights, squared
                 @ bc.Dnn
             )  # second normal derivative
@@ -244,6 +243,6 @@ class WaveEquation:
         # put unknowns (beyond u_1) on LHS and knowns on RHS:
         # m = 1: B0 u_2 = dt2 f1 - B1 u_1 - B2 u_0
         # m = 2: B0 u_3  + B2 u_1= dt2 f2 - B1 u_2
-        rhs[0] -= B1 @ f1 @ B2 @ f0
+        rhs[0] -= B1 @ f1 + B2 @ f0
         rhs[1] -= B2 @ f1
         return rhs.ravel(), f0, f1
