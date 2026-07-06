@@ -4,6 +4,7 @@ import math
 import numpy as np
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import EngFormatter
 
 from odil_wave.grid import Grid
 from odil_wave.models.base import VelocityModel
@@ -174,6 +175,7 @@ class Sources:
         ax.plot(self.grid.t, r)
         ax.axvline(self.grid.t[peak_t], color="gray", ls=":", alpha=0.7)
         ax.set_xlabel("t [s]")
+        ax.xaxis.set_major_formatter(EngFormatter(unit="s"))
         ax.set_ylabel("R(t) [a.u.]")
         ax.set_title(rf"Ricker pulse ($f_0$={self.f0} Hz, $t_0$={self.t0:.3f} s)")
         ax.grid(alpha=0.3)
