@@ -87,7 +87,7 @@ class Grid:
         # compute duration as time for wave to cross domain at c_ref
         if self.t_max is None:
             diag = math.hypot(self.xmax - self.xmin, self.ymax - self.ymin)
-            self.t_max = 2.0 * diag / self.c_ref
+            self.t_max = diag / self.c_ref
 
         dt_cfl = 1.0 / (self.c_ref * math.sqrt(1.0 / self.dx**2 + 1.0 / self.dy**2))
         self.nt = int(math.ceil(self.t_max / (self.cfl_safety * dt_cfl))) + 1
@@ -128,7 +128,7 @@ class Grid:
         return (
             f"Nx, Ny, Nt: {self.nx}, {self.ny}, {self.nt}"
             f"\ndx, dy, dt: {self.dx:.4f}m, {self.dy:.4f}m, {self.dt:.4f}s"
-            f"\n,CFL (at c = {self.c_ref}):  {self.cfl(self.c_ref):.3f}"
+            f"\nCFL (at c = {self.c_ref}):  {self.cfl(self.c_ref):.3f}"
             f"\nx in [{xmin:.2f}, {xmax:.2f}]m"
             f"\ny in [{ymin:.2f}, {ymax:.2f}]m"
         )
