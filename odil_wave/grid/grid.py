@@ -127,7 +127,7 @@ class Grid:
         (xmin, xmax), (ymin, ymax) = self.extent
         return (
             f"Nx, Ny, Nt: {self.nx}, {self.ny}, {self.nt}"
-            f"\ndx, dy, dt: {self.dx:.4f}m, {self.dy:.4f}m, {self.dt:.4f}s"
+            f"\ndx, dy, dt: {self.dx:.6f}m, {self.dy:.6f}m, {self.dt:.6f}s"
             f"\nCFL (at c = {self.c_ref}):  {self.cfl(self.c_ref):.3f}"
             f"\nx in [{xmin:.2f}, {xmax:.2f}]m"
             f"\ny in [{ymin:.2f}, {ymax:.2f}]m"
