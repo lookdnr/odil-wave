@@ -83,7 +83,7 @@ class GaussNewtonOptimiser(Optimiser):
         f: np.ndarray,
         alpha: float | None = 0.001,
         rtol: float = 1e-8,
-        restart: int = 100,
+        restart: int = 10,
     ):
         we = self.loss.problem.wave_eq
 
