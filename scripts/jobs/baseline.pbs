@@ -15,11 +15,11 @@ module load tools/prod miniforge/3
 eval "$(~/miniforge3/bin/conda shell.bash hook)"
 conda activate irp
 
-# install latest package version
-pip install -e .[dev]
-
 # navigate to working dir
 cd $PBS_O_WORKDIR
+
+# install latest package version
+pip install .
 
 # run script
 python3 scripts/baseline.py --dry
