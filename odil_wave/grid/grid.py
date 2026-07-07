@@ -25,6 +25,11 @@ class Grid:
     ny: int = 100
     nt: int = field(init=False)
 
+    # speed
+    c_min: float = 1.5  # reference wavespeed
+    c_max: float = 2.0
+    cfl_safety: float = 0.8  # fraction of theoretical safety to use for dt
+
     # grid spacings
     dx: float = field(init=False)
     dy: float = field(init=False)
@@ -38,9 +43,6 @@ class Grid:
     t: np.ndarray = field(init=False, repr=False)
     X: np.ndarray = field(init=False, repr=False)
     Y: np.ndarray = field(init=False, repr=False)
-
-    c_ref: float = 1.5  # reference wavespeed
-    cfl_safety: float = 0.8  # fraction of theoretical safety to use for dt
 
     def __post_init__(self):
 
@@ -66,11 +68,16 @@ class Grid:
                 f"args nx, ny cannot be less than 3, got nx = {self.nx}, ny = {self.ny}"
             )
 
-        # ===== catch c_cfl, c_ref errors =====
-        if self.c_ref <= 0:
+        # ===== catch c_cfl, c errors =====
+        if self.c_min <= 0 or self.c_max <= 0:
             raise ValueError(
-                f"arg c_ref should be strictly positive, got c_ref = {self.c_ref}"
+                "args c_min, c_max should be strictly positive,"
+                + f" got {self.c_min, self.c_max}"
             )
+        elif self.c_min > self.c_max:
+            temp = self.c_min
+            self.c_min = self.c_max
+            self.c_max = temp
 
         if not (0 < self.cfl_safety < 1.0):
             raise ValueError(
@@ -84,12 +91,12 @@ class Grid:
         # compute spatial extent
         self._extent = ((self.xmin, self.xmax), (self.ymin, self.ymax))
 
-        # compute duration as time for wave to cross domain at c_ref
+        # compute duration as time for wave to cross domain at c_min
         if self.t_max is None:
             diag = math.hypot(self.xmax - self.xmin, self.ymax - self.ymin)
-            self.t_max = diag / self.c_ref
+            self.t_max = 1.2 * diag / self.c_min
 
-        dt_cfl = 1.0 / (self.c_ref * math.sqrt(1.0 / self.dx**2 + 1.0 / self.dy**2))
+        dt_cfl = 1.0 / (self.c_max * math.sqrt(1.0 / self.dx**2 + 1.0 / self.dy**2))
         self.nt = int(math.ceil(self.t_max / (self.cfl_safety * dt_cfl))) + 1
 
         self.dt = self.t_max / (self.nt - 1)
@@ -128,7 +135,7 @@ class Grid:
         return (
             f"Nx, Ny, Nt: {self.nx}, {self.ny}, {self.nt}"
             f"\ndx, dy, dt: {self.dx:.9f}m, {self.dy:.9f}m, {self.dt:.9f}s"
-            f"\nCFL (at c = {self.c_ref}):  {self.cfl(self.c_ref):.3f}"
+            f"\nCFL (at c_max = {self.c_max}):  {self.cfl(self.c_max):.3f}"
             f"\nx in [{xmin:.3f}, {xmax:.3f}]m"
             f"\ny in [{ymin:.3f}, {ymax:.3f}]m"
         )
