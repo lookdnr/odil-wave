@@ -2,7 +2,7 @@ from odil_wave.optimisation.precond import AlphaCirculantPreconditioner
 
 import pytest
 import numpy as np
-from scipy.sparse.linalg import splu
+from scipy.sparse.linalg import splu, gmres
 
 
 @pytest.mark.parametrize("alpha", [1.0, 0.0, -1.0])
@@ -107,3 +107,35 @@ def test_approximation_quality(wave_eq):
 
     # corner term is O(alpha), so error must decrease monotonically
     assert errs[0] > errs[1] > errs[2], f"errors not decreasing with alpha: {errs}"
+
+
+def test_gmres_convergence(wave_eq):
+    """Preconditioned GMRES reaches the true solution in few iterations"""
+    eq = wave_eq
+    ntm2, ns = eq.nt - 2, eq.nx * eq.ny
+    A = eq.reduced_operator()
+    M = AlphaCirculantPreconditioner.from_wave_equation(eq, alpha=1e-3)
+
+    rng = np.random.default_rng(0)
+    b = rng.standard_normal(ntm2 * ns)
+    u_true = true_solve(eq.reduced_blocks, ntm2, ns, b)
+
+    iters = 0
+
+    def count(_):
+        nonlocal iters
+        iters += 1
+
+    u, info = gmres(
+        A,
+        b,
+        M=M.as_linear_operator(),
+        rtol=1e-10,
+        maxiter=50,
+        callback=count,
+        callback_type="pr_norm",  # fires once per inner iteration
+    )
+
+    assert info == 0, "GMRES did not converge in 50 iterations"
+    np.testing.assert_allclose(u, u_true, atol=1e-8 * np.linalg.norm(u_true, np.inf))
+    assert iters <= 10, f"expected fast ParaDiag convergence, took {iters} iterations"
