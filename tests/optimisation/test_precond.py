@@ -137,5 +137,5 @@ def test_gmres_convergence(wave_eq):
     )
 
     assert info == 0, "GMRES did not converge in 50 iterations"
-    np.testing.assert_allclose(u, u_true, atol=1e-8 * np.linalg.norm(u_true, np.inf))
+    np.testing.assert_allclose(u, u_true, atol=1e-10)
     assert iters <= 10, f"expected fast ParaDiag convergence, took {iters} iterations"
