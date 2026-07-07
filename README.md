@@ -1,7 +1,6 @@
 # IRP Repository
 
 ![Tests](https://github.com/ese-ada-lovelace-2025/irp-ld2022/actions/workflows/test-package.yml/badge.svg?branch=main)
-![Coverage](.github/badges/coverage.svg)
 
 Please familiarise yourself with and follow [GitHub repository instructions](https://ese-msc.github.io/irp/repos/).
 
