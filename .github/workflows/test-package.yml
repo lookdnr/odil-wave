@@ -24,6 +24,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .[test] 
 
-      - name: Run tests
+      - name: Run tests with 
         run: |
-          python -m pytest -vv -s tests/
+          python -m coverage run -m pytest -vv -s tests/
+          python -m coverage report
+          python -m coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
