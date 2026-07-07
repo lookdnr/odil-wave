@@ -29,12 +29,18 @@ dev = [
 
 test = [
     "pytest",
+    "coverage"
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["odil_wave*"]
 
+[tool.coverage.run]
+source = ["odil_wave"]
+
+[tool.coverage.report]
+show_missing = true
 
 [project.scripts]
 #odil-wave = "odil_wave.cli:main"
