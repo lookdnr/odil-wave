@@ -44,6 +44,7 @@ class AlphaCirculantPreconditioner:
         # note we only factorise the first half of the modes, since the FFT of
         # real data is conjugate symmetric and the remaining LU factors are
         # simply the complex conjugates of these ones
+        # this cuts our memory requiremetns in half
         B0, B1, B2 = self.blocks
         self._lus = [
             splu((B0 + zk * B1 + zk**2 * B2).astype(np.complex128).tocsc()) for zk in z
