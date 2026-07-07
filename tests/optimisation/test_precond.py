@@ -2,6 +2,7 @@ from odil_wave.optimisation.precond import AlphaCirculantPreconditioner
 
 import pytest
 import numpy as np
+from scipy.sparse.linalg import splu
 
 
 @pytest.mark.parametrize("alpha", [1.0, 0.0, -1.0])
@@ -68,3 +69,41 @@ def test_structual_correctness(wave_eq, alpha):
         f"corner residual vanished ({np.linalg.norm(head, np.inf):.2e}); "
         "test may be vacuous"
     )
+
+
+def true_solve(blocks, n, ns, b):
+    """Exact solve of the reduced BTTB system by forward substitution"""
+    B0, B1, B2 = blocks
+    lu = splu(B0.tocsc())
+
+    B = b.reshape(n, ns)
+
+    U = np.zeros((n, ns))
+    for m in range(n):
+        rhs = B[m].copy()
+        if m >= 1:
+            rhs -= B1 @ U[m - 1]
+        if m >= 2:
+            rhs -= B2 @ U[m - 2]
+        U[m] = lu.solve(rhs)
+    return U.ravel()
+
+
+def test_approximation_quality(wave_eq):
+    """M^-1 approaches the true inverse as alpha -> 0 (O(alpha) corner term)"""
+    eq = wave_eq
+    ntm2, ns = eq.nt - 2, eq.nx * eq.ny
+
+    rng = np.random.default_rng(0)
+    b = rng.standard_normal(ntm2 * ns)
+
+    u_true = true_solve(eq.reduced_blocks, ntm2, ns, b)
+
+    errs = []
+    for alpha in [1e-1, 1e-2, 1e-3]:
+        M = AlphaCirculantPreconditioner.from_wave_equation(eq, alpha)
+        err = np.linalg.norm(M.matvec(b) - u_true) / np.linalg.norm(u_true)
+        errs.append(err)
+
+    # corner term is O(alpha), so error must decrease monotonically
+    assert errs[0] > errs[1] > errs[2], f"errors not decreasing with alpha: {errs}"
