@@ -309,3 +309,24 @@ The circumstance warrants a two legged approach:
 - For larger systems, use a [ParaDiag](https://icms.ac.uk/wp-content/uploads/2025/06/Josh-Hope-Collins.pdf)/ [block circulant](https://onlinelibrary.wiley.com/doi/full/10.1002/nla.2386) approach. Multigrid can be an ambitious arm of comparison, and if it fails in comparison to some preconditioner then this is still a nice thing to write about.
 
 The framing then becomes: multigrid is the standard accelerator for least squares PDE discretisations (ODIL, FOSLS), but it doesn't transfer cleanly to the hyperbolic case, here's a wave-tailored preconditioner that does, characterised against a direct-solve ground truth.
+
+## 06/07: Weekly meeting
+
+In this meeting we broke off and spoke with individual supervisors, myself with Lluis. I walked him through my progress for the last week:
+
+- Proper second order Higdon BCs
+- Lagrange extrapolated ghost nodes
+- Excellent speedup using the alpha circuant preconditioner
+
+I also set a few objectives for this week:
+
+- a reference solution on the Shepp Logan phantom
+- looking at Levinson recursion over LU deomp
+- isolating the solve to a particular region
+- analysing dispersion and disspation errors
+
+I am also working to make the preconditioner more efficient. Namely by exploiting symmetry in the FFT
+
+- the input vector u is real
+- as a result, the coefficients come in complex conjugate pairs
+- this means we can just factorise every other pair and take the conjugate of it on exit
