@@ -2,7 +2,6 @@
 #PBS -N baseline
 #PBS -l walltime=08:00:00
 #PBS -l select=1:ncpus=32:mem=32gb:cpu_type=rome
-#PBS -l place=excl
 
 # PBS script for running the baseline model on CX3
 
