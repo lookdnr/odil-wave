@@ -10,111 +10,152 @@ from odil_wave import (
 )
 import numpy as np
 import time
+import argparse
 
 """
 A script for running the forward problem over the Shepp Logan Phantom model.
 """
 
 # 300 x 300 grid
-nx = 300
-ny = 300
+NX = 300
+NY = 300
 
 # 25cm x 25cm domain
-xmin = 0.0
-xmax = 0.25
-ymin = 0.0
-ymax = 0.25
+XMIN = 0.0
+XMAX = 0.25
+YMIN = 0.0
+YMAX = 0.25
 
 # wave speed and cfl
-background_c = 1500.0  # water
-c_ref = 1800.0
-cfl_safety = 0.9
+BACKGROUND_C = 1500.0  # water
+C_REF = 1800.0
+CFL_SAFETY = 0.9
 
 # source control
-n_sources = 1
-source_loc = ((0.03, 0.125),)  # in physical coords, just outside skull
-f0 = 300000  # Hz
+N_SOURCES = 1
+SOURCE_LOCS = ((0.03, 0.125),)  # in physical coords, just outside skull
+F0 = 300000  # Hz
 
 # model
-mask_skull = True
-interior_fill = 1.0
+MASK_SKULL = True
+INTERIOR_FILL = 1.0
 
 # discretisation
-time_order = 2
-space_order = 8
+TIME_ORDER = 2
+SPACE_ORDER = 8
 
 # optimiser
-method = "paradiag"
-alpha = 1e-3  # alpha constant for circulant preconditioner
+METHOD = "paradiag"
+ALPHA = 1e-3  # alpha constant for circulant preconditioner
 
 # plotting and save
-gif_title = "300kHz source over soft Shepp Logan Phantom"
-gif_outfile = "SheppLogan-baseline.gif"
+SAVE_GIF = True
+GIF_TITLE = "300kHz source over soft Shepp Logan Phantom"
+GIF_OUTFILE = "SheppLogan-baseline.gif"
 
-save = True
-data_outfile = "SheppLogan-baseline.npy"
+SAVE_DATA = True
+DATA_OUTFILE = "SheppLogan-baseline.npy"
 
-print("Setting up...\n")
+# dry run: set true if you don't want to optimise to check setup OK
+DRY_RUN = False
 
-setup_start = time.perf_counter()
 
-grid = Grid(
-    nx=nx,
-    ny=ny,
-    xmin=xmin,
-    xmax=xmax,
-    ymin=ymin,
-    ymax=ymax,
-    c_ref=c_ref,
-    cfl_safety=cfl_safety,
-)
-print("Grid OK")
-print(grid.summary)
-print()
+def parse_args():
+    parser = argparse.ArgumentParser(description="Run baseline direct-LU solve.")
+    parser.add_argument(
+        "--dry",
+        action="store_true",
+        help="Dry run: skip the expensive solve for testing.",
+    )
+    return parser.parse_args()
 
-model = SheppLoganModel(
-    grid, background_c=background_c, interior_fill=interior_fill, mask_skull=mask_skull
-)
-print("Model OK")
 
-source = Sources(grid, n_sources=n_sources, source_locs=source_loc, f0=f0)
-print("Sources OK")
+if __name__ == "__main__":
+    args = parse_args()
+    DRY_RUN = args.dry
 
-wavefield = Wavefield(grid)
-print("Wavefield OK")
+    if DRY_RUN:
+        SAVE_DATA = False
+        SAVE_GIF = False
 
-equation = WaveEquation(
-    wavefield, model, time_order=time_order, space_order=space_order
-)
-print("Equation OK")
+    print("Setting up...\n")
 
-problem = Problem(equation, source)
-print("Problem OK")
+    setup_start = time.perf_counter()
 
-loss = ForwardLoss(problem)
-print("Loss OK")
+    grid = Grid(
+        nx=NX,
+        ny=NY,
+        xmin=XMIN,
+        xmax=XMAX,
+        ymin=YMIN,
+        ymax=YMAX,
+        c_ref=C_REF,
+        cfl_safety=CFL_SAFETY,
+    )
+    print("Grid OK")
+    print(grid.summary)
+    print()
 
-optimiser = GaussNewtonOptimiser(loss)
-print("Optimiser OK\n")
+    model = SheppLoganModel(
+        grid,
+        background_c=BACKGROUND_C,
+        interior_fill=INTERIOR_FILL,
+        mask_skull=MASK_SKULL,
+    )
+    print("Model OK")
 
-setup_end = time.perf_counter()
+    source = Sources(grid, n_sources=N_SOURCES, source_locs=SOURCE_LOCS, f0=F0)
+    print("Sources OK")
 
-print(f"Setup complete in {setup_end - setup_start:.9f} s")
+    wavefield = Wavefield(grid)
+    print("Wavefield OK")
 
-print("Optimising...")
+    equation = WaveEquation(
+        wavefield, model, time_order=TIME_ORDER, space_order=SPACE_ORDER
+    )
+    print("Equation OK")
 
-opt_start = time.perf_counter()
-result = optimiser.minimise(wavefield, method=method, alpha=alpha)
-opt_end = time.perf_counter()
-print("Finished optimising.")
-print("Converged:", result.success)
-print(f"Optimisation converged in {opt_end - opt_start:.9f} s\n")
+    problem = Problem(equation, source)
+    print("Problem OK")
 
-if save:
-    print("Saving data...")
-    np.save(data_outfile, result.solution.U)
-    print("Done\n")
+    loss = ForwardLoss(problem)
+    print("Loss OK")
 
-print("Animating...")
-result.solution.animate(title=gif_title)
-print("GIF saved to", gif_outfile)
+    optimiser = GaussNewtonOptimiser(loss)
+    print("Optimiser OK\n")
+
+    setup_end = time.perf_counter()
+
+    setup_duration = setup_end - setup_start
+    print(f"Setup complete in {setup_duration:.9f} s\n")
+
+    opt_duration = 0.0
+    if not DRY_RUN:
+        print("Optimising...")
+        opt_start = time.perf_counter()
+        result = optimiser.minimise(wavefield, method=METHOD, alpha=ALPHA)
+        opt_end = time.perf_counter()
+
+        opt_duration = opt_end - opt_start
+        print("Finished optimising.")
+        print("Converged:", result.success)
+        print(f"Optimisation converged in {opt_duration:.9f} s\n")
+
+    if SAVE_DATA:
+        print("Saving data...")
+        np.save(DATA_OUTFILE, result.solution.U)
+        print("Done\n")
+
+    if SAVE_GIF:
+        print("Animating...")
+        result.solution.animate(title=GIF_TITLE)
+        print("GIF saved to", GIF_OUTFILE)
+
+    print("Run complete.")
+    print(f"Total duration: {setup_duration + opt_duration:.9f} s")
+
+    if SAVE_DATA:
+        print("Data saved to", DATA_OUTFILE)
+
+    if SAVE_GIF:
+        print("GIF saved to", GIF_OUTFILE)
