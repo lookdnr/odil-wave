@@ -1,5 +1,7 @@
 # IRP Repository
 
+![Tests](https://github.com/ese-ada-lovelace-2025/irp-ld2022/actions/workflows/test-package.yml/badge.svg?branch=main)
+
 Please familiarise yourself with and follow [GitHub repository instructions](https://ese-msc.github.io/irp/repos/).
 
 Deleting or modifying the pre-existing GitHub Actions workflows or the directory structure in this repository is strictly prohibited. Your IRP files should "live" alongside pre-existing files.

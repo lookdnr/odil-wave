@@ -40,7 +40,7 @@ def _time_error(n, ord, deriv):
     "ord", [2, 4, 6]
 )  # 8 converges too quickly for these grid sizes
 def test_temporal_convergence(ord, deriv):
-    ns = [20, 30, 50, 80]  # increasing spatial resolution = decreasing dt via CFL
+    ns = [10, 20, 40, 60]  # increasing spatial resolution = decreasing dt via CFL
     hs, errs = zip(*(_time_error(n, ord, deriv) for n in ns))
     obs = observed_order(hs, errs)
     print(f"\n[TEMPORAL] deriv: {deriv}, order: {ord}, observed order: {obs}")

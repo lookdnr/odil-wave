@@ -12,5 +12,9 @@ def test_lbfgsb_instantiates_and_runs(loss):
 
 def test_gauss_newton_instantiates_and_runs(loss):
     opt = GaussNewtonOptimiser(loss, outer_maxiter=2)
-    result = opt.minimise(method="lsmr", inner_maxiter=5)
+    result = opt.minimise(method="paradiag")
+    assert isinstance(result.solution, Wavefield)
+
+    opt = GaussNewtonOptimiser(loss, outer_maxiter=2)
+    result = opt.minimise(method="gmres")
     assert isinstance(result.solution, Wavefield)
