@@ -28,7 +28,7 @@ YMAX = 0.25
 
 # wave speed and cfl
 BACKGROUND_C = 1500.0  # water
-C_REF = 1800.0
+C_MAX = 1800.0
 CFL_SAFETY = 0.9
 
 # source control
@@ -89,7 +89,8 @@ if __name__ == "__main__":
         xmax=XMAX,
         ymin=YMIN,
         ymax=YMAX,
-        c_ref=C_REF,
+        c_min=BACKGROUND_C,
+        c_max=C_MAX,
         cfl_safety=CFL_SAFETY,
     )
     print("Grid OK")
