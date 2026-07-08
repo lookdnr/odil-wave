@@ -26,29 +26,45 @@ class HomogeneousModel(VelocityModel):
 class SheppLoganModel(VelocityModel):
     """Shepp-Logan phantom velocity model"""
 
-    def __init__(self, grid, base, contrast, interior_fill: float = 0.7):
-        super().__init__(grid, base, contrast)
+    def __init__(
+        self,
+        grid,
+        background_c: float = 1.0,
+        contrast: float = 1.0,
+        interior_fill: float = 0.7,
+        mask_skull: bool = False,
+    ):
+        super().__init__(grid, background_c, contrast)
         self.interior_fill = (
             interior_fill  # fraction of the interior grid the model should fill
         )
+        # we might want to mask the skull for forward modelling purposes
+        self.mask_skull = mask_skull
         self.c = self._build()
         self.name = "Shepp-Logan Phantom Model"
 
     def _build(self):
 
-        s_nx = max(2, int(self.grid.interior_nx * self.interior_fill))
-        s_ny = max(2, int(self.grid.interior_ny * self.interior_fill))
+        s_nx = max(2, int(self.grid.nx * self.interior_fill))
+        s_ny = max(2, int(self.grid.ny * self.interior_fill))
         phantom = shepp_logan_phantom().astype(np.float32)
 
         # Rotate 90deg so the phantom's long axis aligns with the
         # AcquisitionGeometry ellipse's semi-major axis (y).
         phantom = np.rot90(phantom, k=1).copy()
+
+        if self.mask_skull:
+            # remove skull by thresholding
+            skull = phantom >= 0.9 * phantom.max()
+            brain = phantom[(phantom > 0.0) & ~skull]
+            fill = np.median(brain) if brain.size else 0.0
+            phantom[skull] = fill
+
         phantom = resize(phantom, (s_nx, s_ny), anti_aliasing=True, mode="reflect")
 
         # compute centre point
-        p = self.grid.pml_width
-        i0 = p + (self.grid.interior_nx - s_nx) // 2
-        j0 = p + (self.grid.interior_ny - s_ny) // 2
+        i0 = (self.grid.nx - s_nx) // 2
+        j0 = (self.grid.ny - s_ny) // 2
 
         # create base and add anomalies
         c = np.full(self.grid.shape, self.background_c)
@@ -82,10 +98,10 @@ class OverDensityModel(VelocityModel):
         if not (x_min <= centre[0] <= x_max):
             raise ValueError(
                 f"x-component of arg 'centre' must be between {x_min, x_max},"
-                + " got {centre[0]}."
+                + f" got {centre[0]}."
             )
 
-        if not (y_min <= centre[0] <= y_max):
+        if not (y_min <= centre[1] <= y_max):
             raise ValueError(
                 f"y-component of arg 'centre' must be between {y_min, y_max},"
                 + " got {centre[1]}."

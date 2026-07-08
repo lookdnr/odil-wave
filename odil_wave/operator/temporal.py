@@ -6,7 +6,7 @@ from odil_wave.wavefield import Wavefield
 from .stencils import STENCIL_COEFFS_1ST, STENCIL_COEFFS_2ND, STENCIL_OFFSETS
 
 
-def _diff_matrix(derivative: int, ord: int, n: int, h: float) -> sp.dia_matrix:
+def _diff_matrix(derivative: int, ord: int, n: int, h: float) -> sp.csr_matrix:
     """Return the nxn order `ord` differentiation matrix that represents the action
     of the second spatial derivative.
     """
@@ -56,7 +56,7 @@ class SecondTimeDerivative(SparseOperator):
 
     def __init__(self, wavefield: Wavefield, ord: int = 2) -> None:
         super().__init__(wavefield, ord)
-        self.matrix = self.assemble()
+        self.assemble()
 
     def assemble(self) -> None:
         """Assembles the time operator: Dt otimes Ixy"""
