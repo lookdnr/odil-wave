@@ -51,7 +51,12 @@ class AlphaCirculantPreconditioner:
         # this cuts our memory requiremetns in half
         B0, B1, B2 = self.blocks
         self._lus = [
-            splu((B0 + zk * B1 + zk**2 * B2).astype(self.dtype).tocsc()) for zk in z
+            splu(
+                (B0 + zk * B1 + zk**2 * B2).astype(self.dtype).tocsc(),
+                permc_spec="MMD_AT_PLUS_A",
+                options=dict(SymmetricMode=True, DiagPivotThresh=0.001),
+            )
+            for zk in z
         ]
 
     def matvec(self, v: np.ndarray) -> np.ndarray:
