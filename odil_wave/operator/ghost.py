@@ -46,21 +46,24 @@ class GhostFill:
         if g == 0:
             return sp.eye(n, format="csr").tocsr()
 
+        # cap at cubic extrapolation
+        k = min(4, 2 * g, n)
+
         # g ghost nodes left and right of the domain
-        left_nodes = np.arange(2 * g, dtype=float)
-        right_nodes = np.arange(n - 2 * g, n, dtype=float)
+        left_nodes = np.arange(k, dtype=float)
+        right_nodes = np.arange(n - k, n, dtype=float)
 
         # left ghost block: g rows, weights in first 2g columns
         left = np.zeros((g, n))
         for i in range(g):
             # compute extrapolation weights for left nodes
-            left[i, : 2 * g] = _lagrange_weights(float(i - g), left_nodes)
+            left[i, :k] = _lagrange_weights(float(i - g), left_nodes)
 
         # right ghost block: g rows, weights in last 2g columns
         right = np.zeros((g, n))
         for i in range(g):
             # compute extrapolation weights for right nodes
-            right[i, n - 2 * g :] = _lagrange_weights(float(n + i), right_nodes)
+            right[i, n - k :] = _lagrange_weights(float(n + i), right_nodes)
 
         # stack row-wise such that left and right weights pad identity (unextrapolated)
         return sp.vstack([left, sp.eye(n), right], format="csr")  # type: ignore
