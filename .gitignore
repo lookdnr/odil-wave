@@ -4,3 +4,5 @@
 **/wandb/*
 **/__pycache__/*
 .coverage
+/results
+*.gif
