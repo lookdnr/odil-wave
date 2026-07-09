@@ -17,12 +17,10 @@ def _relative_norm(
 
     _check_shape(u, u_ref)
 
-    if idx is None:
-        r = u - u_ref
-    else:
-        r = u[idx] - u_ref[idx]
+    if idx is not None:
+        u, u_ref = u[idx], u_ref[idx]
 
-    return np.linalg.norm(r, ord)
+    return np.linalg.norm(u - u_ref, ord) / np.linalg.norm(u_ref, ord)
 
 
 def relative_l2(
