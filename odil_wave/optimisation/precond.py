@@ -18,7 +18,9 @@ class AlphaCirculantPreconditioner:
     alpha trades approximation error against taper roundoff
     """
 
-    def __init__(self, blocks, n, alpha=1e-3):
+    def __init__(
+        self, blocks, n, alpha=1e-3, dtype: np.typing.DTypeLike = np.complex128
+    ):
         if not 0.0 < alpha < 1.0:
             raise ValueError(
                 f"alpha must be in (0, 1), got {alpha}. alpha >= 1 is the "
@@ -37,6 +39,8 @@ class AlphaCirculantPreconditioner:
         self._d = gamma ** np.arange(n)
         z = gamma * np.exp(-2j * np.pi * np.arange(n // 2 + 1) / n)
 
+        self.dtype = dtype
+
         # LU decomposition paid once for solve at each frequency
         # we factorise each block to solve the N independent scalar equations
         # for each time level
@@ -47,7 +51,7 @@ class AlphaCirculantPreconditioner:
         # this cuts our memory requiremetns in half
         B0, B1, B2 = self.blocks
         self._lus = [
-            splu((B0 + zk * B1 + zk**2 * B2).astype(np.complex128).tocsc()) for zk in z
+            splu((B0 + zk * B1 + zk**2 * B2).astype(self.dtype).tocsc()) for zk in z
         ]
 
     def matvec(self, v: np.ndarray) -> np.ndarray:
@@ -56,7 +60,7 @@ class AlphaCirculantPreconditioner:
 
         # perform fft in time
         # rfft is for real valued inputs
-        Vh = np.fft.rfft(V, axis=0)
+        Vh = np.fft.rfft(V, axis=0).astype(self.dtype)
 
         # in the Fourier basis, the linear solve reduces
         # to solving N scalar equations for a block in time
