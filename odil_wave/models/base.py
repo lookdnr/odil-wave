@@ -57,7 +57,7 @@ class VelocityModel(ABC):
         title: Optional[str] = None,
         vmin: Optional[float] = None,
         vmax: Optional[float] = None,
-        cmap: str = "cividis",
+        cmap: str = "RdBu_r",
     ):
         # create ax if not specified
         if ax is None:

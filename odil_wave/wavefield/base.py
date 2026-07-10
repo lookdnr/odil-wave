@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from matplotlib.ticker import EngFormatter
 from typing import Sequence
 
 from odil_wave.grid import Grid
@@ -143,7 +144,8 @@ class Wavefield:
         )
         ax.set_xlabel("x")
         ax.set_ylabel("y")
-        ttl = ax.set_title(f"{title}  (t = {t[0]:.3f} s)")
+        fmt_t = EngFormatter(unit="s", places=2)
+        ttl = ax.set_title(f"{title}  (t = {fmt_t(t[0])} s)")
         plt.colorbar(im, ax=ax, label="Amplitude", shrink=0.85)
 
         if model is not None:
@@ -191,7 +193,7 @@ class Wavefield:
         # update for drawing frames
         def update(frame: int):
             im.set_data(amp[frame].reshape(Nx, Ny).T)
-            ttl.set_text(f"{title}  (t = {t[frame]:.3f} s)")
+            ttl.set_text(f"{title}  (t = {fmt_t(t[frame])} s)")
             return im, ttl
 
         anim = animation.FuncAnimation(
