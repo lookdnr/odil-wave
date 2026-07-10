@@ -26,6 +26,7 @@ def test_correctness(wave_eq, alpha):
     """Asser than the taper, FFT diagonalisation, and LU solves are correct"""
     eq = wave_eq
     M = AlphaCirculantPreconditioner.from_wave_equation(eq, alpha)
+    M.dtype = np.complex128
 
     ntm2, ns = eq.nt - 2, eq.nx * eq.ny
     blocks = wave_eq.reduced_blocks
@@ -49,6 +50,7 @@ def test_structual_correctness(wave_eq, alpha):
     in the first two block rows. Check this."""
     eq = wave_eq
     M = AlphaCirculantPreconditioner.from_wave_equation(eq, alpha)
+    M.dtype = np.complex128
 
     ntm2, ns = eq.nt - 2, eq.nx * eq.ny
     A = eq.reduced_operator()
@@ -115,6 +117,7 @@ def test_gmres_convergence(wave_eq):
     ntm2, ns = eq.nt - 2, eq.nx * eq.ny
     A = eq.reduced_operator()
     M = AlphaCirculantPreconditioner.from_wave_equation(eq, alpha=1e-3)
+    M.dtype = np.complex128
 
     rng = np.random.default_rng(0)
     b = rng.standard_normal(ntm2 * ns)
