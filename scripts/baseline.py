@@ -40,6 +40,7 @@ F0 = 185000  # Hz
 # model
 MASK_SKULL = True
 INTERIOR_FILL = 0.95
+CONTRAST = 200
 
 # discretisation
 TIME_ORDER = 2
@@ -103,6 +104,7 @@ if __name__ == "__main__":
         background_c=BACKGROUND_C,
         interior_fill=INTERIOR_FILL,
         mask_skull=MASK_SKULL,
+        contrast=CONTRAST,
     )
     print("Model OK")
 
