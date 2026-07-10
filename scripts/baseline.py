@@ -16,33 +16,34 @@ import argparse
 A script for running the forward problem over the Shepp Logan Phantom model.
 """
 
-# 300 x 300 grid
-NX = 300
-NY = 300
+# 200 x 200 grid
+# this gives 8ppw
+NX = 200
+NY = 200
 
-# 25cm x 25cm domain
+# 20cm x 20cm domain
 XMIN = 0.0
-XMAX = 0.25
+XMAX = 0.2
 YMIN = 0.0
-YMAX = 0.25
+YMAX = 0.2
 
 # wave speed and cfl
-BACKGROUND_C = 1500.0  # water
-C_MAX = 1800.0
-CFL_SAFETY = 0.9
+BACKGROUND_C = 1480.0  # water
+C_MAX = 1580.0
+CFL_SAFETY = 0.8  # sufficient for 6th order in space
 
 # source control
 N_SOURCES = 1
-SOURCE_LOCS = ((0.03, 0.125),)  # in physical coords, just outside skull
-F0 = 300000  # Hz
+SOURCE_LOCS = (0.015, 0.1)  # in physical coords, just outside skull
+F0 = 185000  # Hz
 
 # model
 MASK_SKULL = True
-INTERIOR_FILL = 1.0
+INTERIOR_FILL = 0.95
 
 # discretisation
 TIME_ORDER = 2
-SPACE_ORDER = 8
+SPACE_ORDER = 6
 
 # optimiser
 METHOD = "paradiag"
@@ -105,7 +106,7 @@ if __name__ == "__main__":
     )
     print("Model OK")
 
-    source = Sources(grid, n_sources=N_SOURCES, source_locs=SOURCE_LOCS, f0=F0)
+    source = Sources(grid, n_sources=N_SOURCES, source_locs=(SOURCE_LOCS,), f0=F0)
     print("Sources OK")
 
     wavefield = Wavefield(grid)
