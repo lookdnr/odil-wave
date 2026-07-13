@@ -52,10 +52,11 @@ class SolveRecorder:
     def log(self, residuals: np.ndarray, grad=None) -> None:
         """Log norms for one outer solve"""
         r = float(np.linalg.norm(residuals))
+        norm_s = self.meta.get("norm_s")
         self.outers.append(
             OuterRecord(
                 res=r,
-                relres=r / self.meta["norm_s"],
+                relres=r / norm_s if norm_s else np.nan,
                 grad_norm=float(np.linalg.norm(grad)) if grad is not None else np.nan,
                 inner=None,
             )
