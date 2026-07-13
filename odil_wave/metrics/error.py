@@ -50,3 +50,13 @@ def relative_linfty(
     a reference wavefield `u_ref`.
     """
     return _relative_norm(u, u_ref, ord=np.inf)
+
+
+def l2_error_history(u: np.ndarray, u_ref: np.ndarray) -> np.ndarray:
+    """Per time level L2 error, normalised by refernce norm"""
+    u = _decode_field(u)
+    u_ref = _decode_field(u_ref)
+
+    _check_shape(u, u_ref)
+
+    return np.linalg.norm(u - u_ref, axis=1) / np.linalg.norm(u_ref)
