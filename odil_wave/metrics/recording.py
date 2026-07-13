@@ -27,3 +27,13 @@ class InnerRecord:
         r_arr = np.array(self.residual_history)
         ratios = r_arr[1:] / r_arr[:-1]
         return gmean(ratios)
+
+
+@dataclass
+class OuterRecord:
+    """Record for one outer GN step"""
+
+    res: float  # ||Au - s||
+    grad_norm: float  # norm of gradient
+    relres: float  # ||Au - s|| / ||s||
+    inner: InnerRecord | None  # none for scipy
