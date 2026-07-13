@@ -1,6 +1,9 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import List, Dict
+import json
+from pathlib import Path
+from datetime import datetime
 
 import numpy as np
 from scipy.stats import gmean
@@ -70,6 +73,27 @@ class SolveRecorder:
         self, wavefield: Wavefield, nit: int, success: bool, message: str = ""
     ) -> SolveResult:
         return SolveResult(wavefield, self, nit, success, message)
+
+    def save(self, path: str | Path) -> Path:
+        """Write metadata + full outer/inner history to JSON"""
+        self.meta.setdefault("saved_at", datetime.now().isoformat())
+        path = Path(path).with_suffix(".json")
+        payload = {"meta": self.meta, "outers": [asdict(o) for o in self.outers]}
+        path.write_text(json.dumps(payload, indent=2, default=float))
+        return path
+
+    @classmethod
+    def load(cls, path: str | Path) -> SolveRecorder:
+        """Load metadata and outer/inner history from JSON payload"""
+        data = json.loads(Path(path).read_text())
+        outers = []
+
+        for d in data["outers"]:
+            inner = d.pop("inner")
+            outers.append(
+                OuterRecord(**d, inner=InnerRecord(**inner) if inner else None)
+            )
+        return cls(meta=data["meta"], outers=outers)
 
 
 class SolveResult(OptimizeResult):
@@ -147,3 +171,11 @@ class SolveResult(OptimizeResult):
         fig.suptitle(title)
         fig.tight_layout()
         return fig
+
+    def save(self, path: str | Path, with_field: bool = False) -> Path:
+        """Persist the recording to disk, optionally with the solution field"""
+        out = self["recorder"].save(path)
+
+        if with_field:
+            np.savez_compressed(out.with_suffix(".npz"), u=self.x)
+        return out
