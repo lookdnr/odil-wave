@@ -5,6 +5,7 @@ from typing import List, Dict
 import numpy as np
 from scipy.stats import gmean
 from scipy.optimize import OptimizeResult
+import matplotlib.pyplot as plt
 
 from odil_wave.wavefield import Wavefield
 
@@ -99,3 +100,50 @@ class SolveResult(OptimizeResult):
     @property
     def solution(self) -> Wavefield:
         return self.wf
+
+    def show_convergence(self, title: str = "Convergence"):
+        """Plot outer convergence history"""
+        outers = self["recorder"].outers
+
+        fig, axs = plt.subplots(1, 2, figsize=(10, 4))
+
+        axs[0].semilogy([o.relres for o in outers], marker="o")
+        axs[0].set(title="Relative residual", xlabel="Outer iteration")
+
+        axs[1].semilogy([o.grad_norm for o in outers], marker="o")
+        axs[1].set(title="Gradient norm", xlabel="Outer iteration")
+
+        fig.suptitle(title)
+        fig.tight_layout()
+        return fig
+
+    def show_inner(self, title: str = "Inner solve history"):
+        """Plot the inner solve history"""
+        inners = [
+            (k, o.inner) for k, o in enumerate(self["recorder"].outers) if o.inner
+        ]
+
+        if not inners:
+            print("No inner solves recorded.")
+            return None
+
+        fig, axs = plt.subplots(1, 2, figsize=(10, 4))
+
+        for k, inner in inners:  # the plot the study runs on
+            axs[0].semilogy(
+                inner.residual_history, label=rf"outer {k} ($\rho$={inner.rho:.2f})"
+            )
+
+        axs[0].set(title="GMRES residual history", xlabel="Inner iteration")
+        axs[0].legend()
+
+        ks = [k for k, _ in inners]
+
+        colours = ["tab:blue" if i.converged else "tab:orange" for _, i in inners]
+
+        axs[1].bar(ks, [i.iters for _, i in inners], color=colours)
+        axs[1].set(title="Inner iterations", xlabel="Outer iteration")
+
+        fig.suptitle(title)
+        fig.tight_layout()
+        return fig
