@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Dict
 
 import numpy as np
 from scipy.stats import gmean
@@ -37,3 +37,26 @@ class OuterRecord:
     grad_norm: float  # norm of gradient
     relres: float  # ||Au - s|| / ||s||
     inner: InnerRecord | None  # none for scipy
+
+
+@dataclass
+class SolveRecorder:
+    """Dataclass for recording solve history"""
+
+    meta: Dict  # method, alpha, rtol, restart, ...
+    outers: List[OuterRecord]
+
+    def log(self, residuals: np.ndarray, grad=None) -> None:
+        """Log the loss and residuals."""
+        r = float(np.linalg.norm(residuals))
+        self.outers.append(
+            OuterRecord(
+                res=r,
+                relres=r / self.meta["norm_s"],
+                grad_norm=float(np.linalg.norm(grad)) if grad is not None else np.nan,
+                inner=None,
+            )
+        )
+
+    def log_inner(self, record: InnerRecord) -> None:
+        self.outers[-1].inner = record
