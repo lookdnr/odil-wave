@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 from odil_wave import WaveEquation, Grid, Wavefield
 from odil_wave.models.base import VelocityModel
+from odil_wave import Sources
 
 
 class SmoothModel(VelocityModel):
@@ -37,6 +38,11 @@ def model(grid):
 @pytest.fixture
 def w_eq(wf, model):
     return WaveEquation(wf, model)
+
+
+@pytest.fixture
+def s(grid):
+    return Sources(grid, n_sources=1, source_locs=((0.5, 0.5),))
 
 
 # ===== Test via Method of Manufactured Solutions ====
@@ -117,3 +123,14 @@ def test_IC(w_eq):
     # IC rows are overwritten after Higdon, so they hold for all spatial nodes
     np.testing.assert_allclose(Au[0], U[0], rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(Au[1], U[1], rtol=1e-12, atol=1e-12)
+
+
+# ===== Time marching =====
+
+
+def test_march(w_eq, s):
+    """Test time marching behaves as expected"""
+    f = s.source_matrix()[:, 0]
+    U = w_eq.march(f)
+    r = w_eq.residual(U.ravel(), f).reshape(w_eq.nt, -1)[:-1]
+    assert np.linalg.norm(r) / np.linalg.norm(w_eq.dt2 * f) < 1e-10
