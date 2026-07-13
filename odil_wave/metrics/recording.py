@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Dict
 
 import numpy as np
@@ -43,11 +43,11 @@ class OuterRecord:
 class SolveRecorder:
     """Dataclass for recording solve history"""
 
-    meta: Dict  # method, alpha, rtol, restart, ...
-    outers: List[OuterRecord]
+    meta: Dict = field(default_factory=dict)  # method, alpha, rtol, restart, ...
+    outers: List[OuterRecord] = field(default_factory=list)
 
     def log(self, residuals: np.ndarray, grad=None) -> None:
-        """Log the loss and residuals."""
+        """Log norms for one outer solve"""
         r = float(np.linalg.norm(residuals))
         self.outers.append(
             OuterRecord(
