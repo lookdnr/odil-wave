@@ -20,6 +20,8 @@ def _relative_norm(
     if idx is not None:
         u, u_ref = u[idx], u_ref[idx]
 
+    u, u_ref = u.ravel(), u_ref.ravel()  # type: ignore
+
     return np.linalg.norm(u - u_ref, ord) / np.linalg.norm(u_ref, ord)
 
 
