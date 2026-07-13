@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Dict
 
@@ -6,22 +7,6 @@ from scipy.stats import gmean
 from scipy.optimize import OptimizeResult
 
 from odil_wave.wavefield import Wavefield
-
-
-class SolveResult(OptimizeResult):
-    """End state of a solve: solution wavefield + full recording."""
-
-    def __init__(self, wavefield, recorder, nit, success, message=""):
-        last = recorder.outers[-1] if recorder.outers else None
-        super().__init__(
-            x=wavefield.flat_data,
-            fun=0.5 * last.res**2 if last else np.nan,
-            nit=nit,
-            success=success,
-            message=message,
-            wavefield=wavefield,
-            recorder=recorder,
-        )
 
 
 @dataclass
@@ -80,6 +65,36 @@ class SolveRecorder:
         self.outers[-1].inner = record
 
     def finalise(
-        self, wavefield: Wavefield, nit: int, success: bool, message=""
+        self, wavefield: Wavefield, nit: int, success: bool, message: str = ""
     ) -> SolveResult:
-        return SolveResult(wavefield, nit, success, message)
+        return SolveResult(wavefield, self, nit, success, message)
+
+
+class SolveResult(OptimizeResult):
+    """End state of a solve: solution wavefield + full recording."""
+
+    def __init__(
+        self,
+        wavefield: Wavefield,
+        recorder: SolveRecorder,
+        nit: int,
+        success: bool,
+        message: str = "",
+    ):
+        last = recorder.outers[-1] if recorder.outers else None
+
+        self.wf = wavefield
+
+        super().__init__(
+            x=wavefield.flat_data,
+            fun=0.5 * last.res**2 if last else np.nan,
+            nit=nit,
+            success=success,
+            message=message,
+            wavefield=wavefield,
+            recorder=recorder,
+        )
+
+    @property
+    def solution(self) -> Wavefield:
+        return self.wf
