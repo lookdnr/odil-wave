@@ -1,4 +1,4 @@
-from odil_wave import Wavefield
+from odil_wave.wavefield import Wavefield
 
 import numpy as np
 

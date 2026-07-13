@@ -1,4 +1,4 @@
-from odil_wave import Wavefield
+from odil_wave.wavefield import Wavefield
 from .utils import _decode_field, _check_shape
 
 import numpy as np
