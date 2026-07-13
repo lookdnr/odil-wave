@@ -4,7 +4,8 @@ from odil_wave.models import SheppLoganModel, HomogeneousModel, OverDensityModel
 from odil_wave.wavefield import Wavefield
 from odil_wave.operator import WaveEquation
 from odil_wave.utils import Problem
-from odil_wave.loss import LossTape, ForwardLoss
+from odil_wave.loss import ForwardLoss
+from odil_wave.metrics import SolveRecorder, SolveResult
 from odil_wave.optimisation import LBFGSB, GaussNewtonOptimiser
 
 __all__ = [
@@ -18,7 +19,8 @@ __all__ = [
     "Wavefield",
     "WaveEquation",
     "Problem",
-    "LossTape",
+    "SolveRecorder",
+    "SolveResult",
     "ForwardLoss",
     "LBFGSB",
     "GaussNewtonOptimiser",
