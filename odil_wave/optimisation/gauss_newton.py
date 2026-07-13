@@ -1,12 +1,14 @@
 from .base import Optimiser
 from odil_wave.wavefield import Wavefield
 from odil_wave.loss import DiscreteLoss
-from .utils import create_u0, OptimisationResult, InnerSolveInfo
+from .utils import create_u0, CountedOperator
 from .precond import AlphaCirculantPreconditioner
+from odil_wave.metrics import SolveRecorder, InnerRecord
 
 from typing import Dict, Callable
 import numpy as np
 import scipy.sparse.linalg as spl
+from time import perf_counter
 
 
 class GaussNewtonOptimiser(Optimiser):
@@ -19,11 +21,13 @@ class GaussNewtonOptimiser(Optimiser):
     For a linear residual this converges in one outer step.
     """
 
+    rec: SolveRecorder
+
     def __init__(
         self,
         loss: DiscreteLoss,
         outer_maxiter: int = 1,
-        outer_gtol: float = 1e-8,
+        outer_gtol: float = 1e-10,
         outer_ftol: float = 1e-12,
     ) -> None:
         super().__init__(loss)
@@ -58,9 +62,11 @@ class GaussNewtonOptimiser(Optimiser):
         This allows us to apply our block circulant preconditioner M that
         is an approximation of A-1.
         """
+
         grid = self.loss.problem.wavefield.grid
-        N = grid.nt * grid.nx * grid.ny
-        f = self.loss.problem.sources[:, 0]  # single shot
+        nt, nx, ny = grid.nt, grid.nx, grid.ny
+        N = nt * nx * ny
+        s = self.loss.problem.sources[:, 0]  # single shot
 
         u0 = create_u0(u0, N)
 
@@ -73,32 +79,55 @@ class GaussNewtonOptimiser(Optimiser):
         if method == "gmres":
             alpha = None
 
-        result = self._minimise_gmres(u0, f, alpha if alpha else None, rtol, restart)
+        alpha = alpha if alpha else None
+
+        meta = {
+            "method": method,
+            "alpha": alpha,
+            "rtol": rtol,
+            "restart": restart,
+            "outer_ftol": self.outer_ftol,
+            "outer_gtol": self.outer_gtol,
+            "nt": nt,
+            "nx": nx,
+            "ny": ny,
+        }
+        self.rec = SolveRecorder(meta)
+
+        result = self._minimise_gmres(u0, s, meta)
 
         return result
 
     def _minimise_gmres(
         self,
         u0: np.ndarray,
-        f: np.ndarray,
-        alpha: float | None = 0.001,
-        rtol: float = 1e-8,
-        restart: int = 10,
+        s: np.ndarray,
+        meta: Dict,
     ):
+        alpha = meta["alpha"]
+        rtol = meta["rtol"]
+        restart = meta["restart"]
+
         we = self.loss.problem.wave_eq
 
         # extract reduced problem components
         B0, B1, B2 = we.reduced_blocks
-        s, f0, f1 = we.reduced_rhs(f)
-        Aop = we.reduced_operator()
+        s, s0, s1 = we.reduced_rhs(s)
+        Aop = CountedOperator(we.reduced_operator())
+
+        self.rec.meta["norm_s"] = np.linalg.norm(s)
 
         # create preconditioner
         if alpha is not None:
+            start = perf_counter()
             M = AlphaCirculantPreconditioner.from_wave_equation(we, alpha)
             M = M.as_linear_operator()
+            end = perf_counter()
+            self.rec.meta["t_setup"] = end - start
         else:
             M = None  # no precond for raw gmres
             restart = 3 * restart  # higher restart for raw
+            self.rec.meta["t_setup"] = 0.0
 
         ns = we.nx * we.ny
         nt = we.nt
@@ -120,13 +149,13 @@ class GaussNewtonOptimiser(Optimiser):
 
         L_prev, nit, success = np.inf, 0, False
         message = f"Maximum outer iterations ({self.outer_maxiter}) reached"
-        inner_history = []
+
         for nit in range(1, self.outer_maxiter + 1):
             r = Aop @ u - s  # reduced residual: THE r in A du = -r
             g = rmatvec(r)
 
             L = self.loss._eval_loss(r)
-            self.loss.callback.log(L, r)
+            self.rec.log(r, g)
 
             if np.linalg.norm(g) < self.outer_gtol:
                 success, message = True, "Gradient norm below outer_gtol"
@@ -137,6 +166,9 @@ class GaussNewtonOptimiser(Optimiser):
             L_prev = L
 
             hist = []
+            c0 = Aop.count
+            start = perf_counter()
+
             du, info = spl.gmres(
                 Aop,
                 -r,
@@ -147,26 +179,24 @@ class GaussNewtonOptimiser(Optimiser):
                 callback=lambda pr: hist.append(pr),
                 callback_type="pr_norm",
             )
-            inner_history.append(
-                InnerSolveInfo(
-                    itn=len(hist),
-                    normr=float(np.linalg.norm(Aop @ du + r)),
-                    normar=None,
-                    converged=(info == 0),
-                )
+            end = perf_counter()
+            n_matvecs = Aop.count - c0
+
+            inner = InnerRecord(
+                residual_history=hist,
+                true_relres=float(np.linalg.norm(Aop @ du + r))
+                / self.rec.outers[-1].res,
+                converged=(info == 0),
+                n_matvecs=n_matvecs,
+                t_solve=end - start,
             )
+
+            self.rec.log_inner(inner)
 
             u = u + du  # alpha = 1 (exact for linear)
 
         U = np.empty((nt, ns))
-        U[0], U[1], U[2:] = f0, f1, u.reshape(ntm2, ns)
+        U[0], U[1], U[2:] = s0, s1, u.reshape(ntm2, ns)
         wf = Wavefield(we.wavefield.grid)
         wf.flat_data = U.ravel()
-        return OptimisationResult(
-            wf,
-            self.loss.callback,
-            nit=nit,
-            success=success,
-            message=message,
-            inner_history=inner_history,
-        )
+        return self.rec.finalise(wf, nit, success, message)
