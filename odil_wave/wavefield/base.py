@@ -143,7 +143,7 @@ class Wavefield:
         cbar_label = "Amplitude"
 
         if scaling == "dB":
-            data = 20.0 * np.log10(np.max(np.abs(amp)) / u_max)
+            data = 20.0 * np.log10(np.maximum(np.abs(amp), 1e-30) / u_max)
             data = np.clip(data, db_floor, 0.0)  # 60db range
             plot_kwargs = dict(cmap="magma", vmin=db_floor, vmax=0.0)
             cbar_label = "dB rel. max"
