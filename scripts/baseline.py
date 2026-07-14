@@ -46,6 +46,9 @@ CONTRAST = 200
 TIME_ORDER = 2
 SPACE_ORDER = 6
 
+# boundary config
+BC_ANGLES = (0.0, 60.0)
+
 # optimiser
 METHOD = "paradiag"
 ALPHA = 1e-3  # alpha constant for circulant preconditioner
@@ -115,7 +118,11 @@ if __name__ == "__main__":
     print("Wavefield OK")
 
     equation = WaveEquation(
-        wavefield, model, time_order=TIME_ORDER, space_order=SPACE_ORDER
+        wavefield,
+        model,
+        time_order=TIME_ORDER,
+        space_order=SPACE_ORDER,
+        bc_angles=BC_ANGLES,
     )
     print("Equation OK")
 
