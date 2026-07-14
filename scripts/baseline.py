@@ -30,7 +30,7 @@ YMAX = 0.2
 # wave speed and cfl
 BACKGROUND_C = 1480.0  # water
 C_MAX = 1580.0
-CFL_SAFETY = 0.8  # sufficient for 6th order in space
+CFL_SAFETY = 0.7  # sufficient for 6th order in space
 
 # source control
 N_SOURCES = 1
