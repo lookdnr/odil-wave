@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib import animation
 from matplotlib.ticker import EngFormatter
 from matplotlib.colors import SymLogNorm
-from typing import Sequence
+from typing import Any
 
 from odil_wave.grid import Grid
 from odil_wave.models.base import VelocityModel
@@ -109,7 +109,7 @@ class Wavefield:
         scaling: str | None = None,
         db_floor=-60.0,  # dynamic range for scaling="dB"
         model: VelocityModel | np.ndarray | None = None,
-        model_levels: int | Sequence[float] = 1,
+        model_levels: int | float = 1,
         model_colour: str = "k",
         model_alpha: float = 0.35,
         model_linewidth: float = 0.9,
@@ -139,7 +139,7 @@ class Wavefield:
         data = amp
 
         # scaling == None...
-        plot_kwargs = dict(cmap=cmap, vmin=-u_max, vmax=u_max)
+        plot_kwargs: dict[str, Any] = dict(cmap=cmap, vmin=-u_max, vmax=u_max)
         cbar_label = "Amplitude"
 
         if scaling == "dB":
@@ -158,7 +158,7 @@ class Wavefield:
             origin="lower",
             extent=(xmin, xmax, ymin, ymax),
             animated=True,
-            kwargs=plot_kwargs,
+            **plot_kwargs,
         )
 
         ax.set_xlabel("x")
