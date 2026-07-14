@@ -92,7 +92,7 @@ class ErrorReport:
                 + "`receivers`.",
             )
 
-    def generate(self):
+    def generate(self) -> Dict[str, object]:
         """Generate full error report"""
 
         # compute residual terms
@@ -107,3 +107,5 @@ class ErrorReport:
         if self.can_compute_trace:
             for name, method in self.trace_methods.items():
                 self.results[name] = method(self.u, self.u_ref, self.receivers)
+
+        return self.results
