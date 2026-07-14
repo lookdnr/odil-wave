@@ -21,15 +21,13 @@ class WaveEquation:
     model: VelocityModel
     time_order: int = 2
     space_order: int = 2
+    bc_angles: Tuple[float, float] = (0.0, 60.0)  # cone of absorption for bc
 
     _utt_op: SecondTimeDerivative = field(init=False)
     _lap_op: Laplacian = field(init=False)
 
     C2L: sp.csr_matrix = field(init=False)  # c^2 * laplacian
 
-    bc_angles: Tuple[float, float] | None = field(
-        init=False, default=None
-    )  # cone of absorption for bc
     _bcs: List[HigdonBC] = field(init=False)  # Higdon ABC
 
     def __post_init__(self):
