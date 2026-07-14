@@ -203,18 +203,23 @@ class WaveEquation:
             for bc in self._bcs
         )
 
+        # bc angles
+        a1, a2 = self._bcs[0].a1, self._bcs[0].a2
+        half_sum = 0.5 * (a1 + a2)
+        prod = a1 * a2
+
         # build blocks
         # previous term (1 in the time stencil - I) plus higdon
-        B0 = (ident + dt * Dn).tocsr()
+        B0 = (ident + half_sum * dt * Dn).tocsr()
 
         # current term (-2 in time stencil) plus Laplacian term masked at boundaries
         # for BC application
         B1 = (
-            -2 * ident - self.dt2 * (sp.diags(mask) @ self.C2L) + self.dt2 * Dnn
+            -2 * ident - self.dt2 * (sp.diags(mask) @ self.C2L) + prod * self.dt2 * Dnn
         ).tocsr()
 
         # next term (1 in time stencil) plus higdon
-        B2 = (ident - dt * Dn).tocsr()
+        B2 = (ident - half_sum * dt * Dn).tocsr()
         return B0, B1, B2
 
     def reduced_operator(self) -> LinearOperator:
