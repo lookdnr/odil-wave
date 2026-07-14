@@ -69,27 +69,25 @@ class ErrorReport:
         if self.can_compute_relative and self.receivers is not None:
             self.can_compute_trace = True
 
-        opts = {
-            "relative residuals": self.can_compute_relative,
-            "absolute residuals": self.can_compute_residuals,
-            "trace residuals": self.can_compute_trace,
+        skipped = {
+            "relative metrics (needs u_ref)": self.can_compute_relative,
+            "residual metrics (needs A and sources)": self.can_compute_residuals,
+            "trace metrics (needs u_ref and receivers)": self.can_compute_trace,
         }
+        skipped = [msg for msg, capable in skipped.items() if not capable]
 
-        warned = False
-        for msg, capable in opts.items():
-            if not capable:
-                warned = True
-                warnings.warn(
-                    f"cannot compute {msg}, they will be skipped in report generation.",
-                    UserWarning,
-                )
+        if len(skipped) == 3:
+            raise ValueError(
+                "ErrorReport cannot compute anything with only `u`: "
+                "pass u_ref for relative metrics, A and sources for residual "
+                "metrics, and u_ref plus receivers for trace metrics."
+            )
 
-        if warned:
-            print(
-                "\nTo compute relative residuals, you must pass `u` and `u_ref`. "
-                + "To compute absolute residuals, you must pass `A` and `sources` ."
-                + "To compute trace residuals, you must pass `u`, `u_ref`, and "
-                + "`receivers`.",
+        if skipped:
+            warnings.warn(
+                "ErrorReport will skip: " + "; ".join(skipped) + ".",
+                UserWarning,
+                stacklevel=2,
             )
 
     def generate(self) -> Dict[str, object]:
