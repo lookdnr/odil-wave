@@ -1,4 +1,6 @@
 from odil_wave.wavefield import Wavefield
+from odil_wave.geometry import Sources
+from odil_wave.operator import WaveEquation
 from .utils import _decode_field, _check_shape
 
 import numpy as np
@@ -23,6 +25,23 @@ def _relative_norm(
     u, u_ref = u.ravel(), u_ref.ravel()  # type: ignore
 
     return np.linalg.norm(u - u_ref, ord) / np.linalg.norm(u_ref, ord)
+
+
+def residual_norm(
+    A: WaveEquation, u: Wavefield | np.ndarray, source: Sources, ord: float = 2.0
+):
+    """Compute the `ord` norm of the residual Au - s"""
+    u = _decode_field(u)
+    s = source.source_matrix()[:, 0]
+    r = A.residual(u, s)
+    return np.linalg.norm(r, ord=ord)
+
+
+def residual(A: WaveEquation, u: Wavefield | np.ndarray, source: Sources):
+    """Compute the the residual field r = Au - s"""
+    u = _decode_field(u)
+    s = source.source_matrix()[:, 0]
+    return A.residual(u, s)
 
 
 def relative_l2(
