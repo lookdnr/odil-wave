@@ -30,22 +30,6 @@ class ErrorReport:
     sources: Sources | None = None
     receivers: Receivers | None = None
 
-    # absolute residuals
-    residual_field: np.ndarray = field(init=False)
-    residual_infty_norm: float = field(init=False)
-    resdiaul_l2_norm: float = field(init=False)
-
-    # relative norms
-    relative_infty_norm: float = field(init=False)
-    relative_l2_norm: float = field(init=False)
-    relative_l2_history: np.ndarray = field(init=False)
-    relative_l2_final_time: np.ndarray = field(init=False)
-    relative_residual: np.ndarray = field(init=False)
-
-    # trace metrics
-    observed_trace_misfit: np.ndarray = field(init=False)
-    norm_of_trace_misfit: float = field(init=False)
-
     # method library: name : func
     residual_methods: ClassVar[Dict[str, Callable]] = {
         "residual_field": residual,
