@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from matplotlib.ticker import EngFormatter
+from matplotlib.colors import SymLogNorm
 from typing import Sequence
 
 from odil_wave.grid import Grid
@@ -105,7 +106,9 @@ class Wavefield:
         fps: int = 20,
         cmap: str = "seismic",
         title: str = "Wavefield history",
-        model: "VelocityModel | np.ndarray | None" = None,
+        scaling: str | None = None,
+        db_floor=-60.0,  # dynamic range for scaling="dB"
+        model: VelocityModel | np.ndarray | None = None,
         model_levels: int | Sequence[float] = 1,
         model_colour: str = "k",
         model_alpha: float = 0.35,
@@ -121,6 +124,10 @@ class Wavefield:
         - a VelocityModel instance (uses model.c), or
         - a raw ndarray with shape (Nx, Ny) or (Ny, Nx).
         """
+        if scaling not in [None, "dB", "SymLog"]:
+            raise ValueError(
+                f"arg `scaling` must be one of 'db', 'SymLog', got {scaling}"
+            )
 
         amp = self._amplitude  # (Nt, Nx, Ny)
         Nt = self.grid.nt
@@ -128,25 +135,37 @@ class Wavefield:
         (xmin, xmax), (ymin, ymax) = self.grid.extent
         t = self.grid.t
 
-        # fixed colour scale
-        vmax = float(np.abs(amp).max()) or 1.0
-        vmin = -vmax
+        u_max = float(np.abs(amp).max()) or 1.0
+        data = amp
+
+        # scaling == None...
+        plot_kwargs = dict(cmap=cmap, vmin=-u_max, vmax=u_max)
+        cbar_label = "Amplitude"
+
+        if scaling == "dB":
+            data = 20.0 * np.log10(np.max(np.abs(amp)) / u_max)
+            data = np.clip(data, db_floor, 0.0)  # 60db range
+            plot_kwargs = dict(cmap="magma", vmin=db_floor, vmax=0.0)
+            cbar_label = "dB rel. max"
+        else:
+            norm = SymLogNorm(linthresh=1e-3 * u_max, vmin=-u_max, vmax=u_max)
+            plot_kwargs = dict(cmap=cmap, norm=norm)
+            cbar_label = "Amplitude"
 
         fig, ax = plt.subplots(figsize=(6, 5))
         im = ax.imshow(
-            amp[0].reshape(Nx, Ny).T,
+            data[0].reshape(Nx, Ny).T,
             origin="lower",
             extent=(xmin, xmax, ymin, ymax),
-            cmap=cmap,
-            vmin=vmin,
-            vmax=vmax,
             animated=True,
+            kwargs=plot_kwargs,
         )
+
         ax.set_xlabel("x")
         ax.set_ylabel("y")
         fmt_t = EngFormatter(unit="s", places=2)
-        ttl = ax.set_title(f"{title}  (t = {fmt_t(t[0])} s)")
-        plt.colorbar(im, ax=ax, label="Amplitude", shrink=0.85)
+        ttl = ax.set_title(f"{title}  (t = {fmt_t(t[0])})")
+        plt.colorbar(im, ax=ax, label=cbar_label, shrink=0.85)
 
         if model is not None:
             if isinstance(model, np.ndarray):
@@ -193,7 +212,7 @@ class Wavefield:
         # update for drawing frames
         def update(frame: int):
             im.set_data(amp[frame].reshape(Nx, Ny).T)
-            ttl.set_text(f"{title}  (t = {fmt_t(t[frame])} s)")
+            ttl.set_text(f"{title} (t = {fmt_t(t[frame])})")
             return im, ttl
 
         anim = animation.FuncAnimation(
