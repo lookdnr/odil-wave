@@ -94,6 +94,10 @@ def l2_error_history(u: np.ndarray, u_ref: np.ndarray) -> np.ndarray:
     return np.linalg.norm(u - u_ref, axis=1) / np.linalg.norm(u_ref)
 
 
-def relative_pde_residual(u, wave_eq, f) -> float:
-    r = wave_eq.residual(_decode_field(u).ravel(), f)
-    return float(np.linalg.norm(r) / np.linalg.norm(wave_eq.dt2 * f))
+def relative_pde_residual(
+    A: WaveEquation, u: Wavefield | np.ndarray, source: Sources
+) -> float:
+    u = _decode_field(u)
+    s = source.source_matrix()[:, 0]
+    r = A.residual(u.ravel(), s)
+    return float(np.linalg.norm(r) / np.linalg.norm(A.dt2 * s))
