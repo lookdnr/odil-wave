@@ -27,6 +27,9 @@ class WaveEquation:
 
     C2L: sp.csr_matrix = field(init=False)  # c^2 * laplacian
 
+    bc_angles: Tuple[float, float] | None = field(
+        init=False, default=None
+    )  # cone of absorption for bc
     _bcs: List[HigdonBC] = field(init=False)  # Higdon ABC
 
     def __post_init__(self):
@@ -47,11 +50,18 @@ class WaveEquation:
         self.dt2 = self.dt**2
 
         # create BC objects for each boundary
+        if self.bc_angles is None:
+            self.bc_angles = (0.0, 60.0)
         self._bcs = []
         bcs = ("left", "right", "top", "bottom")
         for b in bcs:
             bc = HigdonBC(
-                self.wavefield, self.model, self.space_order, self.time_order, b
+                self.wavefield,
+                self.model,
+                self.space_order,
+                self.time_order,
+                b,
+                self.bc_angles,
             )
             self._bcs.append(bc)
 
