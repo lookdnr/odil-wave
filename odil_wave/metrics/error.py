@@ -27,14 +27,27 @@ def _relative_norm(
     return np.linalg.norm(u - u_ref, ord) / np.linalg.norm(u_ref, ord)
 
 
-def residual_norm(
-    A: WaveEquation, u: Wavefield | np.ndarray, source: Sources, ord: float = 2.0
-):
+def _residual_norm(r: np.ndarray, ord: float = 2.0) -> float:
     """Compute the `ord` norm of the residual Au - s"""
+    return np.linalg.norm(r, ord=ord)  # type: ignore
+
+
+def residual_l2(A: WaveEquation, u: Wavefield | np.ndarray, source: Sources) -> float:
+    """Compute the l2 norm of the residual Au - s"""
     u = _decode_field(u)
     s = source.source_matrix()[:, 0]
     r = A.residual(u, s)
-    return np.linalg.norm(r, ord=ord)
+    return _residual_norm(r, ord=2.0)
+
+
+def residual_linfty(
+    A: WaveEquation, u: Wavefield | np.ndarray, source: Sources
+) -> float:
+    """Compute the l2 norm of the residual Au - s"""
+    u = _decode_field(u)
+    s = source.source_matrix()[:, 0]
+    r = A.residual(u, s)
+    return _residual_norm(r, ord=np.inf)
 
 
 def residual(A: WaveEquation, u: Wavefield | np.ndarray, source: Sources):
