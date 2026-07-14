@@ -57,6 +57,7 @@ ALPHA = 1e-3  # alpha constant for circulant preconditioner
 SAVE_GIF = True
 GIF_TITLE = "300kHz source over soft Shepp Logan Phantom"
 GIF_OUTFILE = "SheppLogan-baseline.gif"
+SCALING = "dB"
 
 SAVE_DATA = True
 DATA_OUTFILE = "SheppLogan-baseline.npy"
@@ -159,7 +160,7 @@ if __name__ == "__main__":
 
     if SAVE_GIF:
         print("Animating...")
-        result.solution.animate(title=GIF_TITLE)
+        result.solution.animate(title=GIF_TITLE, filename=GIF_OUTFILE, scaling=SCALING)
         print("GIF saved to", GIF_OUTFILE)
 
     print("Run complete.")
