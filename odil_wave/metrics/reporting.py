@@ -51,6 +51,7 @@ class ErrorReport:
         "residual_field": residual,
         "residual_infty_norm": residual_linfty,
         "residual_l2_norm": residual_l2,
+        "pde_residual_relative": relative_pde_residual,
     }
 
     relative_methods: ClassVar[Dict[str, Callable]] = {
@@ -58,7 +59,6 @@ class ErrorReport:
         "relative_l2_norm": relative_l2,
         "relative_l2_history": l2_error_history,
         "relative_l2_final_time": final_time_l2,
-        "relative_residual": relative_pde_residual,
     }
 
     trace_methods: ClassVar[Dict[str, Callable]] = {
@@ -72,18 +72,7 @@ class ErrorReport:
     can_compute_trace: bool = field(init=False, default=False)
 
     # data results
-    results = {
-        "residual_field": np.ndarray,
-        "residual_infty_norm": float,
-        "residual_l2_norm": float,
-        "relative_infty_norm": float,
-        "relative_l2_norm": float,
-        "relative_l2_history": np.ndarray,
-        "realtive_l2_final_time": float,
-        "realtive_relative_residual": float,
-        "trace_misfit": np.ndarray,
-        "norm_of_trace_misfit": float,
-    }
+    results: Dict[str, object] = field(init=False, default_factory=dict)
 
     def __post_init__(self) -> None:
         # check what was passed
