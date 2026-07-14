@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Callable
+from typing import Dict, Callable, ClassVar
 import warnings
 import numpy as np
 
@@ -47,13 +47,13 @@ class ErrorReport:
     norm_of_trace_misfit: float = field(init=False)
 
     # method library: name : func
-    residual_methods: Dict[str, Callable] = {
+    residual_methods: ClassVar[Dict[str, Callable]] = {
         "residual_field": residual,
         "residual_infty_norm": residual_linfty,
         "residual_l2_norm": residual_l2,
     }
 
-    relative_methods: Dict[str, Callable] = {
+    relative_methods: ClassVar[Dict[str, Callable]] = {
         "relative_infty_norm": relative_linfty,
         "relative_l2_norm": relative_l2,
         "relative_l2_history": l2_error_history,
@@ -61,7 +61,7 @@ class ErrorReport:
         "relative_residual": relative_pde_residual,
     }
 
-    trace_methods: Dict[str, Callable] = {
+    trace_methods: ClassVar[Dict[str, Callable]] = {
         "trace_misfit": trace_misfit,
         "norm_of_trace_misfit": trace_misfit_norm,
     }
