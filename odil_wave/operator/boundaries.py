@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
+from typing import Tuple
 import numpy as np
 import scipy.sparse as sp
+from math import cos, radians
 
 from odil_wave.wavefield import Wavefield
 from odil_wave.models.base import VelocityModel
@@ -37,6 +39,11 @@ class HigdonBC:
     space_order: int
     time_order: int
     boundary: str  # "left" | "right" | "bottom" | "top"
+    angles: Tuple[float, float] = (0.0, 60.0)  # absorption angles in deg
+
+    # coefficients a_i = cos(theta_i)
+    a1: float = field(init=False)
+    a2: float = field(init=False)
 
     bdry_cols: np.ndarray = field(init=False)
     c_bdry: np.ndarray = field(init=False)
@@ -52,6 +59,9 @@ class HigdonBC:
     Dnn: sp.csr_matrix = field(init=False)  # (n_bdry, nx*ny) second normal deriv
 
     def __post_init__(self):
+        self.a1 = cos(radians(self.angles[0]))
+        self.a2 = cos(radians(self.angles[1]))
+
         grid = self.wavefield.grid
         nx, ny = grid.nx, grid.ny
         g = self.space_order // 2
@@ -118,8 +128,11 @@ class HigdonBC:
         # scaled by dt**2 for consistency
         return self.dt2 * (
             utt
-            + self.sign * 2.0 * unt * self.c_bdry  # broadcast over time axis
-            + unn * self.c_bdry**2
+            + self.sign
+            * (self.a1 + self.a2)
+            * unt
+            * self.c_bdry  # broadcast over time axis
+            + (self.a1 + self.a2) * unn * self.c_bdry**2
         )
 
     def apply_transpose(self, R: np.ndarray) -> np.ndarray:
@@ -129,7 +142,13 @@ class HigdonBC:
 
         ATv = np.zeros_like(R)
         ATv[:, self.bdry_cols] += self.dt2 * (self.Dtt.T @ Rb)
-        ATv += self.dt2 * self.sign * 2.0 * (self.Dt.T @ (Rb * self.c_bdry)) @ self.Dn
-        ATv += self.dt2 * (Rb * self.c_bdry**2) @ self.Dnn
+        ATv += (
+            self.dt2
+            * self.sign
+            * (self.a1 + self.a2)
+            * (self.Dt.T @ (Rb * self.c_bdry))
+            @ self.Dn
+        )
+        ATv += self.dt2 * (self.a1 + self.a2) * (Rb * self.c_bdry**2) @ self.Dnn
 
         return ATv
