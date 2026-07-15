@@ -32,7 +32,7 @@ class HigdonBC:
 
     Enforces:
         (cos(theta1)dt + cdn)(cos(theta2)dt + cdn)u
-            = a1a2 u_tt + (a1+a1) c u_nt + c^2u_nn.
+            = a1a2 u_tt + (a1+a2) c u_nt + c^2 u_nn.
 
     where n is the outward normal direction
     """
@@ -127,12 +127,15 @@ class HigdonBC:
         unn = U @ self.Dnn.T  # (nt, n_bdry)
         unt = self.Dt @ (U @ self.Dn.T)  # (nt, n_bdry)
 
-        # u_tt + sign * 2 * u_nt + c_bdry^2 * u_nn
+        # a1a2 * u_tt + sign * (a1+a2) * u_nt + c_bdry^2 * u_nn
         # scaled by dt**2 for consistency
         return self.dt2 * (
             self.a1 * self.a2 * utt
-            + self.sign * unt * self.c_bdry  # broadcast over time axis
-            + (self.a1 + self.a2) * unn * self.c_bdry**2
+            + self.sign
+            * (self.a1 + self.a2)
+            * unt
+            * self.c_bdry  # broadcast over time axis
+            + unn * self.c_bdry**2
         )
 
     def apply_transpose(self, R: np.ndarray) -> np.ndarray:
