@@ -206,18 +206,20 @@ class WaveEquation:
         half_sum = 0.5 * (a1 + a2)
         prod = a1 * a2
 
+        # identity with the Higdon u_tt coefficient on boundary rows:
+        # 1 at interior nodes, a1*a2 at boundary nodes
+        Ia = sp.diags(mask + prod * (1.0 - mask))
+
         # build blocks
         # previous term (1 in the time stencil - I) plus higdon
-        B0 = (ident + half_sum * dt * Dn).tocsr()
+        B0 = (Ia + half_sum * dt * Dn).tocsr()
 
         # current term (-2 in time stencil) plus Laplacian term masked at boundaries
         # for BC application
-        B1 = (
-            -2 * ident - self.dt2 * (sp.diags(mask) @ self.C2L) + prod * self.dt2 * Dnn
-        ).tocsr()
+        B1 = (-2 * Ia - self.dt2 * (sp.diags(mask) @ self.C2L) + self.dt2 * Dnn).tocsr()
 
         # next term (1 in time stencil) plus higdon
-        B2 = (ident - half_sum * dt * Dn).tocsr()
+        B2 = (Ia - half_sum * dt * Dn).tocsr()
         return B0, B1, B2
 
     def reduced_operator(self) -> LinearOperator:
