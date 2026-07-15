@@ -30,8 +30,11 @@ def _first_diff_spatial(ord: int, n: int, h: float, ghost_width: int) -> sp.csr_
 class HigdonBC:
     """Higdon 2nd order ABC rows for one boundary edge.
 
-    Enforces: u_tt + sign * 2 * u_nt + c_bdry^2 * u_nn = 0
-    where n is the outward normal direction.
+    Enforces:
+        (cos(theta1)dt + cdn)(cos(theta2)dt + cdn)u
+            = a1a2 u_tt + (a1+a1) c u_nt + c^2u_nn.
+
+    where n is the outward normal direction
     """
 
     wavefield: Wavefield
@@ -127,11 +130,8 @@ class HigdonBC:
         # u_tt + sign * 2 * u_nt + c_bdry^2 * u_nn
         # scaled by dt**2 for consistency
         return self.dt2 * (
-            utt
-            + self.sign
-            * (self.a1 + self.a2)
-            * unt
-            * self.c_bdry  # broadcast over time axis
+            self.a1 * self.a2 * utt
+            + self.sign * unt * self.c_bdry  # broadcast over time axis
             + (self.a1 + self.a2) * unn * self.c_bdry**2
         )
 
@@ -141,7 +141,7 @@ class HigdonBC:
         Rb = R[:, self.bdry_cols]  # boundary residual (nt, n_bdry)
 
         ATv = np.zeros_like(R)
-        ATv[:, self.bdry_cols] += self.dt2 * (self.Dtt.T @ Rb)
+        ATv[:, self.bdry_cols] += self.dt2 * self.a1 * self.a2 * (self.Dtt.T @ Rb)
         ATv += (
             self.dt2
             * self.sign
@@ -149,6 +149,6 @@ class HigdonBC:
             * (self.Dt.T @ (Rb * self.c_bdry))
             @ self.Dn
         )
-        ATv += self.dt2 * (self.a1 + self.a2) * (Rb * self.c_bdry**2) @ self.Dnn
+        ATv += self.dt2 * (Rb * self.c_bdry**2) @ self.Dnn
 
         return ATv
