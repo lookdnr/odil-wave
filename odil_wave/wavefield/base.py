@@ -211,7 +211,7 @@ class Wavefield:
 
         # update for drawing frames
         def update(frame: int):
-            im.set_data(amp[frame].reshape(Nx, Ny).T)
+            im.set_data(data[frame].reshape(Nx, Ny).T)
             ttl.set_text(f"{title} (t = {fmt_t(t[frame])})")
             return im, ttl
 
