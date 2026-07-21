@@ -86,7 +86,7 @@ def plot_singular_vals(ax, s_A, s_A_precond):
     """Plot log(singular_vals) for the two matrices"""
     ax.semilogy(s_A, color="royalblue", label=r"$A$")
     ax.semilogy(s_A_precond, color="orange", label=r"$M^{-1}A$")
-    ax.set_title(r"Singular value distribution")
+    ax.set_title(r"Singular value distribution", fontsize=14)
     ax.set_ylabel("Singular values")
     ax.set_xlabel("Singular value index")
     ax.set_yscale("log")
@@ -128,7 +128,7 @@ def plot_sval_dist(ax, s_A, s_A_precond):
     )
     ax.hist(s_A, bins=bins, alpha=0.6, color="royalblue", label=r"$A$")
     ax.hist(s_A_precond, bins=bins, alpha=0.6, color="orange", label=r"$M^{-1}A$")
-    ax.set_title("Histogram of singular values")
+    ax.set_title("Histogram of singular values", fontsize=14)
     ax.set_xlabel("Singular values")
     ax.set_ylabel("Count")
     ax.set_xscale("log")
@@ -167,14 +167,16 @@ def main():
     spy(axes[0, 0], A_dense, color="royalblue")
     axes[0, 0].set_title(
         rf"$A$, {A_dense.shape[0]} $\times$ {A_dense.shape[1]}, "
-        + rf"$\text{{cond(A)}} = {cond_A:.1e}$"
+        + rf"$\text{{cond(A)}} = {cond_A:.1e}$",
+        fontsize=14,
     )
     label_panel(axes[0, 0], "a")
 
     spy(axes[0, 1], M_dense, color="orange")
     axes[0, 1].set_title(
         rf"$M$, {M_dense.shape[0]} $\times$ {M_dense.shape[1]}, "
-        + rf"$\text{{cond(M^{-1}A)}} = {cond_MA:.1e}$"
+        + rf"$\text{{cond}}(M^{{-1}}A) = {cond_MA:.1e}$",
+        fontsize=14,
     )
     label_panel(axes[0, 1], "b")
 
