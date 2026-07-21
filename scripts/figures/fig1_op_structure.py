@@ -6,6 +6,7 @@ operators which form the global wave equation operator matrix
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 from odil_wave import Grid, HomogeneousModel, Wavefield, WaveEquation
 
@@ -100,32 +101,115 @@ def annotate_bttb(ax, ns, block_idx=5, color="crimson"):
         ax.add_patch(block_rect(i2, col, edgecolor=color, **style))
 
     ax.text(
-        350,
-        130,
+        90,
+        250,
         r"Toeplitz blocks",
         color=color,
         ha="center",
         va="top",
-        fontsize=12,
+        fontsize=14,
         clip_on=False,
     )
 
+    # horiztonal arrow
     ax.annotate(
         "",
-        xy=(180, 140),
-        xytext=(300, 140),
+        xy=(220, 260),
+        xytext=(145, 257),
         color="crimson",
         fontsize=12,
         arrowprops=dict(arrowstyle="->", color=color, lw=1.0),
         annotation_clip=False,
     )
 
+    # upwards arrow
     ax.annotate(
         "",
-        xy=(290, 250),
-        xytext=(300, 140),
+        xy=(110, 150),
+        xytext=(100, 245),
         arrowprops=dict(arrowstyle="->", color=color, lw=1.0),
         annotation_clip=False,
+    )
+
+
+def add_triplet_inset(ax, A, ns, block_idx=5, color="crimson"):
+    """Zoom one block row to show the three constituent Toeplitz blocks."""
+    i = block_idx
+    x0 = (i - 1) * ns - 0.5
+    x1 = (i + 2) * ns - 0.5
+    y0 = i * ns - 0.5
+    y1 = (i + 1) * ns - 0.5
+
+    axins = inset_axes(
+        ax,
+        width="58%",
+        height="54%",
+        loc="upper left",
+        bbox_to_anchor=(0.4, 0.12, 1, 1),
+        bbox_transform=ax.transAxes,
+        borderpad=0.0,
+    )
+    axins.spy(A, markersize=1.4, color="royalblue")
+    axins.set_xlim(x0, x1)
+    axins.patch.set_visible(False)
+    for spine in axins.spines.values():
+        spine.set_visible(False)
+
+    ymin, ymax = ax.get_ylim()
+    if ymin > ymax:
+        axins.set_ylim(y1, y0)
+    else:
+        axins.set_ylim(y0, y1)
+
+    axins.set_xticks([])
+    axins.set_yticks([])
+
+    # mirror the highlighted Toeplitz triplet in the inset.
+    for col, style in [
+        (i - 1, dict(linestyle=":", lw=2)),
+        (i, dict(lw=2)),
+        (i + 1, dict(linestyle=":", lw=2)),
+    ]:
+        axins.add_patch(
+            mpatches.Rectangle(
+                (col * ns - 0.5, i * ns - 0.5),
+                ns,
+                ns,
+                fill=False,
+                linewidth=2,
+                edgecolor=color,
+                zorder=6,
+                **style,
+            )
+        )
+
+    # force connectors
+    ax.add_artist(
+        mpatches.ConnectionPatch(
+            xyA=(x0, y0),
+            coordsA="data",
+            axesA=ax,
+            xyB=(0, 1),
+            coordsB="axes fraction",
+            axesB=axins,
+            color=color,
+            lw=1.0,
+            clip_on=False,
+        )
+    )
+
+    ax.add_artist(
+        mpatches.ConnectionPatch(
+            xyA=(x1, y1),
+            coordsA="data",
+            axesA=ax,
+            xyB=(1, 0),
+            coordsB="axes fraction",
+            axesB=axins,
+            color=color,
+            lw=1.0,
+            clip_on=False,
+        )
     )
 
 
@@ -152,7 +236,7 @@ def main():
     A = assemble_A(Dtt, we.C2L, we.nt, ns, we.dt2)
 
     # plot sparse structure
-    fig = plt.figure(figsize=(10, 9))
+    fig = plt.figure(figsize=(10, 9), constrained_layout=True)
     gs = fig.add_gridspec(2, 6, height_ratios=[1, 2])
 
     ax_dxx = fig.add_subplot(gs[0, 0:2])
@@ -169,11 +253,14 @@ def main():
     ax_dyy.set_title(rf"$D_{{yy}}$, {Dyy.shape[0]} $\times$ {Dyy.shape[1]}")
 
     ax_utt.spy(Dtt, markersize=5, color="royalblue")  # type: ignore
-    ax_utt.set_title(rf"$D_{{tt}}$, {Dtt.shape[0]} $\times$ {Dtt.shape[1]}")
+    ax_utt.set_title(
+        r"$D_{{tt}}$, " + rf"{Dtt.shape[0]} $\times$ {Dtt.shape[1]}"
+    )  # type: ignore
 
     ax_A.spy(A, markersize=0.5, color="royalblue")
     ax_A.set_title(rf"$A$, {A.shape[0]} $\times$ {A.shape[1]}")  # type: ignore
     annotate_bttb(ax_A, ns=ns)
+    add_triplet_inset(ax_A, A, ns=ns)
 
     for ax in axes:
         ax.set_xticks([])
@@ -182,7 +269,6 @@ def main():
     # draw little arrow
     add_ij_axes(axes[0])
 
-    fig.tight_layout()
     fig.savefig(OUTFILE, dpi=300)
     print(f"Saved figure to {OUTFILE}")
 
