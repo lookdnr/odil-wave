@@ -182,9 +182,8 @@ def main():
     # draw little arrow
     add_ij_axes(axes[0])
 
-    fig.suptitle("Sparse structure of the wave equation operators", fontsize=20)
     fig.tight_layout()
-    fig.savefig(OUTFILE, dpi=200)
+    fig.savefig(OUTFILE, dpi=300)
     print(f"Saved figure to {OUTFILE}")
 
 
