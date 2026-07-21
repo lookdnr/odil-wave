@@ -254,8 +254,8 @@ def main():
 
     ax_utt.spy(Dtt, markersize=5, color="royalblue")  # type: ignore
     ax_utt.set_title(
-        r"$D_{{tt}}$, " + rf"{Dtt.shape[0]} $\times$ {Dtt.shape[1]}"
-    )  # type: ignore
+        r"$D_{{tt}}$, " + rf"{Dtt.shape[0]} $\times$ {Dtt.shape[1]}"  # type: ignore
+    )
 
     ax_A.spy(A, markersize=0.5, color="royalblue")
     ax_A.set_title(rf"$A$, {A.shape[0]} $\times$ {A.shape[1]}")  # type: ignore
