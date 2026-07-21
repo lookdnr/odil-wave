@@ -25,6 +25,20 @@ def assemble_A(Dtt, C2L, nt, ns, dt2):
     return dt2 * (sp.kron(Dtt, I_ns) - sp.kron(I_nt, C2L))
 
 
+def label_panel(ax, label):
+    """Tag a panel with a bold (a)/(b)/... label for subfigure referencing."""
+    ax.text(
+        -0.05,
+        1.05,
+        f"({label})",
+        transform=ax.transAxes,
+        fontsize=14,
+        fontweight="bold",
+        va="bottom",
+        ha="right",
+    )
+
+
 def add_ij_axes(ax, loc=(0.1, -0.4), length=0.4, color="black", fontsize=14):
     x0, y0 = loc
     arrow_kw = dict(arrowstyle="-|>", color=color, lw=1.5, shrinkA=0, shrinkB=0)
@@ -248,19 +262,23 @@ def main():
 
     ax_dxx.spy(Dxx, markersize=10, color="royalblue")
     ax_dxx.set_title(rf"$D_{{xx}}$, {Dxx.shape[0]} $\times$ {Dxx.shape[1]}")
+    label_panel(ax_dxx, "a")
 
     ax_dyy.spy(Dyy, markersize=10, color="royalblue")
     ax_dyy.set_title(rf"$D_{{yy}}$, {Dyy.shape[0]} $\times$ {Dyy.shape[1]}")
+    label_panel(ax_dyy, "b")
 
     ax_utt.spy(Dtt, markersize=5, color="royalblue")  # type: ignore
     ax_utt.set_title(
         r"$D_{{tt}}$, " + rf"{Dtt.shape[0]} $\times$ {Dtt.shape[1]}"  # type: ignore
     )
+    label_panel(ax_utt, "c")
 
     ax_A.spy(A, markersize=0.5, color="royalblue")
     ax_A.set_title(rf"$A$, {A.shape[0]} $\times$ {A.shape[1]}")  # type: ignore
     annotate_bttb(ax_A, ns=ns)
     add_triplet_inset(ax_A, A, ns=ns)
+    label_panel(ax_A, "d")
 
     for ax in axes:
         ax.set_xticks([])

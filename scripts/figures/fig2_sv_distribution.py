@@ -106,6 +106,20 @@ def spy(ax, matrix, color="royalblue", threshold=1e-8):
     ax.set_yticks([])
 
 
+def label_panel(ax, label):
+    """Tag a panel with a bold (a)/(b)/... label for subfigure referencing."""
+    ax.text(
+        -0.05,
+        1.05,
+        f"({label})",
+        transform=ax.transAxes,
+        fontsize=14,
+        fontweight="bold",
+        va="bottom",
+        ha="right",
+    )
+
+
 def plot_sval_dist(ax, s_A, s_A_precond):
     bins = np.logspace(
         np.log10(min(s_A.min(), s_A_precond.min())),
@@ -155,15 +169,20 @@ def main():
         rf"$A$, {A_dense.shape[0]} $\times$ {A_dense.shape[1]}, "
         + rf"$\text{{cond(A)}} = {cond_A:.1e}$"
     )
+    label_panel(axes[0, 0], "a")
 
     spy(axes[0, 1], M_dense, color="orange")
     axes[0, 1].set_title(
         rf"$M$, {M_dense.shape[0]} $\times$ {M_dense.shape[1]}, "
-        + rf"$\text{{cond(M)}} = {cond_MA:.1e}$"
+        + rf"$\text{{cond(M^{-1}A)}} = {cond_MA:.1e}$"
     )
+    label_panel(axes[0, 1], "b")
 
     plot_singular_vals(axes[1, 0], s_A, s_MA)
+    label_panel(axes[1, 0], "c")
+
     plot_sval_dist(axes[1, 1], s_A, s_MA)
+    label_panel(axes[1, 1], "d")
 
     fig.tight_layout()
     fig.savefig(OUTFILE, dpi=300, bbox_inches="tight")
