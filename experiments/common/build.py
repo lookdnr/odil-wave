@@ -36,7 +36,7 @@ def build(cfg: RunConfig) -> Tuple[Wavefield, GaussNewtonOptimiser]:
         cfl_safety=cfg.cfl_safety,
     )
 
-    model = MODELS[cfg.model](grid)
+    model = MODELS[cfg.model](grid, **cfg.model_kwargs)
     src = Sources(grid, n_sources=1, source_locs=(cfg.source_loc,), f0=cfg.f0)
     wf = Wavefield(grid)
     we = WaveEquation(wf, model, time_order=cfg.time_order, space_order=cfg.space_order)
