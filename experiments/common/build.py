@@ -30,7 +30,15 @@ def build_source(cfg: RunConfig, grid: Grid) -> Sources:
 
 
 def build_receivers(cfg: RunConfig, grid: Grid) -> Receivers:
-    return Receivers(grid, receiver_locs=cfg.recv_locs)
+    return Receivers(
+        grid,
+        mode=cfg.recv_mode,
+        receiver_locs=cfg.recv_locs,
+        n_receivers=cfg.n_recvs,
+        a_frac=cfg.a_frac,
+        b_frac=cfg.b_frac,
+        ring_centre=cfg.ring_centre,
+    )
 
 
 def build_grid(cfg: RunConfig) -> Grid:
