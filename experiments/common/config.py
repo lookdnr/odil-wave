@@ -9,7 +9,9 @@ class RunConfig:
     nx: int
     ny: int
     xmax: float
+    xmin: float
     ymax: float
+    ymin: float
     c_min: float
     c_max: float
     cfl_safety: float
