@@ -34,7 +34,7 @@ class ForwardLoss(DiscreteLoss):
         self.evaluations += 1
 
         g = self._grad(residual)
-        if self.evaluations % self.log_every == 0:
+        if self.do_logging and self.evaluations % self.log_every == 0:
             self.callback.log(residual, g)
 
         return L, g

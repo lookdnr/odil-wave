@@ -19,8 +19,12 @@ class DiscreteLoss(ABC):
             callback if callback is not None else SolveRecorder()
         )  # loss history callback
 
+        self.do_logging = True
         if log_every < 0:
             raise ValueError(f"arg log_every must be >= 0, got {log_every}")
+        if log_every == 0:
+            self.do_logging = False
+
         self.log_every = log_every
         self.evaluations = 0  # counter for number of loss evaluations
 
