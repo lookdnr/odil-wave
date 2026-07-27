@@ -17,14 +17,19 @@ class RunConfig:
     c_max: float
     cfl_safety: float
 
-    # source
-    f0: float
-    source_loc: Tuple[float, float]
-    recv_locs: Tuple[Tuple[float, float]]
-
     # discretisation
     time_order: int
     space_order: int
+
+    # source
+    f0: float
+    source_loc: Tuple[float, float]
+    n_recvs: int = 1
+    recv_locs: Tuple[Tuple[float, float]] | None = None
+    recv_mode: str = "custom"
+    a_frac: float = 0.55
+    b_frac: float = 0.7
+    ring_centre: Tuple[float, float] = (0.0, 0.0)
 
     # model
     model: str = "homogeneous"
@@ -40,6 +45,7 @@ class RunConfig:
     alpha: float = 1e-3
 
     def __post_init__(self):
+        assert self.recv_mode in ["custom", "ring"]
         assert self.model in ["homogeneous", "inclusion", "shepp-logan"]
         assert self.solver in ["odil", "stride"]
         assert self.method in ["paradiag", "gmres"]
