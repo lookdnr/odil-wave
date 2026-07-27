@@ -9,6 +9,7 @@ from odil_wave import (
     OverDensityModel,
     Wavefield,
     Sources,
+    Receivers,
     WaveEquation,
     ForwardLoss,
     Problem,
@@ -24,16 +25,12 @@ MODELS = {
 }
 
 
-def build_problem(
-    cfg: RunConfig,
-) -> Tuple[Grid, VelocityModel, Sources, Wavefield, GaussNewtonOptimiser]:
-    """Build the components of an experiment run, the wavefield and optimiser"""
-    grid = build_grid(cfg)
-    model = build_model(cfg, grid)
-    src = Sources(grid, n_sources=1, source_locs=(cfg.source_loc,), f0=cfg.f0)
-    wf = Wavefield(grid)
-    we = WaveEquation(wf, model, time_order=cfg.time_order, space_order=cfg.space_order)
-    return grid, model, src, wf, GaussNewtonOptimiser(ForwardLoss(Problem(we, src)))
+def build_source(cfg: RunConfig, grid: Grid) -> Sources:
+    return Sources(grid, n_sources=1, source_locs=(cfg.source_loc,), f0=cfg.f0)
+
+
+def build_receivers(cfg: RunConfig, grid: Grid) -> Receivers:
+    return Receivers(grid, receiver_locs=cfg.recv_locs, n_receivers=len(cfg.recv_locs))
 
 
 def build_grid(cfg: RunConfig) -> Grid:
@@ -52,3 +49,23 @@ def build_grid(cfg: RunConfig) -> Grid:
 
 def build_model(cfg: RunConfig, grid: Grid) -> VelocityModel:
     return MODELS[cfg.model](grid, **cfg.model_kwargs)
+
+
+def build_problem(
+    cfg: RunConfig,
+) -> Tuple[Grid, VelocityModel, Sources, Receivers, Wavefield, GaussNewtonOptimiser]:
+    """Build the components of an experiment run, the wavefield and optimiser"""
+    grid = build_grid(cfg)
+    model = build_model(cfg, grid)
+    src = build_source(cfg, grid)
+    recvs = build_receivers(cfg, grid)
+    wf = Wavefield(grid)
+    we = WaveEquation(wf, model, time_order=cfg.time_order, space_order=cfg.space_order)
+    return (
+        grid,
+        model,
+        src,
+        recvs,
+        wf,
+        GaussNewtonOptimiser(ForwardLoss(Problem(we, src))),
+    )
