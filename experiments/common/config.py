@@ -19,7 +19,8 @@ class RunConfig:
 
     # source
     f0: float
-    source_loc: tuple[float, float]
+    source_loc: Tuple[float, float]
+    recv_locs: Tuple[Tuple[float, float]]
 
     # discretisation
     time_order: int
