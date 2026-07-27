@@ -30,7 +30,7 @@ YMAX = 0.2
 # wave speed and cfl
 BACKGROUND_C = 1480.0  # water
 C_MAX = 1580.0
-CFL_SAFETY = 0.8  # sufficient for 6th order in space
+CFL_SAFETY = 0.7  # sufficient for 6th order in space
 
 # source control
 N_SOURCES = 1
@@ -40,10 +40,14 @@ F0 = 185000  # Hz
 # model
 MASK_SKULL = True
 INTERIOR_FILL = 0.95
+CONTRAST = 200
 
 # discretisation
 TIME_ORDER = 2
 SPACE_ORDER = 6
+
+# boundary config
+BC_ANGLES = (0.0, 60.0)
 
 # optimiser
 METHOD = "paradiag"
@@ -53,6 +57,7 @@ ALPHA = 1e-3  # alpha constant for circulant preconditioner
 SAVE_GIF = True
 GIF_TITLE = "300kHz source over soft Shepp Logan Phantom"
 GIF_OUTFILE = "SheppLogan-baseline.gif"
+SCALING = "dB"
 
 SAVE_DATA = True
 DATA_OUTFILE = "SheppLogan-baseline.npy"
@@ -103,6 +108,7 @@ if __name__ == "__main__":
         background_c=BACKGROUND_C,
         interior_fill=INTERIOR_FILL,
         mask_skull=MASK_SKULL,
+        contrast=CONTRAST,
     )
     print("Model OK")
 
@@ -113,7 +119,11 @@ if __name__ == "__main__":
     print("Wavefield OK")
 
     equation = WaveEquation(
-        wavefield, model, time_order=TIME_ORDER, space_order=SPACE_ORDER
+        wavefield,
+        model,
+        time_order=TIME_ORDER,
+        space_order=SPACE_ORDER,
+        bc_angles=BC_ANGLES,
     )
     print("Equation OK")
 
@@ -150,7 +160,7 @@ if __name__ == "__main__":
 
     if SAVE_GIF:
         print("Animating...")
-        result.solution.animate(title=GIF_TITLE)
+        result.solution.animate(title=GIF_TITLE, filename=GIF_OUTFILE, scaling=SCALING)
         print("GIF saved to", GIF_OUTFILE)
 
     print("Run complete.")

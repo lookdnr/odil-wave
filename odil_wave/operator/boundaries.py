@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
+from typing import Tuple
 import numpy as np
 import scipy.sparse as sp
+from math import cos, radians
 
 from odil_wave.wavefield import Wavefield
 from odil_wave.models.base import VelocityModel
@@ -28,8 +30,11 @@ def _first_diff_spatial(ord: int, n: int, h: float, ghost_width: int) -> sp.csr_
 class HigdonBC:
     """Higdon 2nd order ABC rows for one boundary edge.
 
-    Enforces: u_tt + sign * 2 * u_nt + c_bdry^2 * u_nn = 0
-    where n is the outward normal direction.
+    Enforces:
+        (cos(theta1)dt + cdn)(cos(theta2)dt + cdn)u
+            = a1a2 u_tt + (a1+a2) c u_nt + c^2 u_nn.
+
+    where n is the outward normal direction
     """
 
     wavefield: Wavefield
@@ -37,6 +42,11 @@ class HigdonBC:
     space_order: int
     time_order: int
     boundary: str  # "left" | "right" | "bottom" | "top"
+    angles: Tuple[float, float] = (0.0, 60.0)  # absorption angles in deg
+
+    # coefficients a_i = cos(theta_i)
+    a1: float = field(init=False)
+    a2: float = field(init=False)
 
     bdry_cols: np.ndarray = field(init=False)
     c_bdry: np.ndarray = field(init=False)
@@ -52,6 +62,9 @@ class HigdonBC:
     Dnn: sp.csr_matrix = field(init=False)  # (n_bdry, nx*ny) second normal deriv
 
     def __post_init__(self):
+        self.a1 = cos(radians(self.angles[0]))
+        self.a2 = cos(radians(self.angles[1]))
+
         grid = self.wavefield.grid
         nx, ny = grid.nx, grid.ny
         g = self.space_order // 2
@@ -114,11 +127,14 @@ class HigdonBC:
         unn = U @ self.Dnn.T  # (nt, n_bdry)
         unt = self.Dt @ (U @ self.Dn.T)  # (nt, n_bdry)
 
-        # u_tt + sign * 2 * u_nt + c_bdry^2 * u_nn
+        # a1a2 * u_tt + sign * (a1+a2) * u_nt + c_bdry^2 * u_nn
         # scaled by dt**2 for consistency
         return self.dt2 * (
-            utt
-            + self.sign * 2.0 * unt * self.c_bdry  # broadcast over time axis
+            self.a1 * self.a2 * utt
+            + self.sign
+            * (self.a1 + self.a2)
+            * unt
+            * self.c_bdry  # broadcast over time axis
             + unn * self.c_bdry**2
         )
 
@@ -128,8 +144,14 @@ class HigdonBC:
         Rb = R[:, self.bdry_cols]  # boundary residual (nt, n_bdry)
 
         ATv = np.zeros_like(R)
-        ATv[:, self.bdry_cols] += self.dt2 * (self.Dtt.T @ Rb)
-        ATv += self.dt2 * self.sign * 2.0 * (self.Dt.T @ (Rb * self.c_bdry)) @ self.Dn
+        ATv[:, self.bdry_cols] += self.dt2 * self.a1 * self.a2 * (self.Dtt.T @ Rb)
+        ATv += (
+            self.dt2
+            * self.sign
+            * (self.a1 + self.a2)
+            * (self.Dt.T @ (Rb * self.c_bdry))
+            @ self.Dn
+        )
         ATv += self.dt2 * (Rb * self.c_bdry**2) @ self.Dnn
 
         return ATv
