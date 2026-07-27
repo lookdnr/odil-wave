@@ -330,3 +330,13 @@ I am also working to make the preconditioner more efficient. Namely by exploitin
 - the input vector u is real
 - as a result, the coefficients come in complex conjugate pairs
 - this means we can just factorise every other pair and take the conjugate of it on exit
+
+## 20/07: weekly meeting
+
+Note: I forgot to push the notes for this week. I also realise I had not written an entry for the week prior. We held that meeting on the 15th, and there was not much to report.
+
+In the last week, I have taken a step back from code. I was feeling a little burnt out and blinkered, so I decided to direct my energy at something else. I wrote up a significant chunk of the methodology and bought myself a little breathing room for later down the line. I have also settled on a definitive research question. My objective is to
+
+> Define the regimes where ODIL is useful by analysing its error, performance, and wave-equation specifics versus a time stepping finite difference method.
+
+After working on ODIL for months, I have realised its power is somewhat limited. There just does not seem to be a situation where time stepping is not preferable. My contribution will be a thorough investigation into whether or not this is true, and if there are any regimes where ODIl proves to be more useful. I hope my paper will act as a guideline for future use cases of ODIL in solving the wave equation.
