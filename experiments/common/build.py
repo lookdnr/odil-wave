@@ -24,11 +24,20 @@ MODELS = {
 }
 
 
-def build(
+def build_problem(
     cfg: RunConfig,
 ) -> Tuple[Grid, VelocityModel, Sources, Wavefield, GaussNewtonOptimiser]:
     """Build the components of an experiment run, the wavefield and optimiser"""
-    grid = Grid(
+    grid = build_grid(cfg)
+    model = build_model(cfg, grid)
+    src = Sources(grid, n_sources=1, source_locs=(cfg.source_loc,), f0=cfg.f0)
+    wf = Wavefield(grid)
+    we = WaveEquation(wf, model, time_order=cfg.time_order, space_order=cfg.space_order)
+    return grid, model, src, wf, GaussNewtonOptimiser(ForwardLoss(Problem(we, src)))
+
+
+def build_grid(cfg: RunConfig) -> Grid:
+    return Grid(
         xmin=cfg.xmin,
         xmax=cfg.xmax,
         ymin=cfg.ymin,
@@ -40,8 +49,6 @@ def build(
         cfl_safety=cfg.cfl_safety,
     )
 
-    model = MODELS[cfg.model](grid, **cfg.model_kwargs)
-    src = Sources(grid, n_sources=1, source_locs=(cfg.source_loc,), f0=cfg.f0)
-    wf = Wavefield(grid)
-    we = WaveEquation(wf, model, time_order=cfg.time_order, space_order=cfg.space_order)
-    return grid, model, src, wf, GaussNewtonOptimiser(ForwardLoss(Problem(we, src)))
+
+def build_model(cfg: RunConfig, grid: Grid) -> VelocityModel:
+    return MODELS[cfg.model](grid, **cfg.model_kwargs)
