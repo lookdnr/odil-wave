@@ -13,7 +13,8 @@ PUBLIC_API = [
     "Wavefield",
     "WaveEquation",
     "Problem",
-    "LossTape",
+    "SolveRecorder",
+    "SolveResult",
     "ForwardLoss",
     "LBFGSB",
 ]
@@ -36,7 +37,7 @@ SUBMODULES = [
     "odil_wave.operator.wave",
     "odil_wave.loss.base",
     "odil_wave.loss.forward",
-    "odil_wave.loss.utils",
+    "odil_wave.metrics.recording",
     "odil_wave.optimisation.base",
     "odil_wave.optimisation.scipy",
     "odil_wave.optimisation.gauss_newton",

@@ -10,7 +10,7 @@ from .boundaries import HigdonBC
 
 import numpy as np
 import scipy.sparse as sp
-from scipy.sparse.linalg import LinearOperator
+from scipy.sparse.linalg import LinearOperator, factorized
 
 
 @dataclass
@@ -261,3 +261,19 @@ class WaveEquation:
         rhs[0] -= B1 @ f1 + B2 @ f0
         rhs[1] -= B2 @ f1
         return rhs.ravel(), f0, f1
+
+    def march(self, f: np.ndarray) -> np.ndarray:
+        """Solve the reduced system exactly by forward substitution in time.
+        Useful for generating reference solutions.
+        """
+        B0, B1, B2 = self.reduced_blocks
+        ns = self.nx * self.ny
+        F = f.reshape(self.nt, ns)
+        solve = factorized(B0.tocsc())  # factorise once and reuse
+
+        U = np.empty((self.nt, ns))
+        U[0], U[1] = F[0], F[1]  # ICs, same convention as reduced_rhs
+        for m in range(1, self.nt - 1):
+            #  B0 u_{m+1} + B1 u_m + B2 u_{m-1} = dt^2 f_m
+            U[m + 1] = solve(self.dt2 * F[m] - B1 @ U[m] - B2 @ U[m - 1])
+        return U

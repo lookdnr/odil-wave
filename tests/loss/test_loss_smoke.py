@@ -1,6 +1,6 @@
 import numpy as np
 
-from odil_wave import LossTape
+from odil_wave import SolveRecorder
 
 
 def test_problem_instantiates(problem, grid):
@@ -16,6 +16,6 @@ def test_forward_loss_evaluates(loss, grid):
 
 
 def test_loss_tape_instantiates():
-    tape = LossTape()
-    tape.log(1.0, np.zeros(3))
-    assert tape.history["loss"] == [1.0]
+    rec = SolveRecorder()
+    rec.log(np.zeros(3))
+    assert rec.outers[0].res == 0.0

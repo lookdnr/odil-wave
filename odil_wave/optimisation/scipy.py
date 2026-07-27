@@ -1,12 +1,10 @@
-from typing import Tuple
-
 import scipy.optimize as scopt
 import numpy as np
 
 from .base import Optimiser
 from odil_wave.loss import DiscreteLoss
 from odil_wave.wavefield import Wavefield
-from odil_wave.loss.utils import LossTape
+from odil_wave.metrics import SolveRecorder, SolveResult
 
 from .utils import create_u0
 
@@ -26,12 +24,27 @@ class ScipyOptimiser(Optimiser):
         ftol=1e-8,
         gtol=1e-10,
         callback=None,
-    ) -> Tuple[Wavefield, LossTape]:
+    ) -> SolveResult:
 
         self.opts.update(maxiter=maxiter, ftol=ftol, gtol=gtol)
 
         grid = self.loss.problem.wavefield.grid
-        N = grid.nt * grid.nx * grid.ny
+        nt, nx, ny = grid.nt, grid.nx, grid.ny
+        N = nt * nx * ny
+        s = self.loss.problem.sources[:, 0]
+
+        meta = {
+            "method": self.method,
+            "maxiter": maxiter,
+            "ftol": ftol,
+            "gtol": gtol,
+            "nt": nt,
+            "nx": nx,
+            "ny": ny,
+            "norm_s": np.linalg.norm(s),
+        }
+        rec = SolveRecorder(meta)
+        self.loss.callback = rec
 
         u0 = create_u0(u0, N)
 
@@ -43,14 +56,15 @@ class ScipyOptimiser(Optimiser):
             callback=callback,
             options=self.opts,
         )
-        self.loss.callback.result = result
 
         if not result.success:
             print(f"Warning: optimisation did not converge: {result.message}")
 
         wf = Wavefield(grid=grid)
         wf.flat_data = result.x
-        return wf, self.loss.callback
+        return rec.finalise(
+            wf, nit=result.nit, success=result.success, message=str(result.message)
+        )
 
 
 class LBFGSB(ScipyOptimiser):

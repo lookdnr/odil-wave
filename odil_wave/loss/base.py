@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Tuple
-from .utils import LossTape
+from odil_wave.metrics.recording import SolveRecorder
 from odil_wave.utils import Problem
 import numpy as np
 
@@ -11,13 +11,21 @@ class DiscreteLoss(ABC):
     def __init__(
         self,
         problem: Problem,
-        callback: LossTape | None = None,
+        callback: SolveRecorder | None = None,
+        log_every: int = 1,
     ):
         self.problem = problem  # loss configuration
         self.callback = (
-            callback if callback is not None else LossTape()
+            callback if callback is not None else SolveRecorder()
         )  # loss history callback
 
+        self.do_logging = True
+        if log_every < 0:
+            raise ValueError(f"arg log_every must be >= 0, got {log_every}")
+        if log_every == 0:
+            self.do_logging = False
+
+        self.log_every = log_every
         self.evaluations = 0  # counter for number of loss evaluations
 
     @abstractmethod
