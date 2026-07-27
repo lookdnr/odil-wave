@@ -4,6 +4,7 @@ from typing import List, Dict
 import json
 from pathlib import Path
 from datetime import datetime
+import warnings
 
 import numpy as np
 from scipy.stats import gmean
@@ -32,6 +33,14 @@ class InnerRecord:
     def rho(self):
         """Estimated convergence factor: geometric mean of successive ratios"""
         r_arr = np.array(self.residual_history)
+
+        if len(r_arr) < 2:
+            warnings.warn(
+                "residual history has length of 1, geometric mean undefined.",
+                RuntimeWarning,
+            )
+            return np.nan
+
         ratios = r_arr[1:] / r_arr[:-1]
         return gmean(ratios)
 
