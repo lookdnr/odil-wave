@@ -18,7 +18,7 @@ from odil_wave import (
 MODELS = {
     "shepp-logan": SheppLoganModel,
     "homogeneous": HomogeneousModel,
-    "over-density": OverDensityModel,
+    "inclusion": OverDensityModel,
 }
 
 
