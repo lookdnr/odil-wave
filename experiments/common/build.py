@@ -15,6 +15,8 @@ from odil_wave import (
     GaussNewtonOptimiser,
 )
 
+from odil_wave.models.base import VelocityModel
+
 MODELS = {
     "shepp-logan": SheppLoganModel,
     "homogeneous": HomogeneousModel,
@@ -22,7 +24,9 @@ MODELS = {
 }
 
 
-def build(cfg: RunConfig) -> Tuple[Wavefield, GaussNewtonOptimiser]:
+def build(
+    cfg: RunConfig,
+) -> Tuple[Grid, VelocityModel, Sources, Wavefield, GaussNewtonOptimiser]:
     """Build the components of an experiment run, the wavefield and optimiser"""
     grid = Grid(
         xmin=cfg.xmin,
@@ -40,4 +44,4 @@ def build(cfg: RunConfig) -> Tuple[Wavefield, GaussNewtonOptimiser]:
     src = Sources(grid, n_sources=1, source_locs=(cfg.source_loc,), f0=cfg.f0)
     wf = Wavefield(grid)
     we = WaveEquation(wf, model, time_order=cfg.time_order, space_order=cfg.space_order)
-    return wf, GaussNewtonOptimiser(ForwardLoss(Problem(we, src)))
+    return grid, model, src, wf, GaussNewtonOptimiser(ForwardLoss(Problem(we, src)))
