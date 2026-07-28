@@ -25,8 +25,6 @@ def _relative_norm(
     level idx"""
     u, u_ref = _decode_pair(u, u_ref)
 
-    _check_shape(u, u_ref)
-
     if idx is not None:
         u, u_ref = u[idx], u_ref[idx]
 
