@@ -2,23 +2,17 @@ from examples.seismic import Model, AcquisitionGeometry
 from examples.seismic.acoustic import AcousticWaveSolver
 
 from .config import RunConfig
-from .build import build_grid, build_model, build_receivers
+from .build import build_grid, build_model
 
 from time import perf_counter
 import numpy as np
 
 
-def run_reference(cfg: RunConfig, return_u: bool = False):
+def build_devito(cfg: RunConfig, rec_coords: np.ndarray, nbl: int = 20):
     grid = build_grid(cfg)
-    velocity = build_model(cfg, grid)
-    recvs = build_receivers(cfg, grid)
-
-    # derive nbl from required ppw
-    min_wavelength = velocity.c_min / cfg.f0
-    nbl = int(2 * min_wavelength / grid.dx)
-
+    vmodel = build_model(cfg, grid)
     model = Model(
-        vp=velocity.c,
+        vp=vmodel.c.astype(np.float32),
         origin=(cfg.xmin, cfg.ymin),
         spacing=(grid.dx, grid.dy),
         shape=(cfg.nx, cfg.ny),
@@ -26,21 +20,35 @@ def run_reference(cfg: RunConfig, return_u: bool = False):
         nbl=nbl,
         bcs="damp",
     )
+    src_xy = np.asarray([cfg.source_loc])
+    # dt=None corresponds to Devito's critical_dt
     geom = AcquisitionGeometry(
         model,
-        recvs.recv_xy,
-        np.asarray([cfg.source_loc]),
+        np.asarray(rec_coords),
+        src_xy,
         t0=0.0,
         tn=grid.t_max,
         src_type="Ricker",
         f0=cfg.f0,
     )
+    return model, geom, AcousticWaveSolver(model, geom, space_order=cfg.space_order)
 
-    solver = AcousticWaveSolver(model, geom, space_order=cfg.space_order)
 
+def run_reference(cfg, rec_coords, dt=None, nbl=20, return_u=False):
+    model, geom, solver = build_devito(
+        cfg, rec_coords, nbl=nbl
+    )  # geom locked to critical_dt
+    dt_used = model.critical_dt if dt is None else dt
     start = perf_counter()
-    rec, u, _ = solver.forward(dt=grid.dt)
-    end = perf_counter()
-
-    wall_clock = end - start
-    return rec.data, wall_clock, (u if return_u else None)
+    rec, u, _ = solver.forward(dt=dt_used)
+    wall = perf_counter() - start
+    nt = rec.data.shape[0]
+    t = np.arange(nt) * dt_used  # use operator clock, not the geom.time_axis
+    return dict(
+        traces=rec.data,
+        t=t,
+        dt=dt_used,
+        wall=wall,
+        u=(u if return_u else None),
+        geom=geom,
+    )
