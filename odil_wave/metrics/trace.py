@@ -31,3 +31,8 @@ def trace_misfit(
     d_ref = receivers.extract_observations(u_ref)
 
     return d_obs - d_ref
+
+
+def trace_rel_l2(d, d_ref):
+    """L2 misfit between receiver trace arrays"""
+    return np.linalg.norm(d - d_ref) / np.linalg.norm(d_ref)
