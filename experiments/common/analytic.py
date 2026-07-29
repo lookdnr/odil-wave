@@ -8,11 +8,12 @@ def ricker(t: np.ndarray, f0: float, t0: float) -> np.ndarray:
     return (1.0 - 2.0 * arg) * np.exp(-arg)
 
 
-def src_rec_distance(src_coords: np.ndarray, rec_coords: np.ndarray) -> float:
-    """Compute the src-rec distance r = sqrt((x_rec - x_src)^2 + (y_rec - y_src)^2)"""
-    xs, ys = src_coords
-    xr, yr = rec_coords
-    r2 = (xr - xs) ** 2 + (yr - ys) ** 2
+def src_rec_distance(src_coords: np.ndarray, rec_coords: np.ndarray) -> np.ndarray:
+    """Compute the src-rec distance r = sqrt((x_rec - x_src)^2 + (y_rec - y_src)^2)
+    for one source location and an (n_recv, 2) array of receiver locations."""
+    src_coords = np.asarray(src_coords)
+    rec_coords = np.asarray(rec_coords)
+    r2 = np.sum((rec_coords - src_coords) ** 2, axis=-1)
     return np.sqrt(r2)
 
 
