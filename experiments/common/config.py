@@ -23,6 +23,7 @@ class RunConfig:
 
     # source
     f0: float
+    t0: float
     source_loc: Tuple[float, float]
     n_recvs: int = 1
     recv_locs: Tuple[Tuple[float, float], ...] | None = None
