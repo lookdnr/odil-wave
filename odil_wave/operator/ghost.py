@@ -46,8 +46,9 @@ class GhostFill:
         if g == 0:
             return sp.eye(n, format="csr").tocsr()
 
-        # cap at cubic extrapolation
-        k = min(4, 2 * g, n)
+        # k is extrapolation order, must be >=3 so the second normal derivative
+        # survives. cubic cap avoids high order instability
+        k = min(4, max(2 * g, 3), n)
 
         # g ghost nodes left and right of the domain
         left_nodes = np.arange(k, dtype=float)
