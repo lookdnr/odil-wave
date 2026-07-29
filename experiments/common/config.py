@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Dict, Tuple
 
+from odil_wave.grid.utils import points_per_wavelength, nodes_for_ppw
+
 
 @dataclass
 class RunConfig:
@@ -49,6 +51,25 @@ class RunConfig:
         assert self.model in ["homogeneous", "inclusion", "shepp-logan"]
         assert self.solver in ["odil", "stride"]
         assert self.method in ["paradiag", "gmres"]
+
+    @property
+    def ppw(self) -> float:
+        """compute points per shortest wavelength"""
+        dx = (self.xmax - self.xmin) / (self.nx - 1)
+        dy = (self.ymax - self.ymin) / (self.ny - 1)
+        return points_per_wavelength(max(dx, dy), self.f0, self.c_min)
+
+    def assert_ppw(self, min_ppw: float = 10.0) -> None:
+        """raise if the grid resolves fewer than min_ppw points per wavelength"""
+
+        if self.ppw < min_ppw:
+            n_needed = nodes_for_ppw(
+                self.xmax - self.xmin, self.f0, min_ppw, self.c_min
+            )
+            raise ValueError(
+                f"under-resolved: ppw={self.ppw:.1f} < {min_ppw} "
+                f"(f0={self.f0}). increase nx/ny to >= {n_needed}, or lower f0."
+            )
 
     @property
     def model_kwargs(self) -> Dict:
