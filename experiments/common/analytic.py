@@ -10,7 +10,7 @@ def ricker(t: np.ndarray, f0: float, t0: float) -> np.ndarray:
 
 def src_rec_distance(src_coords: np.ndarray, rec_coords: np.ndarray) -> np.ndarray:
     """Compute the src-rec distance r = sqrt((x_rec - x_src)^2 + (y_rec - y_src)^2)
-    for one source location and an (n_recv, 2) array of receiver locations."""
+    for one source location and an (n_recv, 2) array of receiver locations"""
     src_coords = np.asarray(src_coords)
     rec_coords = np.asarray(rec_coords)
     r2 = np.sum((rec_coords - src_coords) ** 2, axis=-1)
@@ -55,7 +55,20 @@ def analytical_u_single_time(
     return u
 
 
-def analytical_trace(
-    times: np.ndarray, r: float, c: float, f0: float, t0: float
+def analytical_traces(
+    times: np.ndarray,
+    src_coords: np.ndarray,
+    rec_coords: np.ndarray,
+    c: float,
+    f0: float,
+    t0: float,
 ) -> np.ndarray:
-    return np.array([analytical_u_single_time(t, r, c, f0, t0) for t in times])
+    """Compute the analytical traces at multiple receivers for a single src.
+
+    Returns an (nt, n_recv) array, matching Receivers.extract_observations.
+    """
+    distances = np.atleast_1d(src_rec_distance(src_coords, rec_coords))
+    traces = [
+        [analytical_u_single_time(t, r, c, f0, t0) for t in times] for r in distances
+    ]
+    return np.array(traces).T
