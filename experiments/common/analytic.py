@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.integrate as si
 from .config import RunConfig
+from odil_wave import Sources
 
 
 def ricker(t: np.ndarray, f0: float, t0: float) -> np.ndarray:
@@ -56,14 +57,16 @@ def analytical_u_single_time(
     return u
 
 
-def analytical_traces(cfg: RunConfig, times: np.ndarray, c: float) -> np.ndarray:
+def analytical_traces(
+    cfg: RunConfig, src: Sources, times: np.ndarray, c: float
+) -> np.ndarray:
     """Compute the analytical traces at multiple receivers for a single src.
 
     Returns an (nt, n_recv) array
     """
     distances = np.atleast_1d(src_rec_distance(cfg))
     traces = [
-        [analytical_u_single_time(t, r, c, cfg.f0, cfg.t0) for t in times]
+        [analytical_u_single_time(t, r, c, src.f0, src.t0) for t in times]
         for r in distances
     ]
     return np.array(traces).T
