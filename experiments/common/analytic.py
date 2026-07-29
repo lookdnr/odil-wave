@@ -8,6 +8,14 @@ def ricker(t: np.ndarray, f0: float, t0: float) -> np.ndarray:
     return (1.0 - 2.0 * arg) * np.exp(-arg)
 
 
+def src_rec_distance(src_coords: np.ndarray, rec_coords: np.ndarray) -> float:
+    """Compute the src-rec distance r = sqrt((x_rec - x_src)^2 + (y_rec - y_src)^2)"""
+    xs, ys = src_coords
+    xr, yr = rec_coords
+    r2 = (xr - xs) ** 2 + (yr - ys) ** 2
+    return np.sqrt(r2)
+
+
 def _greens_2d(t: float, tau: float, r: float, c: float) -> float:
     """Compute the value of the Green's function for the 2D wave equation"""
     s = t - tau
