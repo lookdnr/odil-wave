@@ -29,7 +29,7 @@ def _greens_2d(t: float, tau: float, r: float, c: float) -> float:
 
 
 def _convolve_greens_ricker(
-    t: float, a: float, f0: float, t0: float, r: float, c: float, limit: int = 200
+    t: float, a: float, f0: float, t0: float, r: float, c: float, limit: int = 1000
 ) -> float:
     """Compute the integral representing the convolution of the
     Ricker wavelet with the Green's function"""
