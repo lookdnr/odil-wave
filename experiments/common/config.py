@@ -25,7 +25,7 @@ class RunConfig:
     f0: float
     source_loc: Tuple[float, float]
     n_recvs: int = 1
-    recv_locs: Tuple[Tuple[float, float]] | None = None
+    recv_locs: Tuple[Tuple[float, float], ...] | None = None
     recv_mode: str = "custom"
     a_frac: float = 0.55
     b_frac: float = 0.7
