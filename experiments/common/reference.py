@@ -34,7 +34,7 @@ def build_devito(cfg: RunConfig, rec_coords: np.ndarray, nbl: int = 20):
     return model, geom, AcousticWaveSolver(model, geom, space_order=cfg.space_order)
 
 
-def run_reference(cfg, rec_coords, dt=None, nbl=20, return_u=False):
+def run_reference(cfg, rec_coords, dt=None, nbl=20, return_u=False) -> dict:
     model, geom, solver = build_devito(
         cfg, rec_coords, nbl=nbl
     )  # geom locked to critical_dt
