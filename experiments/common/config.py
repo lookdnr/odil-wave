@@ -35,6 +35,9 @@ class RunConfig:
     b_frac: float = 0.7
     ring_centre: Tuple[float, float] = (0.0, 0.0)
 
+    # time (optional)
+    t_max: float | None = None
+
     # model
     model: str = "homogeneous"
     contrast: float | None = None
