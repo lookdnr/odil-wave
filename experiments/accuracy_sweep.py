@@ -41,4 +41,6 @@ if __name__ == "__main__":
     results = []
     for cfg in configs:
         results.append(measure_accuracy(cfg))
-        save(results, path="results/accuracy/sweep_50khz.pkl")  # after each config
+        path = "results/accuracy/sweep_50khz"
+        save(results, path=path + ".pkl")  # after each config
+        cfg.to_json(path=path + f"_nx={cfg.nx}.json")
