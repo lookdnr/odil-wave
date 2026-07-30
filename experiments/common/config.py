@@ -1,4 +1,6 @@
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Dict, Tuple
 
 from odil_wave.grid.utils import points_per_wavelength, nodes_for_ppw
@@ -95,3 +97,20 @@ class RunConfig:
                     mask_skull=self.mask_skull,
                 )
         return kwargs
+
+    def to_json(self, path: str | Path) -> None:
+        with open(path, "w") as f:
+            json.dump(asdict(self), f, indent=2)
+
+    @classmethod
+    def from_json(cls, path: str | Path) -> "RunConfig":
+        with open(path) as f:
+            data = json.load(f)
+
+        for key in ("source_loc", "ring_centre", "centre"):
+            if data.get(key) is not None:
+                data[key] = tuple(data[key])
+        if data.get("recv_locs") is not None:
+            data["recv_locs"] = tuple(tuple(loc) for loc in data["recv_locs"])
+
+        return cls(**data)
