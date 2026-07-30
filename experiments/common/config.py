@@ -44,14 +44,13 @@ class RunConfig:
     mask_skull: bool | None = None
 
     # solving
-    solver: str = "odil"  # "odil" or "stride"
     method: str = "paradiag"
     alpha: float = 1e-3
+    rtol: float = 1e-8
 
     def __post_init__(self):
         assert self.recv_mode in ["custom", "ring"]
         assert self.model in ["homogeneous", "inclusion", "shepp-logan"]
-        assert self.solver in ["odil", "stride"]
         assert self.method in ["paradiag", "gmres"]
 
         if self.assert_ppw():
