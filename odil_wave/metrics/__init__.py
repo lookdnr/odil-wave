@@ -8,7 +8,12 @@ from .error import (
     residual_linfty,
     relative_pde_residual,
 )
-from .trace import trace_misfit, trace_misfit_norm, trace_rel_l2
+from .trace import (
+    trace_misfit,
+    trace_misfit_norm,
+    trace_rel_l2,
+    normalised_trace_rel_l2,
+)
 from .recording import SolveRecorder, InnerRecord, SolveResult
 from .reporting import ErrorReport
 
@@ -24,6 +29,7 @@ __all__ = [
     "trace_misfit",
     "trace_misfit_norm",
     "trace_rel_l2",
+    "normalised_trace_rel_l2",
     "SolveRecorder",
     "InnerRecord",
     "SolveResult",
