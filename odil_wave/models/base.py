@@ -14,7 +14,7 @@ class VelocityModel(ABC):
     """2D velocity field c(x, y) attached to a Grid (full extended grid)."""
 
     grid: Grid  # discrete grid
-    background_c: float = 1.0  # background wave speed
+    background_c: int | float = 1.0  # background wave speed
     contrast: float = 0.7  # anomaly constrast vs background
     c: np.ndarray = field(init=False)  # data
     name: str = field(init=False)  # identifier
@@ -38,6 +38,8 @@ class VelocityModel(ABC):
             )
 
         self.name = "Base class"
+        if isinstance(self.background_c, int):
+            self.background_c = float(self.background_c)
 
     @abstractmethod
     def _build(self) -> np.ndarray:
