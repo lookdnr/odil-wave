@@ -24,34 +24,33 @@ class AcquisitionGeometry:
     def extract_observations(self, U: np.ndarray) -> np.ndarray:
         return self.receivers.extract_observations(U)
 
-    def show(self, velocity_model: VelocityModel, ax=None):
-        """Plot the acquisition geometry"""
+    def show(self, velocity_model: VelocityModel, ax=None, cmap: str | None = None):
+        """Plot the acquisition geometry over the velocity model"""
         if ax is None:
-            _, ax = plt.subplots(figsize=(5.5, 5))
-        velocity_model.show(ax=ax, title=f"Acquisition on {velocity_model.name}")
+            _, ax = plt.subplots(figsize=(6, 6))
+
+        if cmap is None:
+            cmap = "RdBu_r"
+
+        velocity_model.show(
+            ax=ax,
+            title=f"Acquisition | {velocity_model.name}",
+            vmin=velocity_model.c_min,
+            vmax=velocity_model.c_max,
+            cmap=cmap,
+        )
+
         x = self.sources.grid.x
         y = self.sources.grid.y
 
         recv_ij = self.receivers.recv_ij
         src_ij = self.sources.src_ij
 
-        n_recv = self.receivers.n_receivers
-        n_src = self.sources.n_sources
-
         rx = x[recv_ij[:, 0]]
         ry = y[recv_ij[:, 1]]
         sx = x[src_ij[:, 0]]
         sy = y[src_ij[:, 1]]
-        ax.scatter(
-            rx,
-            ry,
-            marker="v",
-            c="lime",
-            edgecolor="black",
-            s=70,
-            label=f"{n_recv} receivers",
-            zorder=5,
-        )
+
         ax.scatter(
             sx,
             sy,
@@ -59,9 +58,25 @@ class AcquisitionGeometry:
             c="red",
             edgecolor="black",
             s=180,
-            label=f"{n_src} sources",
-            zorder=6,
+            label="Sources",
         )
-        ax.legend(loc="upper right", fontsize=8)
-        plt.tight_layout()
+
+        ax.scatter(
+            rx,
+            ry,
+            marker="v",
+            c="lime",
+            edgecolor="black",
+            s=70,
+            label="Receivers",
+        )
+
+        ax.legend(
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.12),
+            ncol=2,
+            frameon=False,
+            fontsize=15,
+        )
+        ax.margins(0)
         return ax
