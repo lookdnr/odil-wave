@@ -61,7 +61,15 @@ def build_model(cfg: RunConfig, grid: Grid) -> VelocityModel:
 
 def build_problem(
     cfg: RunConfig,
-) -> Tuple[Grid, VelocityModel, Sources, Receivers, Wavefield, GaussNewtonOptimiser]:
+) -> Tuple[
+    Grid,
+    VelocityModel,
+    Sources,
+    Receivers,
+    Wavefield,
+    WaveEquation,
+    GaussNewtonOptimiser,
+]:
     """Build the components of an experiment run, the wavefield and optimiser"""
     grid = build_grid(cfg)
     model = build_model(cfg, grid)
@@ -75,5 +83,6 @@ def build_problem(
         src,
         recvs,
         wf,
+        we,
         GaussNewtonOptimiser(ForwardLoss(Problem(we, src))),
     )
