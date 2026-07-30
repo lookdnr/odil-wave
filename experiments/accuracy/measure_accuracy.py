@@ -1,12 +1,22 @@
 from time import perf_counter
-import numpy as np
 
 from common import RunConfig, build_problem, run_reference, analytical_traces
 from common.compare import pre_reflection_mask
 from odil_wave.metrics import normalised_trace_rel_l2
 
 
-def measure_accuracy(cfg: RunConfig) -> dict:
+class AccuracyResult:
+    """Convenience class for reporting metrics and traces from comparison run"""
+
+    metrics: dict
+    traces: dict
+
+    def __init__(self, metrics: dict, traces: dict):
+        self.metrics = metrics
+        self.traces = traces
+
+
+def measure_accuracy(cfg: RunConfig) -> AccuracyResult:
     """
     Solve a problem with config `cfg` with ODIL and Devito.
     Score both against the analytic truth on the pre-reflection window"""
@@ -33,24 +43,38 @@ def measure_accuracy(cfg: RunConfig) -> dict:
     # extract traces, devito grid, and wall clock time
     d_dev, t_dev, wall_dev = ref["traces"], ref["t"], ref["wall"]
 
-    # score both against the analytic truth on the window
-    def windowed_err(d: np.ndarray, t: np.ndarray):
-        d_ana = analytical_traces(src, recvs, t, c)  # compute traces on grid
-        m = pre_reflection_mask(src, recvs, t, c)  # apply pre-reflection mask
-        err = normalised_trace_rel_l2(
-            d[m], d_ana[m]
-        )  # compute norm of normalised trace
-        return err
+    # truth + window on each solver's own axis
+    ana_odil = analytical_traces(src, recvs, t_odil, c)
+    mask_odil = pre_reflection_mask(src, recvs, t_odil, c)
+    ana_dev = analytical_traces(src, recvs, t_dev, c)
+    mask_dev = pre_reflection_mask(src, recvs, t_dev, c)
 
-    return dict(
+    # compute L2 norm of error for both
+    err_odil = normalised_trace_rel_l2(d_odil[mask_odil], ana_odil[mask_odil])
+    err_dev = normalised_trace_rel_l2(d_dev[mask_dev], ana_dev[mask_dev])
+
+    # report metrics and traces
+    metrics = dict(
         nx=cfg.nx,
         nt=grid.nt,
         dof=grid.nx * grid.ny * grid.nt,
         dx=grid.dx,
         ppw=cfg.ppw,
-        err_odil=windowed_err(d_odil, t_odil),  # error on odil grid
-        err_dev=windowed_err(d_dev, t_dev),  # error on devito grid
+        err_odil=err_odil,
+        err_dev=err_dev,
         wall_odil=wall_odil,
         wall_dev=wall_dev,
         iters=iters,
     )
+
+    traces = dict(
+        t_odil=t_odil,
+        d_odil=d_odil,
+        ana_odil=ana_odil,
+        mask_odil=mask_odil,
+        t_dev=t_dev,
+        d_dev=d_dev,
+        ana_dev=ana_dev,
+        mask_dev=mask_dev,
+    )
+    return AccuracyResult(metrics, traces)
