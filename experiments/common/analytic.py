@@ -1,6 +1,9 @@
 import numpy as np
-import scipy.integrate as si
+import numpy.polynomial.legendre as npl
 from odil_wave import Sources, Receivers
+
+# compute the sample points and weights for Gauss-Legendre quadrature
+POINTS, WEIGHTS = npl.leggauss(256)
 
 
 def ricker(t: np.ndarray, f0: float, t0: float) -> np.ndarray:
@@ -18,54 +21,56 @@ def src_rec_distance(src: Sources, recvs: Receivers) -> np.ndarray:
     return np.sqrt(r2)
 
 
-def _greens_2d(t: float, tau: float, r: float, c: float) -> float:
-    """Compute the value of the Green's function for the 2D wave equation"""
-    s = t - tau
-    a = r / c
-    if s <= a:
-        return 0.0
-    return 1.0 / (2.0 * np.pi * np.sqrt(s**2 - a**2))  # heaviside is 1 for t > 0
+def _gl_integrate(f, lo: float, hi: float) -> float:
+    """Compute the Gauss-Legendre integral of f over [lo, hi] interval
 
+    Follows after:
 
-def _convolve_greens_ricker(
-    t: float, a: float, f0: float, t0: float, r: float, c: float, limit: int = 1000
-) -> float:
-    """Compute the integral representing the convolution of the
-    Ricker wavelet with the Green's function"""
-
-    def integrand(tau):
-        return ricker(tau, f0, t0) * _greens_2d(t, tau, r, c)
-
-    val, _ = si.quad(
-        integrand, 0.0, t - a, limit=limit
-    )  # integrate between 0 and t - a
-    return val
-
-
-def analytical_u_single_time(
-    t: float, r: float, c: float, f0: float, t0: float, limit=200
-) -> float:
-    """Compute the analytical wavefield at time t.
-    Recovers u by means of convolving the Ricker wavelet with the Green's function.
+    https://runebook.dev/en/docs/numpy/reference/generated/numpy.polynomial.legendre.leggauss
     """
-    a = r / c
-    if t <= a:
-        return 0.0
+    # leggaus roots and weights are for integrating over the standard interval
+    # [-1, 1], so we must scale and shift the points and weights
+    points = 0.5 * (hi - lo) * POINTS + 0.5 * (hi + lo)
+    weights = 0.5 * (hi - lo) * WEIGHTS
+    return np.sum(f(points) * weights)
 
-    u = _convolve_greens_ricker(t, a, f0, t0, r, c, limit)
-    return u
+
+def analytical_trace(
+    r: float, times: np.ndarray, c: float, f0: float, t0: float
+) -> np.ndarray:
+    """Exact 2D point source trace at radius r via g conv ricker (cosh substituted)"""
+    u = np.zeros_like(times)
+
+    # arrival time: time taken for wave with speed c to move distance r
+    a = r / c
+
+    # arrival filter
+    live = times > a
+    if not live.any():
+        return u
+
+    # integrate over time for limits [0, acosh(t/a)]
+    for i, t in enumerate(times):
+        if t > a:
+            u[i] = _gl_integrate(
+                lambda nu: ricker(t - a * np.cosh(nu), f0, t0),
+                lo=0.0,
+                hi=np.arccosh(t / a),
+            )
+
+    return u / (2 * np.pi)  # scale according to integral
 
 
 def analytical_traces(
-    src: Sources, recv: Receivers, times: np.ndarray, c: float
+    src: Sources, recvs: Receivers, times: np.ndarray, c: float
 ) -> np.ndarray:
     """Compute the analytical traces at multiple receivers for a single src.
 
-    Returns an (nt, n_recv) array
+    Returns an (nt, n_recv)
+
+    Uses Gauss-Legendre quadrature over the integral int s * g dtau,
+    where g is in its cosh-substituted form to avoid the 1/sqrt(s^2 - a^2) singularity
     """
-    distances = np.atleast_1d(src_rec_distance(src, recv))
-    traces = [
-        [analytical_u_single_time(t, r, c, src.f0, src.t0) for t in times]
-        for r in distances
-    ]
+    distances = src_rec_distance(src, recvs)
+    traces = [analytical_trace(r, times, c, src.f0, src.t0) for r in distances]
     return np.array(traces).T
