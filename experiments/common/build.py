@@ -49,6 +49,7 @@ def build_grid(cfg: RunConfig) -> Grid:
         ymax=cfg.ymax,
         nx=cfg.nx,
         ny=cfg.ny,
+        t_max=cfg.t_max,
         c_min=cfg.c_min,
         c_max=cfg.c_max,
         cfl_safety=cfg.cfl_safety,
