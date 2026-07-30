@@ -52,6 +52,9 @@ class RunConfig:
         assert self.solver in ["odil", "stride"]
         assert self.method in ["paradiag", "gmres"]
 
+        if self.assert_ppw():
+            print("PPW:", self.ppw)
+
     @property
     def ppw(self) -> float:
         """compute points per shortest wavelength"""
@@ -59,7 +62,7 @@ class RunConfig:
         dy = (self.ymax - self.ymin) / (self.ny - 1)
         return points_per_wavelength(max(dx, dy), self.f0, self.c_min)
 
-    def assert_ppw(self, min_ppw: float = 10.0) -> None:
+    def assert_ppw(self, min_ppw: float = 10.0) -> bool:
         """raise if the grid resolves fewer than min_ppw points per wavelength"""
 
         if self.ppw < min_ppw:
@@ -70,6 +73,7 @@ class RunConfig:
                 f"under-resolved: ppw={self.ppw:.1f} < {min_ppw} "
                 f"(f0={self.f0}). increase nx/ny to >= {n_needed}, or lower f0."
             )
+        return True
 
     @property
     def model_kwargs(self) -> Dict:
