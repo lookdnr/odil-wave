@@ -30,7 +30,7 @@ class AcquisitionGeometry:
             _, ax = plt.subplots(figsize=(6, 6))
 
         if cmap is None:
-            cmap = "RdBu_r"
+            cmap = "viridis"
 
         velocity_model.show(
             ax=ax,
