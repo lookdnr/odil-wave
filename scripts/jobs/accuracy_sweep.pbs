@@ -1,0 +1,22 @@
+#!/bin/bash
+#PBS -N baseline
+#PBS -l walltime=04:00:00
+#PBS -l select=1:ncpus=32:mem=96gb:cpu_type=rome
+
+# PBS script for running the accuracy sweep on CX3
+
+module purge
+module load tools/prod miniforge/3
+
+# activate env via conda
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+conda activate irp
+
+# navigate to working dir
+cd $PBS_O_WORKDIR
+
+# install latest package version
+pip install .
+
+# run script
+python3 ../../experiments/accuracy_sweep.py
