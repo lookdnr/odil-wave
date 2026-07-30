@@ -38,9 +38,10 @@ nxs = [70, 90, 110, 130, 150, 170]
 configs = [replace(BASE, nx=n, ny=n) for n in nxs]
 
 if __name__ == "__main__":
+    # run and save sweep data and config
     results = []
     for cfg in configs:
         results.append(measure_accuracy(cfg))
         path = "results/accuracy/sweep_50khz"
         save(results, path=path + ".pkl")  # after each config
-        cfg.to_json(path=path + f"_nx={cfg.nx}.json")
+        cfg.to_json(path=path + f"_nx{cfg.nx}.json")
