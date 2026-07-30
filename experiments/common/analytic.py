@@ -1,7 +1,6 @@
 import numpy as np
 import scipy.integrate as si
-from .config import RunConfig
-from odil_wave import Sources
+from odil_wave import Sources, Receivers
 
 
 def ricker(t: np.ndarray, f0: float, t0: float) -> np.ndarray:
@@ -10,11 +9,11 @@ def ricker(t: np.ndarray, f0: float, t0: float) -> np.ndarray:
     return (1.0 - 2.0 * arg) * np.exp(-arg)
 
 
-def src_rec_distance(cfg: RunConfig) -> np.ndarray:
+def src_rec_distance(src: Sources, recvs: Receivers) -> np.ndarray:
     """Compute the src-rec distance r = sqrt((x_rec - x_src)^2 + (y_rec - y_src)^2)
     for one source location and an (n_recv, 2) array of receiver locations"""
-    src_coords = np.asarray(cfg.source_loc)
-    rec_coords = np.asarray(cfg.recv_locs)
+    src_coords = np.asarray(src.src_xy)
+    rec_coords = np.asarray(recvs.recv_xy)
     r2 = np.sum((rec_coords - src_coords) ** 2, axis=-1)
     return np.sqrt(r2)
 
@@ -58,13 +57,13 @@ def analytical_u_single_time(
 
 
 def analytical_traces(
-    cfg: RunConfig, src: Sources, times: np.ndarray, c: float
+    src: Sources, recv: Receivers, times: np.ndarray, c: float
 ) -> np.ndarray:
     """Compute the analytical traces at multiple receivers for a single src.
 
     Returns an (nt, n_recv) array
     """
-    distances = np.atleast_1d(src_rec_distance(cfg))
+    distances = np.atleast_1d(src_rec_distance(src, recv))
     traces = [
         [analytical_u_single_time(t, r, c, src.f0, src.t0) for t in times]
         for r in distances
