@@ -34,9 +34,11 @@ BASE = RunConfig(
 )
 
 # create configs
-nxs = [70, 90, 110, 130, 150, 170, 190]
+nxs = [70, 90, 110, 130, 150, 170]
 configs = [replace(BASE, nx=n, ny=n) for n in nxs]
 
 if __name__ == "__main__":
-    results = [measure_accuracy(cfg) for cfg in configs]
-    save(results, path="results/accuracy/sweep_50khz")
+    results = []
+    for cfg in configs:
+        results.append(measure_accuracy(cfg))
+        save(results, path="results/accuracy/sweep_50khz.pkl")  # after each config
