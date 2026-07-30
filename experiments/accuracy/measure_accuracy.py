@@ -1,19 +1,53 @@
 from time import perf_counter
+from dataclasses import dataclass
 
 from common import RunConfig, build_problem, run_reference, analytical_traces
 from common.compare import pre_reflection_mask
 from odil_wave.metrics import normalised_trace_rel_l2
+from common.analytic import src_rec_distance
+
+import numpy as np
 
 
+@dataclass
+class ReceiverReport:
+    index: int
+    xy: np.ndarray  # (x, y)
+    r: float  # distance to source
+    err_odil: float  # windowed error, this receiver only
+    err_dev: float
+
+
+@dataclass
 class AccuracyResult:
-    """Convenience class for reporting metrics and traces from comparison run"""
-
     metrics: dict
     traces: dict
+    receivers: list[ReceiverReport]
 
-    def __init__(self, metrics: dict, traces: dict):
-        self.metrics = metrics
-        self.traces = traces
+    def trace(self, k: int, solver: str = "odil"):
+        """(time, numerical, analytic, window mask) for kth receiver"""
+
+        if solver not in ["odil", "devito"]:
+            raise ValueError("solver must be 'odil' or 'devito', got", solver)
+        s = solver
+
+        tr, rec = self.traces, self.receivers[k]
+
+        return dict(
+            rec=rec,
+            t=tr[f"t_{s}"],
+            numerical=tr[f"d_{s}"][:, k],
+            analytical=tr[f"ana_{s}"][:, k],
+            mask=tr[f"mask_{s}"][:, k],
+        )
+
+
+def _per_receiver_err(d: np.ndarray, ana: np.ndarray, mask: np.ndarray):
+    """Compute error for each receiver"""
+    return [
+        normalised_trace_rel_l2(d[mask[:, k], k], ana[mask[:, k], k])
+        for k in range(d.shape[1])
+    ]
 
 
 def measure_accuracy(cfg: RunConfig) -> AccuracyResult:
@@ -49,6 +83,17 @@ def measure_accuracy(cfg: RunConfig) -> AccuracyResult:
     ana_dev = analytical_traces(src, recvs, t_dev, c)
     mask_dev = pre_reflection_mask(src, recvs, t_dev, c)
 
+    # compute src-rec distances and report error for each receiver
+    r = src_rec_distance(src, recvs)
+    eo = _per_receiver_err(d_odil, ana_odil, mask_odil)
+    ed = _per_receiver_err(d_dev, ana_dev, mask_dev)
+
+    # generate report
+    receivers = [
+        ReceiverReport(k, recvs.recv_xy[k], float(r[k]), float(eo[k]), float(ed[k]))
+        for k in range(recvs.n_receivers)
+    ]
+
     # compute L2 norm of error for both
     err_odil = normalised_trace_rel_l2(d_odil[mask_odil], ana_odil[mask_odil])
     err_dev = normalised_trace_rel_l2(d_dev[mask_dev], ana_dev[mask_dev])
@@ -77,4 +122,4 @@ def measure_accuracy(cfg: RunConfig) -> AccuracyResult:
         ana_dev=ana_dev,
         mask_dev=mask_dev,
     )
-    return AccuracyResult(metrics, traces)
+    return AccuracyResult(metrics, traces, receivers)
