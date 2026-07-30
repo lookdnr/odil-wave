@@ -6,9 +6,9 @@ from common import RunConfig
 from accuracy import measure_accuracy
 from accuracy.storage import save
 
-# 24 receivers on a fixed circle: radius 0.05, centred, in the 0.2 m domain
+# 24 receivers on a fixed circle: radius 0.045, centred, in the 0.2 m domain
 _theta = np.linspace(0, 2 * np.pi, 24, endpoint=False)
-RECV_LOCS = tuple((0.10 + 0.05 * np.cos(a), 0.10 + 0.05 * np.sin(a)) for a in _theta)
+RECV_LOCS = tuple((0.10 + 0.045 * np.cos(a), 0.10 + 0.05 * np.sin(a)) for a in _theta)
 
 BASE = RunConfig(
     nx=0,
@@ -23,11 +23,11 @@ BASE = RunConfig(
     t_max=1.2e-4,  # short horizon
     time_order=2,
     space_order=6,
-    f0=50e3,
+    f0=50e3,  # 50khz
     source_loc=(0.10, 0.10),  # centred source
     recv_mode="custom",
     n_recvs=24,
-    recv_locs=RECV_LOCS,
+    recv_locs=RECV_LOCS,  # centred ring
     model="homogeneous",
     method="paradiag",
     alpha=1e-3,  # rtol defaults to 1e-8
