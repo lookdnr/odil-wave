@@ -38,7 +38,7 @@ def trace_rel_l2(d, d_ref):
     return np.linalg.norm(d - d_ref) / np.linalg.norm(d_ref)
 
 
-def normalised_trace_rel_l2(d, d_ref):
+def normalised_trace_rel_l2(d: np.ndarray, d_ref: np.ndarray):
     """Compute the relative L2 norm of the misfit between the traces d and d_ref
     normalised to 1. Normalising means the norm describes wavelet shape differences,
     not amplitude differences."""
