@@ -11,15 +11,15 @@ _theta = np.linspace(0, 2 * np.pi, 24, endpoint=False)
 RECV_LOCS = tuple((0.10 + 0.045 * np.cos(a), 0.10 + 0.045 * np.sin(a)) for a in _theta)
 
 BASE = RunConfig(
-    nx=0,
-    ny=0,  # swept below these vals
+    nx=70,
+    ny=70,  # swept below these vals
     xmin=0.0,
     xmax=0.2,
     ymin=0.0,
     ymax=0.2,  # 20 cm
     c_min=1500.0,
     c_max=1500.0,  # homogeneous water
-    cfl_safety=0.5,  # generous for order 6 in space
+    cfl_safety=0.7,  # generous for order 6 in space
     t_max=1.2e-4,  # short horizon
     time_order=2,
     space_order=6,
