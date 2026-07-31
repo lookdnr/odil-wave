@@ -117,8 +117,8 @@ def measure_accuracy(cfg: RunConfig) -> AccuracyResult:
         d_odil=d_odil,
         ana_odil=ana_odil,
         mask_odil=mask_odil,
-        t_dev=t_dev,
-        d_dev=d_dev,
+        t_devito=t_dev,
+        d_devito=d_dev,
         ana_dev=ana_dev,
         mask_dev=mask_dev,
     )
