@@ -121,7 +121,7 @@ def annotate_bttb(ax, ns, block_idx=5, color="crimson"):
         color=color,
         ha="center",
         va="top",
-        fontsize=14,
+        fontsize=16,
         clip_on=False,
     )
 
@@ -261,21 +261,32 @@ def main():
     axes = [ax_dxx, ax_dyy, ax_utt, ax_A]
 
     ax_dxx.spy(Dxx, markersize=10, color="royalblue")
-    ax_dxx.set_title(rf"$D_{{xx}}$, {Dxx.shape[0]} $\times$ {Dxx.shape[1]}")
+    ax_dxx.set_title(
+        rf"$D_{{xx}} \in \mathbb{{R}}^{{{Dxx.shape[0]} \times {Dxx.shape[1]}}}$",
+        fontsize=16,
+    )
     label_panel(ax_dxx, "a")
 
     ax_dyy.spy(Dyy, markersize=10, color="royalblue")
-    ax_dyy.set_title(rf"$D_{{yy}}$, {Dyy.shape[0]} $\times$ {Dyy.shape[1]}")
+    ax_dyy.set_title(
+        rf"$D_{{yy}} \in \mathbb{{R}}^{{{Dyy.shape[0]} \times {Dyy.shape[1]}}}$",
+        fontsize=16,
+    )
     label_panel(ax_dyy, "b")
 
     ax_utt.spy(Dtt, markersize=5, color="royalblue")  # type: ignore
     ax_utt.set_title(
-        r"$D_{{tt}}$, " + rf"{Dtt.shape[0]} $\times$ {Dtt.shape[1]}"  # type: ignore
+        r"$D_{{tt}} \in$"
+        + rf"$\mathbb{{R}}^{{{Dtt.shape[0]} \times {Dtt.shape[1]}}}$",  # type: ignore
+        fontsize=16,
     )
     label_panel(ax_utt, "c")
 
     ax_A.spy(A, markersize=0.5, color="royalblue")
-    ax_A.set_title(rf"$A$, {A.shape[0]} $\times$ {A.shape[1]}")  # type: ignore
+    ax_A.set_title(
+        rf"$A \in \mathbb{{R}}^{{{A.shape[0]} \times{A.shape[1]}}}$",  # type: ignore
+        fontsize=16,
+    )
     annotate_bttb(ax_A, ns=ns)
     add_triplet_inset(ax_A, A, ns=ns)
     label_panel(ax_A, "d")
@@ -284,10 +295,7 @@ def main():
         ax.set_xticks([])
         ax.set_yticks([])
 
-    # draw little arrow
-    add_ij_axes(axes[0])
-
-    fig.savefig(OUTFILE, dpi=300)
+    fig.savefig(OUTFILE, dpi=600)
     print(f"Saved figure to {OUTFILE}")
 
 
