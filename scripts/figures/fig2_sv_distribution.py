@@ -214,7 +214,7 @@ def main():
         fontsize=14,
     )
 
-    fig.savefig(OUTFILE, dpi=400, bbox_inches="tight")
+    fig.savefig(OUTFILE, dpi=1200, bbox_inches="tight")
     print(f"Saved figure to {OUTFILE}")
 
 

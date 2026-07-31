@@ -295,7 +295,7 @@ def main():
         ax.set_xticks([])
         ax.set_yticks([])
 
-    fig.savefig(OUTFILE, dpi=600)
+    fig.savefig(OUTFILE, dpi=1200)
     print(f"Saved figure to {OUTFILE}")
 
 
