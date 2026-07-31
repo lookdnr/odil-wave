@@ -11,11 +11,15 @@ import scipy.sparse as sp
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.patches import Patch
 from scipy.sparse.linalg import LinearOperator
 
 OUTFILE = "fig2_sv_distribution.png"
 
 NX, NY = 3, 3
+
+UNPRECOND_COLOR = "royalblue"
+PRECOND_COLOR = "orange"
 
 
 def make_problem(
@@ -84,13 +88,12 @@ def compute_cond(singular_vals):
 
 def plot_singular_vals(ax, s_A, s_A_precond):
     """Plot log(singular_vals) for the two matrices"""
-    ax.semilogy(s_A, color="royalblue", label=r"$A$")
-    ax.semilogy(s_A_precond, color="orange", label=r"$M^{-1}A$")
-    ax.set_title(r"Singular value distribution", fontsize=14)
-    ax.set_ylabel("Singular values")
-    ax.set_xlabel("Singular value index")
+    ax.semilogy(s_A, color=UNPRECOND_COLOR)
+    ax.semilogy(s_A_precond, color=PRECOND_COLOR)
+    ax.set_title(r"Singular value distribution", fontsize=16)
+    ax.set_ylabel("Singular values", fontsize=14)
+    ax.set_xlabel("Singular value index", fontsize=14)
     ax.set_yscale("log")
-    ax.legend()
 
 
 def spy(ax, matrix, color="royalblue", threshold=1e-8):
@@ -126,13 +129,12 @@ def plot_sval_dist(ax, s_A, s_A_precond):
         np.log10(max(s_A.max(), s_A_precond.max())),
         26,
     )
-    ax.hist(s_A, bins=bins, alpha=0.6, color="royalblue", label=r"$A$")
-    ax.hist(s_A_precond, bins=bins, alpha=0.6, color="orange", label=r"$M^{-1}A$")
-    ax.set_title("Histogram of singular values", fontsize=14)
-    ax.set_xlabel("Singular values")
-    ax.set_ylabel("Count")
+    ax.hist(s_A, bins=bins, alpha=0.6, color=UNPRECOND_COLOR)
+    ax.hist(s_A_precond, bins=bins, alpha=0.6, color=PRECOND_COLOR)
+    ax.set_title("Histogram of singular values", fontsize=16)
+    ax.set_xlabel("Singular values", fontsize=14)
+    ax.set_ylabel("Count", fontsize=14)
     ax.set_xscale("log")
-    ax.legend()
 
 
 def main():
@@ -164,19 +166,19 @@ def main():
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
-    spy(axes[0, 0], A_dense, color="royalblue")
+    spy(axes[0, 0], A_dense, color=UNPRECOND_COLOR)
     axes[0, 0].set_title(
         rf"$A$, {A_dense.shape[0]} $\times$ {A_dense.shape[1]}, "
-        + rf"$\text{{cond(A)}} = {cond_A:.1e}$",
-        fontsize=14,
+        + rf"$\quad \kappa(A) = {cond_A:.1e}$",
+        fontsize=16,
     )
     label_panel(axes[0, 0], "a")
 
-    spy(axes[0, 1], M_dense, color="orange")
+    spy(axes[0, 1], M_dense, color=PRECOND_COLOR)
     axes[0, 1].set_title(
         rf"$M$, {M_dense.shape[0]} $\times$ {M_dense.shape[1]}, "
-        + rf"$\text{{cond}}(M^{{-1}}A) = {cond_MA:.1e}$",
-        fontsize=14,
+        + rf"$\quad \kappa(M^{{-1}}A) = {cond_MA:.1e}$",
+        fontsize=16,
     )
     label_panel(axes[0, 1], "b")
 
@@ -187,7 +189,32 @@ def main():
     label_panel(axes[1, 1], "d")
 
     fig.tight_layout()
-    fig.savefig(OUTFILE, dpi=300, bbox_inches="tight")
+
+    # push the top row spy plots out to the outer edges of the bottom row
+    pos_tl, pos_tr = axes[0, 0].get_position(), axes[0, 1].get_position()
+    pos_bl, pos_br = axes[1, 0].get_position(), axes[1, 1].get_position()
+
+    axes[0, 0].set_position([pos_bl.x0, pos_tl.y0, pos_tl.width, pos_tl.height])
+    axes[0, 1].set_position(
+        [pos_br.x1 - pos_tr.width, pos_tr.y0, pos_tr.width, pos_tr.height]
+    )
+
+    gap_x = (pos_bl.x0 + pos_tl.width + pos_br.x1 - pos_tr.width) / 2
+    gap_y = pos_tl.y0 + pos_tl.height / 2
+
+    legend_handles = [
+        Patch(facecolor=UNPRECOND_COLOR, label=r"Unpreconditioned"),
+        Patch(facecolor=PRECOND_COLOR, label=r"Preconditioned"),
+    ]
+    fig.legend(
+        handles=legend_handles,
+        loc="center",
+        bbox_to_anchor=(gap_x, gap_y),
+        frameon=False,
+        fontsize=14,
+    )
+
+    fig.savefig(OUTFILE, dpi=400, bbox_inches="tight")
     print(f"Saved figure to {OUTFILE}")
 
 
