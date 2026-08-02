@@ -340,3 +340,19 @@ In the last week, I have taken a step back from code. I was feeling a little bur
 > Define the regimes where ODIL is useful by analysing its error, performance, and wave-equation specifics versus a time stepping finite difference method.
 
 After working on ODIL for months, I have realised its power is somewhat limited. There just does not seem to be a situation where time stepping is not preferable. My contribution will be a thorough investigation into whether or not this is true, and if there are any regimes where ODIl proves to be more useful. I hope my paper will act as a guideline for future use cases of ODIL in solving the wave equation.
+
+## 27/07: Weekly meeting
+
+Today, I spoke with Ben. When we met previously, Ben suggested I take a step back and consider what my long term research objectives are. After some discussion and some refinement myself after the meeting, I have approximately this:
+
+The defining question is
+
+> Are there regimes where ODIL is a preferable over finite-difference based time stepping for solving the 2D wave equation?
+
+To support this objective, we intend to address the following questions in particular
+
+- RQ1: Are there regimes where ODIL has favourable accuracy properties?
+- RQ2: Are there regimes where ODIL has favourable computational performance properties?
+- RQ3: How does ODIL handle the nuances of the numerical modelling of waves
+
+My goal really is to provide a guide for anyone who is considering using ODIL to solve the wave equation, and perhaps hyperbolic problems for generally. I will report my intentions to the supervisors in the next meeting and get some feedback which I will log here.
