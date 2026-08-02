@@ -35,29 +35,14 @@ class AlphaCirculantPreconditioner:
 
         # set up the taper to undo the periodicity
         # this is basically an absorbing layer in time
+        # note we only need n/2n+1 values since the data is real-valued,
+        # meaning we have complex conjugacy and need only ever other mode
+        # np.rfft bakes this logic in
         gamma = alpha ** (1.0 / n)
         self._d = gamma ** np.arange(n)
-        z = gamma * np.exp(-2j * np.pi * np.arange(n // 2 + 1) / n)
+        self._z = gamma * np.exp(-2j * np.pi * np.arange(n // 2 + 1) / n)
 
         self.dtype = dtype
-
-        # LU decomposition paid once for solve at each frequency
-        # we factorise each block to solve the N independent scalar equations
-        # for each time level
-
-        # note we only factorise the first half of the modes, since the FFT of
-        # real data is conjugate symmetric and the remaining LU factors are
-        # simply the complex conjugates of these ones
-        # this cuts our memory requiremetns in half
-        B0, B1, B2 = self.blocks
-        self._lus = [
-            splu(
-                (B0 + zk * B1 + zk**2 * B2).astype(self.dtype).tocsc(),
-                permc_spec="MMD_AT_PLUS_A",
-                options=dict(SymmetricMode=True, DiagPivotThresh=0.001),
-            )
-            for zk in z
-        ]
 
     def matvec(self, v: np.ndarray) -> np.ndarray:
         """Compute the action of the preconditioner on a vector v"""
@@ -69,10 +54,20 @@ class AlphaCirculantPreconditioner:
 
         # in the Fourier basis, the linear solve reduces
         # to solving N scalar equations for a block in time
-        # we solve each time block below
+        # we solve each time block below, factorising on the fly
+        # instead of caching to avoid huge memory cost for
+        # large grids
+        B0, B1, B2 = self.blocks
         Wh = np.empty_like(Vh)
-        for k in range(Vh.shape[0]):
-            Wh[k] = self._lus[k].solve(Vh[k])  # solve the LU factorisation for du
+        for k, zk in enumerate(self._z):
+            Az = (B0 + zk * B1 + zk**2 * B2).astype(self.dtype).tocsc()
+            lu = splu(  # factorise
+                Az,
+                permc_spec="MMD_AT_PLUS_A",  # optimal for our structure
+                options=dict(SymmetricMode=True, DiagPivotThresh=0.001),
+            )
+            Wh[k] = lu.solve(Vh[k])  # solve for du
+            del lu, Az  # discard to avoid memory blow up
 
         W = np.fft.irfft(Wh, n=self.n, axis=0) / self._d[:, None]  # transform back
         return W.ravel()
