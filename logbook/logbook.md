@@ -356,3 +356,22 @@ To support this objective, we intend to address the following questions in parti
 - RQ3: How does ODIL handle the nuances of the numerical modelling of waves
 
 My goal really is to provide a guide for anyone who is considering using ODIL to solve the wave equation, and perhaps hyperbolic problems for generally. I will report my intentions to the supervisors in the next meeting and get some feedback which I will log here.
+
+## 03/08: weekly meeting
+
+Today, I met with Carlos. I talked to him about my proposed research direction, and showed him some of the plots I made. He is happy with what I intend to do. He gave some general advice on structuring my report, etc, and we just had a bit, really. It wasn't a particularly long meeting.
+
+Now is probably a good time for another general update. I have gotten back into the swing of things again and have been making good progress. I am running some accuracy sweeps against Devito (comparing to an analytical solution obtained by convolving the Green's function with the Ricker wavelet), and am getting some good results. 
+
+Here are some of the core changes I have made to the code:
+
+- Moved the pre-cached factorisations to on-the-fly. Slightly worse performance, but very easy fix for the memory issue. Don't know why I didn't think of this before lol
+- Pinned the BLAS threads to 1. SciPy uses BLAS under the hood for splu factorisations, and I ran some experiements to verify it was actually helping because I ran into some roadblocks when thinking about parallelisation. Turns out, mutithreaded BLAS actualyl hurts performance quite a lot, even at 2 threads. As a result, I hard coded it to 1 via the `threadpoolctl` package.
+- Changed to Hicks' style Kaiser-windowed sinc interpolation. This matches exactly what Devito does and quite tests against the analytical solution verify this. This is also a nice validation point.
+- Added a number of scripts for running experiements, including a .pbs for the aforementioned accuracy sweep. I am persisting these and maintaining them well for the sake of reproducibility.
+- Added a Grid.from_ppw classmethod to build the grid based on a required number of ppw. This is useful, because the CFL safety factor is an arbitrary knob that isn't particularly informative.
+- Changed the ghost node interpolation. This was a major win for the ABC enforcement, I found that the cubic cap was effectively zeroing the second derivative in the Higdon equations, so they weren't doing their job.
+
+Those were the major changes as far as I can remember. A lot has been done in the last week or so. I also touched up some of the plots/ plotting utilities for consistency, and have been doing a lot of writing. I have started to break into the intro/background and the methodology is much more fleshed out now.
+
+It'll be a long month ahead, but things are starting to take shape.
