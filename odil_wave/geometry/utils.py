@@ -64,10 +64,13 @@ def _kaiser(offset: np.ndarray, R: float, beta: float):
 
 
 def _sinc_weights(grid, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
-    """(nx, ny) sinc interpolation weights for a point source at (x_s, y_s).
+    """(nx, ny) sinc interpolation weights for a point source at (x_s, y_s),
+    modulated by the Kaiser window function.
 
-    Each weight is sinc((x_s - x[i])/dx) * sinc((y_s - y[j])/dy), computed
-    over a window of n_sinc nodes per dimension centred on the nearest node.
+    Each weight is
+        sinc((x_s - x[i])/dx) * sinc((y_s - y[j])/dy) * kaiser(offset, r, beta),
+    computed over a window of n_sinc nodes per dimension centred on
+    the nearest node.
     """
     (xmin, _), (ymin, _) = grid.extent
 
@@ -77,16 +80,19 @@ def _sinc_weights(grid, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
 
     # window of node indices centred on nearest node
     half = n_sinc // 2
-    i_win = np.arange(int(round(fi)) - half, int(round(fi)) + half)
-    j_win = np.arange(int(round(fj)) - half, int(round(fj)) + half)
+    beta = _HICKS_BETA[half]  # Kaiser shape parameter for this half width
+    ci, cj = int(round(fi)), int(round(fj))
+    i_win = np.arange(ci - half, ci + half + 1)
+    j_win = np.arange(cj - half, cj + half + 1)
 
     # mask out indices that fall outside the grid
     i_mask = (i_win >= 0) & (i_win < grid.nx)
     j_mask = (j_win >= 0) & (j_win < grid.ny)
 
-    # 1-D sinc weights
-    wi = np.sinc(fi - i_win)
-    wj = np.sinc(fj - j_win)
+    # 1-D Kaiser-windowed sinc weights
+    d_i, d_j = fi - i_win, fj - j_win
+    wi = np.sinc(fi - i_win) * _kaiser(d_i, half, beta)
+    wj = np.sinc(fj - j_win) * _kaiser(d_j, half, beta)
 
     patch = np.outer(wi[i_mask], wj[j_mask])  # weights (before write)
 
@@ -95,6 +101,7 @@ def _sinc_weights(grid, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
 
     patch /= patch.sum() * grid.dx * grid.dy  # weights (normalised)
 
+    # crete weights matrix
     W = np.zeros((grid.nx, grid.ny))
     W[np.ix_(i_win[i_mask], j_win[j_mask])] = patch
     return W
