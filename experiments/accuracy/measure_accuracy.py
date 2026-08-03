@@ -27,8 +27,8 @@ class AccuracyResult:
     def trace(self, k: int, solver: str = "odil"):
         """(time, numerical, analytic, window mask) for kth receiver"""
 
-        if solver not in ["odil", "devito"]:
-            raise ValueError("solver must be 'odil' or 'devito', got", solver)
+        if solver not in ["odil", "dev"]:
+            raise ValueError("solver must be 'odil' or 'dev', got", solver)
         s = solver
 
         tr, rec = self.traces, self.receivers[k]
@@ -117,8 +117,8 @@ def measure_accuracy(cfg: RunConfig) -> AccuracyResult:
         d_odil=d_odil,
         ana_odil=ana_odil,
         mask_odil=mask_odil,
-        t_devito=t_dev,
-        d_devito=d_dev,
+        t_dev=t_dev,
+        d_dev=d_dev,
         ana_dev=ana_dev,
         mask_dev=mask_dev,
     )
