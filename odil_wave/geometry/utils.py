@@ -81,9 +81,10 @@ def _sinc_weights(grid, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
     # window of node indices centred on nearest node
     half = n_sinc // 2
     beta = _HICKS_BETA[half]  # Kaiser shape parameter for this half width
-    ci, cj = int(round(fi)), int(round(fj))
-    i_win = np.arange(ci - half, ci + half + 1)
-    j_win = np.arange(cj - half, cj + half + 1)
+
+    # centre the window on the source
+    i_win = np.arange(int(np.ceil(fi - half)), int(np.floor(fi + half)) + 1)
+    j_win = np.arange(int(np.ceil(fj - half)), int(np.floor(fj + half)) + 1)
 
     # mask out indices that fall outside the grid
     i_mask = (i_win >= 0) & (i_win < grid.nx)
