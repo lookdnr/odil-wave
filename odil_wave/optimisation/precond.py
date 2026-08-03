@@ -1,4 +1,5 @@
 import numpy as np
+import threadpoolctl
 from scipy.sparse.linalg import splu, LinearOperator
 
 from odil_wave.operator.wave import WaveEquation
@@ -59,15 +60,20 @@ class AlphaCirculantPreconditioner:
         # large grids
         B0, B1, B2 = self.blocks
         Wh = np.empty_like(Vh)
-        for k, zk in enumerate(self._z):
-            Az = (B0 + zk * B1 + zk**2 * B2).astype(self.dtype).tocsc()
-            lu = splu(  # factorise
-                Az,
-                permc_spec="MMD_AT_PLUS_A",  # optimal for our structure
-                options=dict(SymmetricMode=True, DiagPivotThresh=0.001),
-            )
-            Wh[k] = lu.solve(Vh[k])  # solve for du
-            del lu, Az  # discard to avoid memory blow up
+
+        # splu runs BLAS under the hood
+        # measurements indicate pinning BLAS to a single thread leads to
+        # far better perfromance for the factorisation stage
+        with threadpoolctl.threadpool_limits(limits=1, user_api="blas"):
+            for k, zk in enumerate(self._z):
+                Az = (B0 + zk * B1 + zk**2 * B2).astype(self.dtype).tocsc()
+                lu = splu(  # factorise
+                    Az,
+                    permc_spec="MMD_AT_PLUS_A",  # optimal for our structure
+                    options=dict(SymmetricMode=True, DiagPivotThresh=0.001),
+                )
+                Wh[k] = lu.solve(Vh[k])  # solve for du
+                del lu, Az  # discard to avoid memory blow up
 
         W = np.fft.irfft(Wh, n=self.n, axis=0) / self._d[:, None]  # transform back
         return W.ravel()
