@@ -1,6 +1,7 @@
 import numpy as np
 import math
 from typing import Tuple
+import scipy.special as sps
 
 from odil_wave import Grid
 
@@ -27,6 +28,39 @@ def place_ellipse(
     j = np.round((y_k - ymin) / grid.dy).clip(0, grid.ny - 1).astype(int)
 
     return np.stack([i, j], axis=-1)
+
+
+# Kaiser window parameters, half width r : beta
+# matches devito table
+_HICKS_BETA = {
+    2: 2.94,
+    3: 4.53,
+    4: 4.14,
+    5: 5.26,
+    6: 6.40,
+    7: 7.51,
+    8: 8.56,
+    9: 9.56,
+    10: 10.64,
+}
+
+
+def _kaiser(offset: np.ndarray, R: float, beta: float):
+    """Kaiser window function that modulates the sinc function
+
+    offset = x - x_n, where x is the arbitrary src position and
+    x_n is the position of the nth grid point
+    R is the half width of the window and beta is the Kaiser window
+    shape parameter
+
+    see https://doi.org/10.1190/1.1451454
+    """
+    w = np.zeros_like(offset, dtype=float)
+    m = np.abs(offset) <= R
+
+    # I0 is a modified Bessel function
+    w[m] = sps.i0(beta * np.sqrt(1.0 - (offset[m] / R) ** 2)) / sps.i0(beta)
+    return w
 
 
 def _sinc_weights(grid, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
