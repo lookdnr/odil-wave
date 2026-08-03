@@ -30,6 +30,8 @@ def build_devito(cfg: RunConfig, rec_coords: np.ndarray, nbl: int = 20):
         tn=grid.t_max,
         src_type="Ricker",
         f0=cfg.f0,
+        interpolation="sinc",
+        r=4,  # half width for Kaiser-window
     )
     return model, geom, AcousticWaveSolver(model, geom, space_order=cfg.space_order)
 
