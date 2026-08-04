@@ -117,3 +117,24 @@ class AlphaCirculantPreconditioner:
     ):
         """Build the preconditioner from a WaveEquation object"""
         return cls(we.reduced_blocks, we.nt - 2, alpha, np.complex64, cache_factors)
+
+
+class ParallelAlphaCirculantPreconditioner:
+    """alpha-circulant (ParaDiag-II) preconditioner for the reduced system.
+
+    Approximates the BTTB operator by wrapping its time stencil
+    around the corner, damped by alpha.
+
+    The wrap makes it block-circulant, and hence invertible by FFT-in-time
+    + one small spatial solve per mode.
+
+    Differs from the true operator only in two corner block rows.
+
+    Employs `multiprocessing` Process workers connected by Pipes to distribute
+    the circulant block factorisations, since they are entirely separable.
+    Each worker factorises its partition, solves its factorisations, and
+    sends its solution blocks.
+    """
+
+    def __init__(self):
+        pass
