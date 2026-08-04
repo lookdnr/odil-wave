@@ -2,6 +2,8 @@ import numpy as np
 import threadpoolctl
 import scipy.sparse.linalg as sl
 from typing import List
+import os
+import warnings
 
 import multiprocessing as mpl
 from multiprocessing.connection import Connection
@@ -205,6 +207,29 @@ class ParallelAlphaCirculantPreconditioner:
         self._z = gamma * np.exp(-2j * np.pi * np.arange(n // 2 + 1) / n)
 
         self.dtype = dtype
+
+        n_cores = len(os.sched_getaffinity(0))
+        n_modes = len(self._z)
+
+        if n_workers > n_cores:
+            warnings.warn(
+                f"{n_workers} requested, only found {n_cores} valid cores."
+                + f" Executing with {n_cores} processes in the pool.\n",
+                UserWarning,
+            )
+
+        if n_workers > n_modes:
+            warnings.warn(
+                f"{n_workers} requested, only {n_modes} require factorising."
+                + f" Executing with {n_modes} processes in the pool.\n",
+                UserWarning,
+            )
+
+        # take the number of workers to be the minimum of
+        # requested num_workers, number of cores, and number of modes
+        # we are solving for
+        # this avoids oversubscription
+        n_workers = min(n_workers, n_cores, n_modes)
 
         # split up work by partitioning modes into subarrays
         parts = np.array_split(np.arange(len(self._z)), n_workers)
