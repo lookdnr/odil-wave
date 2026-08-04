@@ -25,7 +25,7 @@ class AlphaCirculantPreconditioner:
         blocks,
         n,
         alpha=1e-3,
-        dtype: np.typing.DTypeLike = np.complex128,
+        dtype: np.typing.DTypeLike = np.complex64,
         cache_factors: bool = True,
     ):
         if not 0.0 < alpha < 1.0:
@@ -112,6 +112,8 @@ class AlphaCirculantPreconditioner:
         )
 
     @classmethod
-    def from_wave_equation(cls, we: WaveEquation, alpha=1e-3):
+    def from_wave_equation(
+        cls, we: WaveEquation, alpha=1e-3, cache_factors: bool = True
+    ):
         """Build the preconditioner from a WaveEquation object"""
-        return cls(we.reduced_blocks, we.nt - 2, alpha)
+        return cls(we.reduced_blocks, we.nt - 2, alpha, np.complex64, cache_factors)
