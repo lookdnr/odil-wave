@@ -301,10 +301,19 @@ class ParallelAlphaCirculantPreconditioner:
     def shutdown(self):
         """Shutdown the workers in the parallel pool"""
         for endpoint in self._home_endpoints:
-            endpoint.send(None)
+            try:
+                endpoint.send(None)  # kill while True worker loop with None flag
+
+            except (BrokenPipeError, OSError):  # e.g., worker already dead
+                pass
 
         for p in self._procs:
-            p.join()
+            p.join(timeout=5)  # wait for a little
+
+            if p.is_alive():
+                p.terminate()  # kill any that don't shutdown gracefully
+
+        self._closed = True
 
     def __enter__(self):
         """Entry context manager for 'with' blocks"""
