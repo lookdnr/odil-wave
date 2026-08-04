@@ -59,7 +59,7 @@ def measure_accuracy(cfg: RunConfig) -> AccuracyResult:
     # ODIL setup
     grid, _, src, recvs, _, _, opt = build_problem(cfg)
 
-    # measure solve time
+    # measure ODIL solve time
     t0 = perf_counter()
     res = opt.minimise(method=cfg.method, alpha=cfg.alpha, rtol=cfg.rtol)
     wall_odil = perf_counter() - t0
@@ -71,7 +71,7 @@ def measure_accuracy(cfg: RunConfig) -> AccuracyResult:
     iters = inner.iters if inner else res.nit  # inner GMRES count
 
     # Devito
-    run_reference(cfg, recvs.recv_xy)  # run once so JIT compilation time ignored
+    # measures internally
     ref = run_reference(cfg, recvs.recv_xy)  # solve properly
 
     # extract traces, devito grid, and wall clock time
@@ -123,3 +123,29 @@ def measure_accuracy(cfg: RunConfig) -> AccuracyResult:
         mask_dev=mask_dev,
     )
     return AccuracyResult(metrics, traces, receivers)
+
+
+def measure_accuracy_repeated(cfg: RunConfig, n_repeats: int = 3):
+    # warm start solvers
+    _, _, _, recvs, _, _, opt = build_problem(cfg)
+    _ = opt.minimise(
+        method=cfg.method, alpha=cfg.alpha, rtol=cfg.rtol, caching=cfg.caching
+    )  # warm start ODIL
+    _ = run_reference(cfg, recvs.recv_xy)  # warm start devito
+
+    # measure n_repeats runs
+    runs = []
+    for run in range(n_repeats):
+        runs.append(measure_accuracy(cfg))
+        print(runs[run].metrics, "\n")
+
+    agg = {}  # aggregate results
+
+    for k in runs[0].metrics:
+        vals = np.array([r.metrics[k] for r in runs], float)
+        agg[k] = float(vals.mean())  # report mean of each metric
+        agg[f"{k}_std"] = float(vals.std(ddof=1))  # sample std
+
+    result = runs[-1]  # keep one run's traces/receivers for plotting
+    result.metrics = agg
+    return result
