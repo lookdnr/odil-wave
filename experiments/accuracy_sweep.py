@@ -34,7 +34,7 @@ BASE = RunConfig(
 )
 
 # create configs
-nxs = [80, 100, 120, 140, 160, 180, 200, 250, 300]
+nxs = [80, 100, 120, 140, 160, 180, 200]
 configs = [replace(BASE, nx=n, ny=n) for n in nxs]
 
 if __name__ == "__main__":
