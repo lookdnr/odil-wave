@@ -249,6 +249,7 @@ class ParallelAlphaCirculantPreconditioner:
             proc = mpl.Process(
                 target=_worker, args=(worker_end, blocks, self._z[part], dtype)
             )
+            proc.daemon = True  # forces children to shutdown if parent dies
 
             proc.start()  # fork all procs now
 
