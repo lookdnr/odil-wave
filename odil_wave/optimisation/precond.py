@@ -267,3 +267,11 @@ class ParallelAlphaCirculantPreconditioner:
     def from_wave_equation(cls, we: WaveEquation, n_workers, alpha=1e-3):
         """Build the preconditioner from a WaveEquation object"""
         return cls(we.reduced_blocks, we.nt - 2, n_workers, alpha, np.complex128)
+
+    def shutdown(self):
+        """Shutdown the workers in the parallel pool"""
+        for endpoint in self._home_endpoints:
+            endpoint.send(None)
+
+        for p in self._procs:
+            p.join()
