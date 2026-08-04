@@ -141,22 +141,22 @@ def _worker(worker_endpoint: Connection, blocks, z_local, dtype):
             for zk in z_local  # factorise my modes
         ]
 
-    # alert ready to receive
-    worker_endpoint.send("ready")
+        # alert ready to receive
+        worker_endpoint.send("ready")
 
-    # recv fourier components to solve with
-    while True:  # worker survives indefinitely
+        # recv fourier components to solve with
+        while True:  # worker survives indefinitely
 
-        vh_local = worker_endpoint.recv()  # blocks until received
+            vh_local = worker_endpoint.recv()  # blocks until received
 
-        # exit flag
-        if vh_local is None:
-            return
+            # exit flag
+            if vh_local is None:
+                return
 
-        # send solutions
-        worker_endpoint.send(
-            np.stack([lu.solve(vh_local[i]) for i, lu in enumerate(lus)])
-        )
+            # send solutions
+            worker_endpoint.send(
+                np.stack([lu.solve(vh_local[i]) for i, lu in enumerate(lus)])
+            )
 
 
 class ParallelAlphaCirculantPreconditioner:
