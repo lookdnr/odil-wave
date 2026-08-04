@@ -174,6 +174,10 @@ class ParallelAlphaCirculantPreconditioner:
     the circulant block factorisations, since they are entirely separable.
     Each worker factorises its partition, solves its factorisations, and
     sends its solution blocks.
+
+    When run on a single node, factorisation is spread across workers. Thus
+    we have the same memory requirements as in the 'cached' version of the
+    serial prconditioner, but can make better use of multiple NUMA domains
     """
 
     def __init__(
