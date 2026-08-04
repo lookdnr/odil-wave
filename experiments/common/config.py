@@ -50,6 +50,7 @@ class RunConfig:
     method: str = "paradiag"
     alpha: float = 1e-3
     rtol: float = 1e-8
+    caching: bool = True
 
     def __post_init__(self):
         assert self.recv_mode in ["custom", "ring"]
