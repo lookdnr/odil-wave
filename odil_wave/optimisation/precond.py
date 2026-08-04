@@ -231,3 +231,27 @@ class ParallelAlphaCirculantPreconditioner:
         # multiproc equivalent of mpi barrier
         for home_end in self._home_endpoints:
             home_end.recv()
+
+    def matvec(self, v: np.ndarray) -> np.ndarray:
+        """Compute the action of the preconditioner on a vector v"""
+        V = v.reshape(self.n, self.ns) * self._d[:, None]
+
+        # perform fft in time
+        # rfft is for real valued inputs
+        Vh = np.fft.rfft(V, axis=0).astype(self.dtype)
+
+        # distribute work from endpoints
+        # "scatter"
+        for endpoint, part in zip(self._home_endpoints, self._parts):
+            endpoint.send(Vh[part])  # scatter parts to workers
+
+        # solution field
+        Wh = np.empty_like(Vh)
+
+        # receive solution parts to endpoints
+        # "gather"
+        for endpoint, part in zip(self._home_endpoints, self._parts):
+            Wh[part] = endpoint.recv()  # gather solution parts from workers
+
+        W = np.fft.irfft(Wh, n=self.n, axis=0) / self._d[:, None]  # transform back
+        return W.ravel()
