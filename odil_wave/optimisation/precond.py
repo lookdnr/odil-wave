@@ -3,6 +3,9 @@ import threadpoolctl
 import scipy.sparse.linalg as sl
 from typing import List
 
+import multiprocessing as mpl
+from multiprocessing.connection import Connection
+
 from odil_wave.operator.wave import WaveEquation
 
 
@@ -119,6 +122,41 @@ class AlphaCirculantPreconditioner:
         return cls(we.reduced_blocks, we.nt - 2, alpha, np.complex64, cache_factors)
 
 
+def _worker(worker_endpoint: Connection, blocks, z_local, dtype):
+    """Task delegated to a worker in the forked process pool:
+    factorise and solve allocated modes for the given circulant blocks
+    """
+    blas_off = threadpoolctl.threadpool_limits(limits=1, user_api="blas")
+    B0, B1, B2 = blocks
+
+    with blas_off:
+        lus = [
+            sl.splu(
+                (B0 + zk * B1 + zk**2 * B2).astype(dtype).tocsc(),
+                permc_spec="MMD_AT_PLUS_A",
+                options=dict(SymmetricMode=True, DiagPivotThresh=0.001),
+            )
+            for zk in z_local  # factorise my modes
+        ]
+
+    # alert ready to receive
+    worker_endpoint.send("ready")
+
+    # recv fourier components to solve with
+    while True:  # worker survives indefinitely
+
+        vh_local = worker_endpoint.recv()  # blocks until received
+
+        # exit flag
+        if vh_local is None:
+            return
+
+        # send solutions
+        worker_endpoint.send(
+            np.stack([lu.solve(vh_local[i]) for i, lu in enumerate(lus)])
+        )
+
+
 class ParallelAlphaCirculantPreconditioner:
     """alpha-circulant (ParaDiag-II) preconditioner for the reduced system.
 
@@ -136,5 +174,60 @@ class ParallelAlphaCirculantPreconditioner:
     sends its solution blocks.
     """
 
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        blocks,
+        n,
+        n_workers: int,
+        alpha=1e-3,
+        dtype: np.typing.DTypeLike = np.complex64,
+    ):
+
+        if not 0.0 < alpha < 1.0:
+            raise ValueError(
+                f"alpha must be in (0, 1), got {alpha}. alpha >= 1 is the "
+                + "undamped time-periodic operator, which is singular "
+                + "for wave problems."
+            )
+        if any(np.iscomplexobj(B.data) for B in blocks):
+            raise ValueError("blocks must be real (conjugate-pair solve assumes it)")
+
+        self.blocks, self.n, self.alpha = list(blocks), n, alpha
+        self.ns = blocks[0].shape[0]
+
+        # set up the taper to undo the periodicity
+        # this is basically an absorbing layer in time
+        # note we only need n/2n+1 values since the data is real-valued,
+        # meaning we have complex conjugacy and need only ever other mode
+        # np.rfft bakes this logic in
+        gamma = alpha ** (1.0 / n)
+        self._d = gamma ** np.arange(n)
+        self._z = gamma * np.exp(-2j * np.pi * np.arange(n // 2 + 1) / n)
+
+        self.dtype = dtype
+
+        # split up work by partitioning modes into subarrays
+        parts = np.array_split(np.arange(len(self._z)), n_workers)
+
+        # partitition work
+        self._parts, self._home_endpoints, self._procs = [], [], []
+        for part in parts:
+            home_end, worker_end = mpl.Pipe()  # endpoints of communication
+
+            # spawn worker child from this entrypoint
+            # each child gets a copy of the provided parent's memory and hits the
+            # target functions
+            proc = mpl.Process(
+                target=_worker, args=(worker_end, blocks, self._z[part], dtype)
+            )
+
+            proc.start()  # fork all procs now
+
+            self._parts.append(part)
+            self._home_endpoints.append(home_end)
+            self._procs.append(proc)
+
+        # receive results
+        # multiproc equivalent of mpi barrier
+        for home_end in self._home_endpoints:
+            home_end.recv()
