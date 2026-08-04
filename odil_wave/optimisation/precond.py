@@ -305,3 +305,12 @@ class ParallelAlphaCirculantPreconditioner:
 
         for p in self._procs:
             p.join()
+
+    def __enter__(self):
+        """Entry context manager for 'with' blocks"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit context manager for 'with' blocks"""
+        self.shutdown()
+        return False
