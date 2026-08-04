@@ -49,6 +49,7 @@ class GaussNewtonOptimiser(Optimiser):
         restart: int = 100,
         rtol: float = 1e-8,
         alpha: float | None = 0.001,
+        caching: bool = True,
     ):
         """Minimise a DiscreteLoss using Gauss-Newton.
 
@@ -91,6 +92,7 @@ class GaussNewtonOptimiser(Optimiser):
             "nt": nt,
             "nx": nx,
             "ny": ny,
+            "caching": caching,
         }
         self.rec = SolveRecorder(meta)
 
@@ -107,6 +109,7 @@ class GaussNewtonOptimiser(Optimiser):
         alpha = meta["alpha"]
         rtol = meta["rtol"]
         restart = meta["restart"]
+        caching = meta["caching"]
 
         we = self.loss.problem.wave_eq
 
@@ -120,7 +123,9 @@ class GaussNewtonOptimiser(Optimiser):
         # create preconditioner
         if alpha is not None:
             start = perf_counter()
-            M = AlphaCirculantPreconditioner.from_wave_equation(we, alpha)
+            M = AlphaCirculantPreconditioner.from_wave_equation(
+                we, alpha, cache_factors=caching
+            )
             M = M.as_linear_operator()
             end = perf_counter()
             self.rec.meta["t_setup"] = end - start
