@@ -61,7 +61,9 @@ def measure_accuracy(cfg: RunConfig) -> AccuracyResult:
 
     # measure ODIL solve time
     t0 = perf_counter()
-    res = opt.minimise(method=cfg.method, alpha=cfg.alpha, rtol=cfg.rtol)
+    res = opt.minimise(
+        method=cfg.method, alpha=cfg.alpha, rtol=cfg.rtol, caching=cfg.caching
+    )
     wall_odil = perf_counter() - t0
 
     # extract ODIL observations at receivers
