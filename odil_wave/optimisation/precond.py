@@ -1,6 +1,7 @@
 import numpy as np
 import threadpoolctl
-from scipy.sparse.linalg import splu, LinearOperator
+import scipy.sparse.linalg as sl
+from typing import List
 
 from odil_wave.operator.wave import WaveEquation
 
@@ -20,7 +21,12 @@ class AlphaCirculantPreconditioner:
     """
 
     def __init__(
-        self, blocks, n, alpha=1e-3, dtype: np.typing.DTypeLike = np.complex128
+        self,
+        blocks,
+        n,
+        alpha=1e-3,
+        dtype: np.typing.DTypeLike = np.complex128,
+        cache_factors: bool = True,
     ):
         if not 0.0 < alpha < 1.0:
             raise ValueError(
@@ -45,6 +51,26 @@ class AlphaCirculantPreconditioner:
 
         self.dtype = dtype
 
+        self._cache_factors = cache_factors
+        self._lus = None  # list of factorisations
+
+    def _factorise_mode(self, zk: float) -> sl.SuperLU:
+        """Factorise a circulant block for a single mode z_k"""
+        B0, B1, B2 = self.blocks
+        Az = (B0 + zk * B1 + zk**2 * B2).astype(self.dtype).tocsc()
+        return sl.splu(  # factorise
+            Az,
+            permc_spec="MMD_AT_PLUS_A",  # optimal for our structure
+            options=dict(SymmetricMode=True, DiagPivotThresh=0.001),
+        )
+
+    def _factors(self) -> List[sl.SuperLU]:
+        """Per mode LU factorisations, cached"""
+        if self._lus is None:
+            with threadpoolctl.threadpool_limits(limits=1, user_api="blas"):
+                self._lus = [self._factorise_mode(zk) for zk in self._z]
+        return self._lus
+
     def matvec(self, v: np.ndarray) -> np.ndarray:
         """Compute the action of the preconditioner on a vector v"""
         V = v.reshape(self.n, self.ns) * self._d[:, None]
@@ -55,33 +81,33 @@ class AlphaCirculantPreconditioner:
 
         # in the Fourier basis, the linear solve reduces
         # to solving N scalar equations for a block in time
-        # we solve each time block below, factorising on the fly
-        # instead of caching to avoid huge memory cost for
-        # large grids
-        B0, B1, B2 = self.blocks
+        # we solve each time block below
         Wh = np.empty_like(Vh)
 
         # splu runs BLAS under the hood
         # measurements indicate pinning BLAS to a single thread leads to
         # far better perfromance for the factorisation stage
-        with threadpoolctl.threadpool_limits(limits=1, user_api="blas"):
-            for k, zk in enumerate(self._z):
-                Az = (B0 + zk * B1 + zk**2 * B2).astype(self.dtype).tocsc()
-                lu = splu(  # factorise
-                    Az,
-                    permc_spec="MMD_AT_PLUS_A",  # optimal for our structure
-                    options=dict(SymmetricMode=True, DiagPivotThresh=0.001),
-                )
-                Wh[k] = lu.solve(Vh[k])  # solve for du
-                del lu, Az  # discard to avoid memory blow up
+        blas_off = threadpoolctl.threadpool_limits(limits=1, user_api="blas")
+
+        with blas_off:
+            if self._cache_factors:  # cached branch
+                lus = self._factors()
+                for k in range(len(self._z)):
+                    Wh[k] = lus[k].solve(Vh[k])  # solve the kth mode
+
+            else:  # on-the-fly
+                for k, zk in enumerate(self._z):
+                    lu = self._factorise_mode(zk)
+                    Wh[k] = lu.solve(Vh[k])  # solve for du
+                    del lu  # discard to avoid memory blow up
 
         W = np.fft.irfft(Wh, n=self.n, axis=0) / self._d[:, None]  # transform back
         return W.ravel()
 
-    def as_linear_operator(self) -> LinearOperator:
+    def as_linear_operator(self) -> sl.LinearOperator:
         """Return the preconditioner as a scipy.sparse.linalg.LinearOperator"""
         N = self.n * self.ns
-        return LinearOperator(
+        return sl.LinearOperator(
             shape=(N, N), matvec=self.matvec, dtype=np.float64  # type: ignore
         )
 
