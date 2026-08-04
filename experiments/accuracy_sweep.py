@@ -3,7 +3,7 @@ from dataclasses import replace
 
 # test harness
 from common import RunConfig
-from accuracy import measure_accuracy
+from accuracy import measure_accuracy_repeated
 from accuracy.storage import save
 
 # 24 receivers on a fixed circle: radius 0.045, centred, in the 0.2 m domain
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # run and save sweep data and config
     results = []
     for cfg in configs:
-        results.append(measure_accuracy(cfg))
+        results.append(measure_accuracy_repeated(cfg))
         path = "results/accuracy/sweep_50khz"
         save(results, path=path + ".pkl")  # after each config
         cfg.to_json(path=path + f"_nx{cfg.nx}.json")
