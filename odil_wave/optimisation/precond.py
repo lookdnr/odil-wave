@@ -119,7 +119,7 @@ class AlphaCirculantPreconditioner:
         cls, we: WaveEquation, alpha=1e-3, cache_factors: bool = True
     ):
         """Build the preconditioner from a WaveEquation object"""
-        return cls(we.reduced_blocks, we.nt - 2, alpha, np.complex64, cache_factors)
+        return cls(we.reduced_blocks, we.nt - 2, alpha, np.complex128, cache_factors)
 
 
 def _worker(worker_endpoint: Connection, blocks, z_local, dtype):
@@ -255,3 +255,15 @@ class ParallelAlphaCirculantPreconditioner:
 
         W = np.fft.irfft(Wh, n=self.n, axis=0) / self._d[:, None]  # transform back
         return W.ravel()
+
+    def as_linear_operator(self) -> sl.LinearOperator:
+        """Return the preconditioner as a scipy.sparse.linalg.LinearOperator"""
+        N = self.n * self.ns
+        return sl.LinearOperator(
+            shape=(N, N), matvec=self.matvec, dtype=np.float64  # type: ignore
+        )
+
+    @classmethod
+    def from_wave_equation(cls, we: WaveEquation, n_workers, alpha=1e-3):
+        """Build the preconditioner from a WaveEquation object"""
+        return cls(we.reduced_blocks, we.nt - 2, n_workers, alpha, np.complex128)
