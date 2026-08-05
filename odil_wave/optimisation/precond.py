@@ -30,7 +30,7 @@ class AlphaCirculantPreconditioner:
         blocks,
         n,
         alpha=1e-3,
-        dtype: np.typing.DTypeLike = np.complex64,
+        dtype: np.typing.DTypeLike = np.complex128,
         cache_factors: bool = True,
     ):
         if not 0.0 < alpha < 1.0:
@@ -118,15 +118,23 @@ class AlphaCirculantPreconditioner:
 
     @classmethod
     def from_wave_equation(
-        cls, we: WaveEquation, alpha=1e-3, cache_factors: bool = True
+        cls,
+        we: WaveEquation,
+        alpha=1e-3,
+        dtype: np.typing.DTypeLike = np.complex128,
+        cache_factors: bool = True,
     ):
         """Build the preconditioner from a WaveEquation object"""
-        return cls(we.reduced_blocks, we.nt - 2, alpha, np.complex128, cache_factors)
+        return cls(we.reduced_blocks, we.nt - 2, alpha, dtype, cache_factors)
 
 
-def _worker(worker_endpoint: Connection, blocks, z_local, dtype):
+def _caching_worker(worker_endpoint: Connection, blocks, z_local, dtype):
     """Task delegated to a worker in the forked process pool:
-    factorise and solve allocated modes for the given circulant blocks
+    factorise and solve allocated modes for the given circulant blocks.
+
+    The caching worker computes all of its factorisations up front
+    before waiting to receieves their RHS to solve with. This is the most
+    efficient usage, but costs dearly in memory.
     """
     blas_off = threadpoolctl.threadpool_limits(limits=1, user_api="blas")
     B0, B1, B2 = blocks
@@ -159,6 +167,50 @@ def _worker(worker_endpoint: Connection, blocks, z_local, dtype):
             )
 
 
+def _non_caching_worker(worker_endpoint: Connection, blocks, z_local, dtype):
+    """Task delegated to a worker in the forked process pool:
+    factorise and solve allocated modes for the given circulant blocks.
+
+    The non-caching worker computes their factorisations 1 by 1, solving
+    and discarding each factorisation after each solve. This is the
+    memory-constrained case.
+    """
+
+    blas_off = threadpoolctl.threadpool_limits(limits=1, user_api="blas")
+    B0, B1, B2 = blocks
+
+    def factorise_one(zk):
+        with blas_off:
+            Az = (B0 + zk * B1 + zk**2 * B2).astype(dtype).tocsc()
+            return sl.splu(
+                Az,
+                permc_spec="MMD_AT_PLUS_A",
+                options=dict(SymmetricMode=True, DiagPivotThresh=0.001),
+            )
+
+    # alert ready to receive
+    worker_endpoint.send("ready")
+
+    # recv fourier components to solve with
+    while True:  # worker survives indefinitely
+
+        vh_local = worker_endpoint.recv()  # blocks until received
+
+        # exit flag
+        if vh_local is None:
+            return
+
+        result = np.empty_like(vh_local)
+        for i, zk in enumerate(z_local):
+            lu = factorise_one(zk)
+            with blas_off:
+                result[i] = lu.solve(vh_local[i])
+            del lu
+
+        # send solutions
+        worker_endpoint.send(result)
+
+
 class ParallelAlphaCirculantPreconditioner:
     """alpha-circulant (ParaDiag-II) preconditioner for the reduced system.
 
@@ -186,7 +238,8 @@ class ParallelAlphaCirculantPreconditioner:
         n,
         n_workers: int,
         alpha=1e-3,
-        dtype: np.typing.DTypeLike = np.complex64,
+        dtype: np.typing.DTypeLike = np.complex128,
+        cache_factors: bool = True,
     ):
 
         if not 0.0 < alpha < 1.0:
@@ -211,6 +264,8 @@ class ParallelAlphaCirculantPreconditioner:
         self._z = gamma * np.exp(-2j * np.pi * np.arange(n // 2 + 1) / n)
 
         self.dtype = dtype
+
+        self.caching = cache_factors
 
         n_cores = len(os.sched_getaffinity(0))
         n_modes = len(self._z)
@@ -238,6 +293,8 @@ class ParallelAlphaCirculantPreconditioner:
         # split up work by partitioning modes into subarrays
         parts = np.array_split(np.arange(len(self._z)), n_workers)
 
+        worker = _caching_worker if self.caching else _non_caching_worker
+
         # partitition work
         self._parts, self._home_endpoints, self._procs = [], [], []
         for part in parts:
@@ -247,7 +304,7 @@ class ParallelAlphaCirculantPreconditioner:
             # each child gets a copy of the provided parent's memory and hits the
             # target functions
             proc = mpl.Process(
-                target=_worker, args=(worker_end, blocks, self._z[part], dtype)
+                target=worker, args=(worker_end, blocks, self._z[part], dtype)
             )
             proc.daemon = True  # forces children to shutdown if parent dies
 
@@ -294,9 +351,16 @@ class ParallelAlphaCirculantPreconditioner:
         )
 
     @classmethod
-    def from_wave_equation(cls, we: WaveEquation, n_workers, alpha=1e-3):
+    def from_wave_equation(
+        cls,
+        we: WaveEquation,
+        n_workers: int,
+        alpha=1e-3,
+        dtype: np.typing.DTypeLike = np.complex128,
+        caching: bool = True,
+    ):
         """Build the preconditioner from a WaveEquation object"""
-        return cls(we.reduced_blocks, we.nt - 2, n_workers, alpha, np.complex128)
+        return cls(we.reduced_blocks, we.nt - 2, n_workers, alpha, dtype, caching)
 
     def shutdown(self):
         """Shutdown the workers in the parallel pool"""
