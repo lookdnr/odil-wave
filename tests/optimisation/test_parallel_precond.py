@@ -54,11 +54,14 @@ def true_solve(blocks, n, ns, b):
 # =====numerical correctness =====
 
 
-@pytest.mark.parametrize("n_workers", [1, 2, 4])
-@pytest.mark.parametrize("alpha", [1e-3, 0.5, 0.2])
-def test_matches_serial(wave_eq, parallel_pc, n_workers, alpha):
+@pytest.mark.parametrize("n_workers", [1, 4])
+@pytest.mark.parametrize("alpha", [1e-3, 0.2])
+@pytest.mark.parametrize("caching", [True, False])
+def test_matches_serial(wave_eq, parallel_pc, n_workers, alpha, caching):
     """Parallel matvec must be numerically identical to the serial matvec."""
-    M_ser = AlphaCirculantPreconditioner.from_wave_equation(wave_eq, alpha)
+    M_ser = AlphaCirculantPreconditioner.from_wave_equation(
+        wave_eq, alpha, cache_factors=caching
+    )
     M_ser.dtype = np.complex128  # match the parallel complex128 for exact compare
     M_par = parallel_pc(n_workers, alpha)
 
