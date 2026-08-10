@@ -131,7 +131,7 @@ class GaussNewtonOptimiser(Optimiser):
         M_obj = None
         if method == "paradiag":
             start = perf_counter()
-            if n_workers == 1:
+            if n_workers == 0:
                 M_obj = AlphaCirculantPreconditioner.from_wave_equation(
                     we, alpha, cache_factors=caching
                 )
