@@ -58,8 +58,7 @@ def run_odil(cfg, ncores, caching, restart):
         rho=float(inner.rho),
         residuals=list(inner.residual_history),
         nt=grid.nt,
-        nx=grid.nx,
-        ny=grid.ny,
+        ns=grid.nx * grid.ny,
         dof=grid.nx * grid.ny * grid.nt,
         n_modes=(grid.nt - 2) // 2 + 1,
     )
