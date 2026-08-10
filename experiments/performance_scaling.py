@@ -8,6 +8,7 @@ import os
 from dataclasses import replace
 from time import perf_counter
 from devito import configuration
+import resource
 
 BASE = RunConfig(
     nx=100,
@@ -103,8 +104,10 @@ if __name__ == "__main__":
         fn, nw = (lambda: run_devito(cfg)), 0
 
     # get metrics over repeat runs
+    # measure parents RSS so we can correct child measurements
+    baseline = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
     metrics, stats = repeat(fn, a.repeats)
-    peak, self_p, child_p = peak_rss(nw)
+    peak, self_p, child_p, baseline = peak_rss(nw, baseline)
 
     row = dict(
         **metrics,
