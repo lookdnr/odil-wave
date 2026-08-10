@@ -29,7 +29,7 @@ NCORES=32
 # sweep frequency
 for f in 25e3 50e3 75e3 100e3 150e3 200e3 250e3 300e3; do
     echo "=== $MODE f0=$f (repeats=$REPEATS) ==="
-    OMP_NUM_THREADS=1 python3 experiments/strong_scaling.py --solver odil --mode "$MODE" --ncores $NCORES --f0 $f --ppw $PPW --repeats $REPEATS --out "$OUT"
+    OMP_NUM_THREADS=1 python3 experiments/performance_scaling.py --solver odil --mode "$MODE" --ncores $NCORES --f0 $f --ppw $PPW --repeats $REPEATS --out "$OUT"
     OMP_NUM_THREADS
 done
 

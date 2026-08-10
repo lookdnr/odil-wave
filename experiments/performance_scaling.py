@@ -9,8 +9,8 @@ from dataclasses import replace
 from time import perf_counter
 
 BASE = RunConfig(
-    nx=0,
-    ny=0,  # derived from f0/ppw at runtime
+    nx=100,
+    ny=100,  # derived from f0/ppw at runtime
     xmin=0.0,
     xmax=0.2,
     ymin=0.0,
@@ -20,7 +20,7 @@ BASE = RunConfig(
     cfl_safety=0.7,
     time_order=2,
     space_order=6,
-    f0=100e3,
+    f0=50e3,
     source_loc=(0.10, 0.10),
     recv_mode="ring",
     n_recvs=8,  # perf study: traces don't matter
