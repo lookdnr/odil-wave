@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -N strong_scaling
-#PBS -l walltime=01:30:00
+#PBS -l walltime=08:00:00
 #PBS -l select=1:ncpus=128:mem=128gb:cpu_type=rome
 
 # PBS script for running the strong scaling study on CX3
