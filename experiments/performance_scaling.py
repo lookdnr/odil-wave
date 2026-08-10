@@ -84,7 +84,7 @@ if __name__ == "__main__":
     p.add_argument("--f0", type=float, required=True)
     p.add_argument("--ppw", type=float, default=10.0)
     p.add_argument("--restart", type=int, default=10)
-    p.add_argument("--rep", type=int, default=3)
+    p.add_argument("--repeats", type=int, default=3)
     p.add_argument("--out", required=True)
     a = p.parse_args()
 
