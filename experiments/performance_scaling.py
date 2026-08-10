@@ -7,6 +7,7 @@ import json
 import os
 from dataclasses import replace
 from time import perf_counter
+from devito import configuration
 
 BASE = RunConfig(
     nx=100,
@@ -72,6 +73,7 @@ def run_devito(cfg):
         nt=grid.nt,
         ns=grid.nx * grid.ny,
         dof=grid.nx * grid.ny * grid.nt,
+        devito_language=str(configuration["language"]),
     )
 
 
