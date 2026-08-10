@@ -4,7 +4,7 @@
 #PBS -l select=1:ncpus=128:mem=512gb:cpu_type=rome
 
 # PBS script for running the frequency sweep study on CX3
-# cached vs uncached run via qsub -v MODE={cached/uncached} scripts/jobs/fo_sweep.pbs
+# cached vs uncached run via qsub -v MODE={cached/uncached} scripts/jobs/f0_sweep.pbs
 
 module purge
 module load tools/prod miniforge/3
@@ -19,7 +19,7 @@ cd $PBS_O_WORKDIR
 # install latest package version
 pip install .
 
-OUT=results/performance/f0_sweep${MODE}.jsonl
+OUT=results/performance/f0_sweep_${MODE}.jsonl
 mkdir -p results/performance
 
 PPW=10
