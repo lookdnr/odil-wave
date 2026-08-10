@@ -46,7 +46,7 @@ class GaussNewtonOptimiser(Optimiser):
         self,
         u0: Wavefield | np.ndarray | None = None,
         method: str = "paradiag",
-        restart: int = 100,
+        restart: int = 10,
         rtol: float = 1e-8,
         alpha: float | None = 0.001,
         caching: bool = True,
