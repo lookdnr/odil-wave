@@ -39,7 +39,7 @@ for c in $CORES; do
     OMP_NUM_THREADS=1 python experiments/performance_scaling.py --solver odil --mode uncached --ncores "$c" --f0 $F0 --ppw $PPW --repeats $REPEATS --out "$OUT"
 
     # Devito: parallelism is OpenMP over the grid, so OMP is the knob
-    OMP_NUM_THREADS=$c python experiments/strong_scaling.py --solver devito --mode na --ncores "$c" --f0 $F0 --ppw $PPW --repeats $REPEATS --out "$OUT"
+    OMP_NUM_THREADS=$c python experiments/performance_scaling.py --solver devito --mode na --ncores "$c" --f0 $F0 --ppw $PPW --repeats $REPEATS --out "$OUT"
 done
 
 echo "done -> $OUT"
