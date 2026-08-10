@@ -42,15 +42,24 @@ def run_reference(cfg, rec_coords, dt=None, nbl=20, return_u=False) -> dict:
     )  # geom locked to critical_dt
     dt_used = model.critical_dt if dt is None else dt
     start = perf_counter()
-    rec, u, _ = solver.forward(dt=dt_used)
+    rec, u, summary = solver.forward(dt=dt_used)
     wall = perf_counter() - start
     nt = rec.data.shape[0]
     t = np.arange(nt) * dt_used  # use operator clock, not the geom.time_axis
+
+    # use Devito's own profiler
+    entries = [v for v in summary.values() if hasattr(v, "time")]
+    kernel_time = float(sum(e.time for e in entries))
+    gpointss = float(  # g points per second: giga grid point updates / s
+        sum((getattr(e, "gpointss", 0) or 0) for e in entries)
+    )
     return dict(
         traces=rec.data,
         t=t,
         dt=dt_used,
         wall=wall,
+        kernel_time=kernel_time,
+        gpointss=gpointss,
         u=(u if return_u else None),
         geom=geom,
     )
