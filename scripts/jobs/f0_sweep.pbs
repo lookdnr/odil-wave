@@ -1,0 +1,36 @@
+#!/bin/bash
+#PBS -N f0_sweep
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=128:mem=512gb:cpu_type=rome
+
+# PBS script for running the frequency sweep study on CX3
+# cached vs uncached run via qsub -v MODE={cached/uncached} scripts/jobs/fo_sweep.pbs
+
+module purge
+module load tools/prod miniforge/3
+
+# activate env via conda
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+conda activate irp
+
+# navigate to working dir
+cd $PBS_O_WORKDIR
+
+# install latest package version
+pip install .
+
+OUT=results/performance/f0_sweep${MODE}.jsonl
+mkdir -p results/performance
+
+PPW=10
+REPEATS=3
+NCORES=32
+
+# sweep frequency
+for f in 25e3 50e3 75e3 100e3 150e3 200e3 250e3 300e3; do
+    echo "=== $MODE f0=$f (repeats=$REPEATS) ==="
+    OMP_NUM_THREADS=1 python3 experiments/strong_scaling.py --solver odil --mode "$MODE" --ncores $NCORES --f0 $f --ppw $PPW --repeats $REPEATS --out "$OUT"
+    OMP_NUM_THREADS
+done
+
+echo "done -> $OUT"
