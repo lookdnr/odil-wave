@@ -138,7 +138,7 @@ class GaussNewtonOptimiser(Optimiser):
 
             else:
                 M_obj = ParallelAlphaCirculantPreconditioner.from_wave_equation(
-                    we, n_workers, alpha
+                    we, n_workers, alpha, caching=caching
                 )
             M = M_obj.as_linear_operator()
             end = perf_counter()
