@@ -10,7 +10,7 @@ def peak_rss(n_workers, baseline=0):
         resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss * KB
     )  # max single child
     own = max(child_rss - baseline, 0)  # child's own allocations excluding parents RSS
-    return self_rss + n_workers * own, self_rss, child_rss, baseline
+    return self_rss + n_workers * own, self_rss, child_rss
 
 
 def per_mode_factor_bytes(we, alpha=1e-3, dtype=np.complex128) -> np.ndarray:
