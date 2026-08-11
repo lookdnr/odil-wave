@@ -102,19 +102,21 @@ if __name__ == "__main__":
 
     # run
     if a.solver == "odil":
-        fn, nw = (
-            lambda: run_odil(cfg, a.ncores, a.mode == "cached", a.restart)
-        ), a.ncores
+        fn = lambda: run_odil(cfg, a.ncores, a.mode == "cached", a.restart)  # noqa
     else:
         run_devito(cfg)  # warm-up: discard JIT compile
-        fn, nw = (lambda: run_devito(cfg)), 0
+        fn = lambda: run_devito(cfg)  # noqa
 
     # get metrics over repeat runs
     # measure parents RSS so we can correct child measurements
     metrics, stats = repeat(fn, a.repeats)
-    peak, self_p, child_p, baseline = peak_rss(
-        nw,
-    )
+
+    # compute number of workers: min of arg requested, available, and actual used
+    # for safety
+    nw = min(a.ncores, len(os.sched_getaffinity(0)), metrics["n_modes"])
+
+    # measure peak RSS
+    peak, self_p, child_p, baseline = peak_rss(nw, metrics["baseline"])
 
     row = dict(
         **metrics,
