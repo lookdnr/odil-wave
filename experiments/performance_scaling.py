@@ -80,6 +80,8 @@ def run_devito(cfg):
     ref = run_reference(cfg, recvs.recv_xy)
     return dict(
         wall=ref["wall"],
+        kernel_time=ref["kernel_time"],
+        ggpointss=ref["ggpointss"],
         nt=grid.nt,
         ns=grid.nx * grid.ny,
         dof=grid.nx * grid.ny * grid.nt,
