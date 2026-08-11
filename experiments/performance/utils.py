@@ -1,7 +1,8 @@
 import numpy as np
+from typing import Callable, Tuple, Dict
 
 
-def repeat(fn, n):
+def repeat(fn: Callable, n: int) -> Tuple[Dict, Dict]:
     """Call fn() n times, return the last metrics dict + wall-time statistics"""
     runs = [fn() for _ in range(n)]
     walls = [r["wall"] for r in runs]
