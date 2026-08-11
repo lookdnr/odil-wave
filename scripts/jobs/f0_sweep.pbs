@@ -24,8 +24,7 @@ cd $PBS_O_WORKDIR
 # install latest package version
 pip install .
 
-OUT=results/performance/f0_sweep_${MODE}.jsonl # MODE set via -v in qsub
-DEVITOOUT=results/performance/f0_sweep_devito.jsonl
+OUT=results/performance/f0_sweep_${SOLVER}_${MODE}.jsonl
 mkdir -p results/performance
 
 PPW=10
