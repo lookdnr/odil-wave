@@ -40,6 +40,8 @@ BASE = RunConfig(
 
 def run_odil(cfg, ncores, caching, restart):
     grid, _, _, recvs, _, _, opt = build_problem(cfg)
+    # record baseline RSS (before fork)
+    baseline = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
     t0 = perf_counter()
     res = opt.minimise(
         method="paradiag",
@@ -63,11 +65,14 @@ def run_odil(cfg, ncores, caching, restart):
         ns=grid.nx * grid.ny,
         dof=grid.nx * grid.ny * grid.nt,
         n_modes=(grid.nt - 2) // 2 + 1,
+        baseline_rss=baseline,
     )
 
 
 def run_devito(cfg):
     grid, _, _, recvs, _, _, _ = build_problem(cfg)
+    # record baseline RSS (before fork)
+    baseline = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
     ref = run_reference(cfg, recvs.recv_xy)
     return dict(
         wall=ref["wall"],
@@ -75,6 +80,7 @@ def run_devito(cfg):
         ns=grid.nx * grid.ny,
         dof=grid.nx * grid.ny * grid.nt,
         devito_language=str(configuration["language"]),
+        baseline_rss=baseline,
     )
 
 
@@ -105,9 +111,10 @@ if __name__ == "__main__":
 
     # get metrics over repeat runs
     # measure parents RSS so we can correct child measurements
-    baseline = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
     metrics, stats = repeat(fn, a.repeats)
-    peak, self_p, child_p, baseline = peak_rss(nw, baseline)
+    peak, self_p, child_p, baseline = peak_rss(
+        nw,
+    )
 
     row = dict(
         **metrics,
