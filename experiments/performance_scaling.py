@@ -1,5 +1,5 @@
 from common import RunConfig, build_problem, run_reference
-from performance import peak_rss, repeat
+from performance import peak_rss, analytic_memory, repeat
 from odil_wave.grid.utils import nodes_for_ppw
 
 import argparse
@@ -39,7 +39,10 @@ BASE = RunConfig(
 
 
 def run_odil(cfg, ncores, caching, restart):
-    grid, _, _, recvs, _, _, opt = build_problem(cfg)
+    grid, _, _, _, _, we, opt = build_problem(cfg)
+    # compute memory cost of the modes in the precond
+    mem = analytic_memory(we, n_workers=ncores)
+
     # record baseline RSS (before fork)
     baseline = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
     t0 = perf_counter()
@@ -66,6 +69,7 @@ def run_odil(cfg, ncores, caching, restart):
         dof=grid.nx * grid.ny * grid.nt,
         n_modes=(grid.nt - 2) // 2 + 1,
         baseline_rss=baseline,
+        mem=mem,
     )
 
 
