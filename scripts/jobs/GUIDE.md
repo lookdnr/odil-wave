@@ -15,8 +15,8 @@ To collect the baseline (no hardware parallelism) performance data, run
 
 ```
 qsub -N f0_swp_cached -v SOLVER=odil,MODE=cached,NCORES=1 scripts/jobs/f0_sweep.pbs
-qsub -N f0_swp_uncached -v SOLVER=odil,MODE=cached,NCORES=1 scripts/jobs/f0_sweep.pbs
-qsub -N f0_swp_devito -v SOLVER=odil,MODE=na,NCORES=1 scripts/jobs/f0_sweep.pbs
+qsub -N f0_swp_uncached -v SOLVER=odil,MODE=uncached,NCORES=1 scripts/jobs/f0_sweep.pbs
+qsub -N f0_swp_devito -v SOLVER=devito,MODE=na,NCORES=1 scripts/jobs/f0_sweep.pbs
 ```
 
 To collect performance data at the full thread count, run
