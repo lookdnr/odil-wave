@@ -24,8 +24,11 @@ mkdir -p results/performance
 
 PPW=10
 REPEATS=3
-NCORES=32
+NCORES=128
 
+# set thread affinity and location, pin threads for SuperLU BLAS
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
 export OMP_NUM_THREADS=1
 
 # sweep frequency

@@ -26,6 +26,10 @@ PPW=10
 REPEATS=3
 CORES="1 2 4 8 16 32 64 128"
 
+# set thread affinity and location
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+
 # OMP is disabled by default so we need to export
 export DEVITO_LANGUAGE=openmp
 
