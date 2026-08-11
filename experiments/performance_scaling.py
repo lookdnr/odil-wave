@@ -83,7 +83,7 @@ def run_devito(cfg):
     return dict(
         wall=ref["wall"],
         kernel_time=ref["kernel_time"],
-        ggpointss=ref["ggpointss"],
+        gpointss=ref["gpointss"],
         nt=grid.nt,
         ns=grid.nx * grid.ny,
         dof=grid.nx * grid.ny * grid.nt,
