@@ -111,9 +111,13 @@ if __name__ == "__main__":
     # measure parents RSS so we can correct child measurements
     metrics, stats = repeat(fn, a.repeats)
 
-    # compute number of workers: min of arg requested, available, and actual used
-    # for safety
-    nw = min(a.ncores, len(os.sched_getaffinity(0)), metrics["n_modes"])
+    # number of workers (Devito defaults to 1, downstream accepts 0 for serial)
+    nw = 0
+
+    if a.sover == "odil":
+        # compute number of workers: min of arg requested, available, and actual used
+        # for safety
+        nw = min(a.ncores, len(os.sched_getaffinity(0)), metrics["n_modes"])
 
     # measure peak RSS
     peak, self_p, child_p, baseline = peak_rss(nw, metrics["baseline_rss"])
