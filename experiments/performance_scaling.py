@@ -116,7 +116,7 @@ if __name__ == "__main__":
     nw = min(a.ncores, len(os.sched_getaffinity(0)), metrics["n_modes"])
 
     # measure peak RSS
-    peak, self_p, child_p, baseline = peak_rss(nw, metrics["baseline"])
+    peak, self_p, child_p, baseline = peak_rss(nw, metrics["baseline_rss"])
 
     row = dict(
         **metrics,
