@@ -375,3 +375,9 @@ Here are some of the core changes I have made to the code:
 Those were the major changes as far as I can remember. A lot has been done in the last week or so. I also touched up some of the plots/ plotting utilities for consistency, and have been doing a lot of writing. I have started to break into the intro/background and the methodology is much more fleshed out now.
 
 It'll be a long month ahead, but things are starting to take shape.
+
+## 10/08: weekly meeting
+
+I met fairly breifly with Ben today and spoke about my research direction and current state. I have pretty much gotten all the results I want to get for my accuracy study, and I am nearly closing out the performance study, to. One thing he pointed out was that I have been leading my performance with hardware parallelism, but I shoudl enter with algorithmic complexity, so that is what I am working on getting some measurements for now. 
+
+My report is coming along pretty well, but it is not very put together at the minute. In particular I am not happy with my introduction structure just yet, and I need to integrate experiment details into the methodology more clearly. Results and discussion will follow soon. Can't wait to be done!
