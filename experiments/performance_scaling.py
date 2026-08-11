@@ -122,7 +122,7 @@ if __name__ == "__main__":
     # number of workers (Devito defaults to 1, downstream accepts 0 for serial)
     nw = 0
 
-    if a.sover == "odil":
+    if a.solver == "odil":
         # compute number of workers: min of arg requested, available, and actual used
         # for safety
         nw = min(a.ncores, len(os.sched_getaffinity(0)), metrics["n_modes"])
