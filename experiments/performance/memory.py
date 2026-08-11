@@ -1,6 +1,7 @@
 import resource
 import numpy as np
 from odil_wave.optimisation.precond import AlphaCirculantPreconditioner
+from typing import Dict
 
 
 def peak_rss(n_workers, baseline=0):
@@ -24,7 +25,9 @@ def per_mode_factor_bytes(we, alpha=1e-3, dtype=np.complex128) -> np.ndarray:
     return np.array([precond._factorise_mode(zk).nnz * itemsize for zk in precond._z])
 
 
-def analytic_memory(we, alpha=1e-3, dtype=np.complex128, n_workers=1) -> dict:
+def analytic_memory(
+    we, alpha=1e-3, dtype=np.complex128, n_workers=1
+) -> Dict[str, int | np.ndarray]:
     """Predicted resident memory in bytes, for cached vs on-the-fly pathways"""
     per_mode = per_mode_factor_bytes(we, alpha, dtype)  # cached
     n_modes = len(per_mode)
