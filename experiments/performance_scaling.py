@@ -67,9 +67,11 @@ def run_odil(cfg, ncores, caching, restart):
         nt=grid.nt,
         ns=grid.nx * grid.ny,
         dof=grid.nx * grid.ny * grid.nt,
-        n_modes=(grid.nt - 2) // 2 + 1,
+        n_modes=mem["n_modes"],
         baseline_rss=baseline,
-        mem=mem,
+        per_mode_bytes=mem["per_mode_bytes"],
+        cached_total_bytes=mem["cached_total_bytes"],
+        uncached_peak_bytes=mem["uncached_peak_bytes"],
     )
 
 
