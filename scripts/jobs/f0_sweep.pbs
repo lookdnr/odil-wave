@@ -19,22 +19,29 @@ cd $PBS_O_WORKDIR
 # install latest package version
 pip install .
 
-OUT=results/performance/f0_sweep_${MODE}.jsonl
+OUT=results/performance/f0_sweep_${MODE}.jsonl # MODE set via -v in qsub
+DEVITOOUT=results/performance/f0_sweep_devito.jsonl
 mkdir -p results/performance
 
 PPW=10
 REPEATS=3
-NCORES=128
+NCORES=${NCORES:-128} # qsub can accept NCORES arg, useful for baseline to set NCORES=1
 
 # set thread affinity and location, pin threads for SuperLU BLAS
 export OMP_PROC_BIND=close
 export OMP_PLACES=cores
 export OMP_NUM_THREADS=1
 
+# for more than one core, turn Devito to openmp instead of pure C
+if [ "$NCORES" -ne 1 ]; then
+    export DEVITO_LANGUAGE=openmp
+fi
+
 # sweep frequency
 for f in 25e3 50e3 75e3 100e3 125e3 150e3 200e3; do
     echo "=== $MODE f0=$f (repeats=$REPEATS) ==="
     python3 experiments/performance_scaling.py --solver odil --mode "$MODE" --ncores $NCORES --f0 $f --ppw $PPW --repeats $REPEATS --out "$OUT"
+    python3 experiments/performance_scaling.py --solver devito --mode na --ncores $NCORES --f0 $f --ppw $PPW --repeats $REPEATS --out "$DEVITOOUT"
 done
 
 echo "done -> $OUT"
