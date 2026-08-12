@@ -242,7 +242,20 @@ def main():
         ncol=3,
     )
 
-    fig.savefig(FIGURE, dpi=200, bbox_inches="tight", pad_inches=0.1)
+    # panel labels
+    for ax, lab in zip([ax_raw, ax_mem, ax_time], "abc"):
+        ax.text(
+            -0.12,
+            1.05,
+            f"({lab})",
+            transform=ax.transAxes,
+            va="top",
+            ha="left",
+            fontweight="bold",
+            fontsize=14,
+        )
+
+    fig.savefig(FIGURE, dpi=1200, bbox_inches="tight", pad_inches=0.1)
     print("Results saved to", str(FIGURE))
     plt.show()
 
