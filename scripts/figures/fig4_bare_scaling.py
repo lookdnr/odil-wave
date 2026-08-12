@@ -64,45 +64,38 @@ def plot_memory_scaling(cached, uncached, devito, ax):
     xd0, yd0 = devito["ns"].iloc[-1], devito["peak_rss_GiB"].iloc[-1]
     ax.plot(xs, yd0 * (xs / xd0), ":", color="gray", alpha=0.5)
 
-    for mem_gib, tag in [(128, "128 GiB node"), (512, "512 GiB node")]:
-        ax.axhline(mem_gib, color="k", linestyle="--", alpha=0.3)
-        ax.annotate(
-            tag,
-            xy=(xs[0], mem_gib),
-            xytext=(70, 4),
-            textcoords="offset points",
-            ha="right",
-            fontsize=12,
-            alpha=0.5,
-        )
+    x_mid = 1.2e4
 
     # annotate complexity lines
     ax.annotate(
-        r"$O(n \log n)$",
-        xy=(1e5, 50),
-        xytext=(80, 0),
+        r"$O(n^2)$",
+        xy=(x_mid, 30),
+        xytext=(0, 0),
         textcoords="offset points",
         ha="right",
         fontsize=12,
-        alpha=0.6,
+        alpha=0.7,
+        rotation=35,
     )
     ax.annotate(
-        r"$O(n^2)$",
-        xy=(1e5, 2.5e3),
-        xytext=(60, 0),
+        r"$O(n \log n)$",
+        xy=(x_mid, 2),
+        xytext=(15, -5),
         textcoords="offset points",
         ha="right",
         fontsize=12,
-        alpha=0.6,
+        alpha=0.7,
+        rotation=25,
     )
     ax.annotate(
         r"$O(N_s)$",
-        xy=(1e5, 1.03),
-        xytext=(60, 0),
+        xy=(x_mid, 0.05),
+        xytext=(10, 0),
         textcoords="offset points",
         ha="right",
         fontsize=12,
-        alpha=0.6,
+        alpha=0.7,
+        rotation=25,
     )
 
     ax.set_xlabel(r"$N_s$ (spatial DOF)", fontsize=LABEL_FS)
@@ -160,7 +153,7 @@ def plot_time_per_mode_scaling(cached, uncached, devito, ax):
         xytext=(-15, -5),
         textcoords="offset points",
         fontsize=12,
-        alpha=0.6,
+        alpha=0.7,
         rotation=25,
     )
     ax.annotate(
@@ -169,7 +162,7 @@ def plot_time_per_mode_scaling(cached, uncached, devito, ax):
         xytext=(-15, -30),
         textcoords="offset points",
         fontsize=12,
-        alpha=0.6,
+        alpha=0.7,
         rotation=20,
     )
     ax.annotate(
@@ -178,7 +171,7 @@ def plot_time_per_mode_scaling(cached, uncached, devito, ax):
         xytext=(-15, -10),
         textcoords="offset points",
         fontsize=12,
-        alpha=0.6,
+        alpha=0.7,
         rotation=10,
     )
 
