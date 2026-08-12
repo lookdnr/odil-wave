@@ -201,9 +201,9 @@ def make_accuracy_figure(
     for ax in (ax_o, ax_d):
         ax.set_xlim(0, 0.2)
         ax.set_ylim(0, 0.2)
-        ax.set_xlabel("x [m]")
+        ax.set_xlabel("x (m)")
 
-    ax_o.set_ylabel("y [m]")
+    ax_o.set_ylabel("y (m)")
     fig.colorbar(sc, ax=[ax_o, ax_d], shrink=0.95, label="Trace Error Norm")
 
     # d,e) trace overlays
@@ -212,7 +212,7 @@ def make_accuracy_figure(
     plot_trace_overlays(r_ovl, overlay_ks, ax_tr)
 
     for ax in ax_tr:
-        ax.set_xlabel(r"t [$\mu$s]")
+        ax.set_xlabel(r"t ($\mu$s)")
 
     ax_tr[0].set_ylabel("Normalised amplitude")
 
