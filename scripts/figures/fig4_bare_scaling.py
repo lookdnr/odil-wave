@@ -1,6 +1,7 @@
 from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+import matplotlib.gridspec as pltgs
 import numpy as np
 from common import bytes_to_gib, load_jsonl
 
@@ -182,6 +183,22 @@ def plot_time_per_mode_scaling(cached, uncached, devito, ax):
     return ax
 
 
+def plot_raw_time(cached, uncached, devito, ax):
+    """Raw wall clock vs Ns"""
+    for df, colour, label in [
+        (cached, COL["cached"], LABELS["cached"]),
+        (uncached, COL["uncached"], LABELS["uncached"]),
+        (devito, COL["na"], LABELS["na"]),
+    ]:
+        df = df.sort_values("ns")
+        ax.loglog(df["ns"], df["wall_mean"], "o-", color=colour, label=label)
+
+    ax.set_xlabel(r"$N_s$ (spatial DOF)", fontsize=LABEL_FS)
+    ax.set_ylabel("Wall clock time (s)", fontsize=LABEL_FS)
+    ax.grid(True, which="both", alpha=0.3)
+    return ax
+
+
 def main():
     """Helper to assemble full plot"""
     # load all
@@ -198,7 +215,14 @@ def main():
                 result.drop(columns=col, inplace=True)
         result = bytes_to_gib(result)
 
-    fig, (ax_time, ax_mem) = plt.subplots(1, 2, figsize=(14, 7))
+    fig = plt.figure(figsize=(16, 12))
+    grid = pltgs.GridSpec(2, 4, figure=fig)
+
+    ax_raw = fig.add_subplot(grid[0, 1:3])
+    ax_mem = fig.add_subplot(grid[1, 0:2])
+    ax_time = fig.add_subplot(grid[1, 2:4])
+
+    plot_raw_time(cached, uncached, devito, ax_raw)
     plot_memory_scaling(cached, uncached, devito, ax_mem)
     plot_time_per_mode_scaling(cached, uncached, devito, ax_time)
 
@@ -208,7 +232,7 @@ def main():
         Patch(facecolor=COL["na"], label=LABELS["na"]),
     ]
 
-    fig.subplots_adjust(bottom=0.18)
+    fig.subplots_adjust(wspace=0.5)
     fig.legend(
         handles=legend_handles,
         loc="lower center",
