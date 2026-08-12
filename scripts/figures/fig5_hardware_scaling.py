@@ -2,6 +2,7 @@ from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+import numpy as np
 from common import load_jsonl, bytes_to_gib
 
 RESULTS_DIR = Path("results/performance/")
@@ -75,6 +76,40 @@ def plot_strong_scaling(df: pd.DataFrame, ax):
     return ax
 
 
+def plot_memory_vs_cores(scaling, ax):
+    """Peak memory vs ncores: self_rss + children (analytic per_mode_bytes)"""
+    odil = scaling[scaling["solver"] == "odil"]
+
+    for mode, colour in [("cached", COL["cached"]), ("uncached", COL["uncached"])]:
+        sub = odil[odil["mode"] == mode].sort_values("ncores")
+        per_mode = sub["per_mode_bytes"].apply(
+            lambda pmb: pmb[0]
+        )  # constant across modes
+        n_modes = sub["n_modes"]
+
+        if mode == "cached":
+            worst_partition = np.ceil(n_modes / sub["ncores"])
+            children_bytes = worst_partition * per_mode
+        else:  # uncached: max at any one time is n modes * per mode size
+            children_bytes = np.minimum(sub["ncores"], n_modes) * per_mode
+
+        analytic_peak_gib = (sub["self_rss"] + children_bytes) / 2**30
+        ax.plot(
+            sub["ncores"], analytic_peak_gib, "o-", color=colour, label=LABELS[mode]
+        )
+
+    cores = sorted(odil["ncores"].unique())
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(cores, labels=[str(c) for c in cores])
+    ax.minorticks_off()
+    ax.set_ylim(bottom=0)
+
+    ax.set_xlabel("Number of cores", fontsize=LABEL_FS)
+    ax.set_ylabel("Peak memory (GiB)", fontsize=LABEL_FS)
+    ax.grid(True, which="both", alpha=0.3)
+    return ax
+
+
 def main():
     """Helper to assemble full plot"""
     scaling = load_jsonl(which=SCALING, path=RESULTS_DIR)
@@ -84,8 +119,9 @@ def main():
     scaling.drop(columns=EXCLUDE_COLS, inplace=True)
     bytes_to_gib(scaling)
 
-    fig, ax_ss = plt.subplots(figsize=(8, 8))
+    fig, (ax_ss, ax_nc) = plt.subplots(1, 2, figsize=(12, 6))
     plot_strong_scaling(scaling, ax_ss)
+    plot_memory_vs_cores(scaling, ax_nc)
 
     legend_handles = [
         Patch(facecolor=COL["cached"], label=LABELS["cached"]),
