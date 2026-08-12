@@ -57,7 +57,7 @@ def plot_strong_scaling(df: pd.DataFrame, ax):
         ax.annotate(
             f"{y:.0f}x",
             xy=(c, y),
-            xytext=(-12, 5),
+            xytext=(-8, 4),
             textcoords="offset points",
             ha="center",
             fontsize=12,
@@ -88,8 +88,7 @@ def plot_memory_vs_cores(scaling, ax):
         n_modes = sub["n_modes"]
 
         if mode == "cached":
-            worst_partition = np.ceil(n_modes / sub["ncores"])
-            children_bytes = worst_partition * per_mode
+            children_bytes = n_modes * per_mode
         else:  # uncached: max at any one time is n modes * per mode size
             children_bytes = np.minimum(sub["ncores"], n_modes) * per_mode
 
@@ -97,6 +96,24 @@ def plot_memory_vs_cores(scaling, ax):
         ax.plot(
             sub["ncores"], analytic_peak_gib, "o-", color=colour, label=LABELS[mode]
         )
+
+    # extrapolate both past the measured range, anchored on the last real point
+    last_cached = odil[odil["mode"] == "cached"].sort_values("ncores").iloc[-1]
+    last_uncached = odil[odil["mode"] == "uncached"].sort_values("ncores").iloc[-1]
+    n_modes_val = last_cached["n_modes"]
+
+    xs = np.linspace(last_cached["ncores"], n_modes_val, 200)
+
+    cached_extrap = (
+        last_cached["self_rss"] + n_modes_val * last_cached["per_mode_bytes"][0]
+    ) / 2**30
+    ax.plot(xs, np.full_like(xs, cached_extrap), "--", color=COL["cached"], alpha=0.5)
+
+    uncached_extrap = (
+        last_uncached["self_rss"]
+        + np.minimum(xs, n_modes_val) * last_uncached["per_mode_bytes"][0]
+    ) / 2**30
+    ax.plot(xs, uncached_extrap, "--", color=COL["uncached"], alpha=0.5)
 
     cores = sorted(odil["ncores"].unique())
     ax.set_xscale("log", base=2)
@@ -119,7 +136,7 @@ def main():
     scaling.drop(columns=EXCLUDE_COLS, inplace=True)
     bytes_to_gib(scaling)
 
-    fig, (ax_ss, ax_nc) = plt.subplots(1, 2, figsize=(12, 6))
+    fig, (ax_ss, ax_nc) = plt.subplots(1, 2, figsize=(14, 7))
     plot_strong_scaling(scaling, ax_ss)
     plot_memory_vs_cores(scaling, ax_nc)
 
