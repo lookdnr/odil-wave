@@ -1,9 +1,8 @@
 from pathlib import Path
-import pandas as pd
-import json
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import numpy as np
+from common import bytes_to_gib, load_jsonl
 
 RESULTS_DIR = Path("results/performance/")
 CACHED = Path("f0_sweep_odil_cached.jsonl")
@@ -18,7 +17,6 @@ EXCLUDE_COLS = exclude = [
     "wall",
     "walls",
     "omp",
-    "n_matvecs",
     "ppw",
     "restart",
     "n_repeats",
@@ -32,71 +30,6 @@ LABELS = {
     "cached": "ODIL (caching)",
     "uncached": "ODIL (non-caching)",
 }
-
-
-def load_jsonl(which: Path, path: Path = RESULTS_DIR) -> pd.DataFrame:
-    """Load reuslts jsonl from path to df"""
-    with open(path / which) as f:
-        rows = [json.loads(line) for line in f if line.strip()]
-    return pd.DataFrame(rows)
-
-
-def bytes_to_gib(result: pd.DataFrame):
-    """Convert memory cols from bytes to gigibytes"""
-    for col in [
-        "peak_rss",
-        "self_rss",
-        "child_rss",
-        "cached_total_bytes",
-        "uncached_peak_bytes",
-        "per_mode_bytes_mean",
-        "per_mode_bytes_max",
-    ]:
-        if col in result.columns:
-            result[col + "_GiB"] = result[col] / 2**30
-    return result
-
-
-def plot_strong_scaling(df: pd.DataFrame, ax):
-    """Speedup vs ncores per solver/mode, against an linear reference"""
-    for (_, mode), sub in df.groupby(["solver", "mode"]):
-        sub = sub.sort_values("ncores")
-
-        # compute speedup and plot
-        base = sub["wall_mean"].iloc[0]
-        speedup = base / sub["wall_mean"]
-        ax.loglog(
-            sub["ncores"], speedup, "o-", label=LABELS[str(mode)], color=COL[str(mode)]
-        )
-
-    # get core counts
-    cores = sorted(df["ncores"].unique())
-
-    # linear
-    ideal = [c / cores[0] for c in cores]
-    ax.plot(cores, ideal, "k--", alpha=0.4, marker=".", label="Ideal")
-
-    for c, y in zip(cores, ideal):
-        ax.annotate(
-            f"{y:.0f}x",
-            xy=(c, y),
-            xytext=(-12, 5),
-            textcoords="offset points",
-            ha="center",
-            fontsize=12,
-            color="gray",
-            alpha=0.8,
-        )
-
-    ax.set_xlabel("Number of cores", fontsize=LABEL_FS)
-    ax.set_ylabel("Speedup", fontsize=LABEL_FS)
-    ax.set_xscale("log", base=2)
-    ax.set_yscale("log", base=2)
-    ax.set_xticks(cores, labels=[str(c) for c in cores])
-    ax.set_yticks(cores, labels=[str(c) for c in cores])
-    ax.minorticks_off()  # drop the auto-placed unlabeled minor log ticks
-    ax.grid(True, which="both", alpha=0.3)
-    return ax
 
 
 def plot_memory_scaling(cached, uncached, devito, ax):
@@ -178,11 +111,102 @@ def plot_memory_scaling(cached, uncached, devito, ax):
     return ax
 
 
-def main(results):
+def plot_time_per_mode_scaling(cached, uncached, devito, ax):
+    """Plot per mode / per step time vs complexities"""
+    cached = cached.sort_values("ns")
+    uncached = uncached.sort_values("ns")
+    devito = devito.sort_values("ns")
+
+    # setup = factorisation for cached, factodiation dominates solve for uncached
+    per_mode_setup = cached["t_setup"] / cached["n_modes"]
+    per_mode_solve = uncached["t_solve"] / (uncached["n_matvecs"] * uncached["n_modes"])
+    kernel_per_step = devito["kernel_time"] / devito["nt"]
+
+    ax.loglog(
+        cached["ns"], per_mode_setup, "o-", color=COL["cached"], label=LABELS["cached"]
+    )
+    ax.loglog(
+        uncached["ns"],
+        per_mode_solve,
+        "o-",
+        color=COL["uncached"],
+        label=LABELS["uncached"],
+    )
+    ax.loglog(devito["ns"], kernel_per_step, "o-", color=COL["na"], label=LABELS["na"])
+
+    # odil theoretical bounds
+    x0, y0 = cached["ns"].iloc[0], per_mode_setup.iloc[0]
+    xs = np.linspace(
+        cached["ns"].min(), max(cached["ns"].max(), uncached["ns"].max()) * 2.5, 200
+    )
+
+    lower = y0 * (xs / x0) ** 1.5  # O(n^3/2)
+    upper = y0 * (xs / x0) ** 3  # O(n^3)
+
+    ax.fill_between(xs, lower, upper, color="grey", alpha=0.08)
+    ax.plot(xs, lower, ":", color="gray", alpha=0.5)
+    ax.plot(xs, upper, ":", color="gray", alpha=0.5)
+
+    # devito reference
+    xd0, yd0 = devito["ns"].iloc[-1], kernel_per_step.iloc[-1]
+    ax.plot(xs, yd0 * (xs / xd0), ":", color="gray", alpha=0.5)
+
+    x_mid = 1e4
+
+    # complexity annotations
+    ax.annotate(
+        r"$O(n^3)$",
+        xy=(x_mid, 10),
+        xytext=(-15, -5),
+        textcoords="offset points",
+        fontsize=12,
+        alpha=0.6,
+        rotation=25,
+    )
+    ax.annotate(
+        r"$O(n^{\frac{3}{2}})$",
+        xy=(x_mid, 0.2),
+        xytext=(-15, -30),
+        textcoords="offset points",
+        fontsize=12,
+        alpha=0.6,
+        rotation=20,
+    )
+    ax.annotate(
+        r"$O(N_s)$",
+        xy=(x_mid, 1e-5),
+        xytext=(-15, -10),
+        textcoords="offset points",
+        fontsize=12,
+        alpha=0.6,
+        rotation=10,
+    )
+
+    ax.set_xlabel(r"$N_s$ (spatial DOF)", fontsize=LABEL_FS)
+    ax.set_ylabel("Time per mode / step (s)", fontsize=LABEL_FS)
+    ax.grid(True, which="both", alpha=0.3)
+    return ax
+
+
+def main():
     """Helper to assemble full plot"""
-    fig, (ax_ss, ax_mem) = plt.subplots(1, 2, figsize=(16, 7))
-    plot_strong_scaling(scaling, ax_ss)
+    # load all
+    cached = load_jsonl(which=CACHED, path=RESULTS_DIR)
+    uncached = load_jsonl(which=UNCACHED, path=RESULTS_DIR)
+    devito = load_jsonl(which=DEVITO, path=RESULTS_DIR)
+
+    # clean up columns we don't care about
+    # convert memory cols to GiB
+    results = [cached, uncached, devito]
+    for result in results:
+        for col in EXCLUDE_COLS:
+            if col in result.columns:
+                result.drop(columns=col, inplace=True)
+        result = bytes_to_gib(result)
+
+    fig, (ax_time, ax_mem) = plt.subplots(1, 2, figsize=(14, 7))
     plot_memory_scaling(cached, uncached, devito, ax_mem)
+    plot_time_per_mode_scaling(cached, uncached, devito, ax_time)
 
     legend_handles = [
         Patch(facecolor=COL["cached"], label=LABELS["cached"]),
@@ -204,19 +228,5 @@ def main(results):
 
 
 if __name__ == "__main__":
-    # load all
-    cached = load_jsonl(which=CACHED)
-    uncached = load_jsonl(which=UNCACHED)
-    devito = load_jsonl(which=DEVITO)
-    scaling = load_jsonl(which=SCALING)
 
-    # clean up columns we don't care about
-    # convert memory cols to GiB
-    results = [cached, uncached, devito, scaling]
-    for result in results:
-        for col in EXCLUDE_COLS:
-            if col in result.columns:
-                result.drop(columns=col, inplace=True)
-        result = bytes_to_gib(result)
-
-    main(results)
+    main()
