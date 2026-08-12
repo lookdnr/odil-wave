@@ -1,8 +1,5 @@
 import numpy as np
 from typing import Callable, Tuple, Dict
-from pathlib import Path
-import pandas as pd
-import json
 
 
 def repeat(fn: Callable, n: int) -> Tuple[Dict, Dict]:
@@ -16,10 +13,3 @@ def repeat(fn: Callable, n: int) -> Tuple[Dict, Dict]:
         walls=walls,  # raw wall clock
         n_repeats=n,
     )
-
-
-def load_jsonl(path: Path | str) -> pd.DataFrame:
-    """Load reuslts jsonl from path to df"""
-    with open(path) as f:
-        rows = [json.loads(line) for line in f if line.strip()]
-    return pd.DataFrame(rows)
