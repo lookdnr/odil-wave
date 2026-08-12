@@ -9,6 +9,7 @@ CACHED = Path("f0_sweep_odil_cached.jsonl")
 UNCACHED = Path("f0_sweep_odil_uncached.jsonl")
 DEVITO = Path("f0_sweep_devito_na.jsonl")
 SCALING = Path("strong_scaling.jsonl")
+FIGURE = "fig4_bare_scaling.png"
 
 TITLE_FS = 16
 LABEL_FS = 14
@@ -217,9 +218,10 @@ def main():
         ncol=3,
     )
 
+    fig.savefig(FIGURE, dpi=200, bbox_inches="tight", pad_inches=0.1)
+    print("Results saved to", str(FIGURE))
     plt.show()
 
 
 if __name__ == "__main__":
-
     main()
