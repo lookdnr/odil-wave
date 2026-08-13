@@ -207,7 +207,7 @@ def plot_mem_scaling_f0(cached, uncached, devito, ax):
         (devito, COL["na"], LABELS["na"]),
     ]:
         df = df.sort_values("f0")
-        ax.semilogy(df["f0"] / 1000.0, df["peak_rss_GiB"], "o-", color=colour)
+        ax.plot(df["f0"] / 1000.0, df["peak_rss_GiB"], "o-", color=colour)
 
     ax.set_xlabel(r"$f_0$ (kHz)", fontsize=LABEL_FS)
     ax.set_ylabel("Peak RSS (GiB)", fontsize=LABEL_FS)
