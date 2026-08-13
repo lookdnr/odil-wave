@@ -86,7 +86,7 @@ def compute_correlations(
     xcorrs, envs = np.array(xcorrs), np.array(xcorrs)
 
     # extract peak lags
-    lags = np.array(x["peak"] for x in xcorrs)
+    lags = np.array([x["peak"] for x in xcorrs])
 
     # compute slope: fit a line with slope dr/dl
     slope, intercept = np.polyfit(distances, lags, 1)
