@@ -79,8 +79,9 @@ def compute_correlations(
     # apply pre rec mask, max norm, and compute for all
     for k in range(d.shape[1]):
         m = mask[:, k]
-        obs, ref = max_norm(d[m, k]), max_norm(ana[m, k])
-        xcorrs.append(xcorr_lags(ref, obs, dt))
+        obs, ref = d[m, k], ana[m, k]  # raw
+        obs_n, ref_n = max_norm(obs), max_norm(ref)  # normalised
+        xcorrs.append(xcorr_lags(ref_n, obs_n, dt))
         envs.append(envelopes(ref, obs))
 
     xcorrs, envs = np.array(xcorrs), np.array(xcorrs)
