@@ -8,3 +8,10 @@ def xcorr_lags(ref: np.ndarray, test: np.ndarray, dt: float) -> Dict[str, np.nda
     corr = ss.correlate(test, ref, mode="full")
     lags_s = ss.correlation_lags(len(test), len(ref), mode="full") * dt
     return dict(corr=corr, lags=lags_s, peak=lags_s[np.argmax(corr)])
+
+
+def envelopes(ref: np.ndarray, test: np.ndarray) -> Dict[str, np.ndarray]:
+    """Compute the envelopes of ref and test using the Hilbert transform"""
+    return dict(
+        ref=ss.envelope(ref), test=ss.envelope(test), ratio=test.max() / ref.max()
+    )
