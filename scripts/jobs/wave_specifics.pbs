@@ -5,7 +5,7 @@
 
 # PBS script for running the wave-specific study on CX3
 # args:
-# MODE={cached/uncached},
+# OUT=path_to_pkl.pkl
 
 module purge
 module load tools/prod miniforge/3
