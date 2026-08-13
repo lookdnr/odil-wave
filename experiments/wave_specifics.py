@@ -23,10 +23,10 @@ RECV_DISTANCES = (
     0.09,
 )  # metres, along +x from the source
 RECV_LOCS = tuple((SOURCE_LOC[0] + d, SOURCE_LOC[1]) for d in RECV_DISTANCES)
-
+PPW_VALUES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 BASE = RunConfig(
-    nx=100,
-    ny=100,  # overwritten per ppw below
+    nx=150,
+    ny=150,  # overwritten per ppw below
     xmin=0.0,
     xmax=0.2,
     ymin=0.0,
@@ -146,15 +146,17 @@ def run(cfg):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--ppw", type=float, required=True)
     p.add_argument("--out", required=True)
+    p.add_argument("--dry", required=False, action="store_true")
     a = p.parse_args()
 
-    # compute required nodes for given ppw and make problem
-    n = nodes_for_ppw(BASE.xmax - BASE.xmin, BASE.f0, a.ppw, BASE.c_min)
-    cfg = replace(BASE, nx=n, ny=n)
+    for ppw in PPW_VALUES:
+        # compute required nodes for given ppw and make problem
+        n = nodes_for_ppw(BASE.xmax - BASE.xmin, BASE.f0, ppw, BASE.c_min)
+        cfg = replace(BASE, nx=n, ny=n)
 
-    # run, write
-    row = run(cfg)
-    with open(a.out, "a") as f:
-        f.write(json.dumps(row, default=float) + "\n")
+        if not a.dry:
+            # run, write
+            row = run(cfg)
+            with open(a.out, "a") as f:
+                f.write(json.dumps(row, default=float) + "\n")
