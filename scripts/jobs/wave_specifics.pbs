@@ -1,0 +1,37 @@
+#!/bin/bash
+#PBS -N wave-specifics
+#PBS -l walltime=02:00:00
+#PBS -l select=1:ncpus=128:mem=128gb:cpu_type=rome
+
+# PBS script for running the wave-specific study on CX3
+# args:
+# MODE={cached/uncached},
+# SOLVER={odil,devito},
+# NCORES=n
+
+module purge
+module load tools/prod miniforge/3
+
+# activate env via conda
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+conda activate irp
+
+# navigate to working dir
+cd $PBS_O_WORKDIR
+
+# install latest package version
+pip install .
+
+OUT=results/performance/fwave_specifics.jsonl
+mkdir -p results/performance
+
+NCORES=128 # qsub can accept NCORES arg, useful for baseline to set NCORES=1
+
+# set thread affinity and location
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+export OMP_NUM_THREADS=1 # SuperLU BLAS pinning
+
+python3 experiments/wave_specifics.py --out "$OUT"
+
+echo "done -> $OUT"
