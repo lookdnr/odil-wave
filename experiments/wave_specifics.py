@@ -70,6 +70,13 @@ def max_norm(trace: np.ndarray) -> np.ndarray:
     return trace / trace.max()
 
 
+def make_json_safe(d: dict):
+    """Convert arrays to lists for json.dump"""
+    return {
+        key: (v.tolist() if isinstance(v, np.ndarray) else v) for key, v in d.items()
+    }
+
+
 def compute_correlations(
     d: np.ndarray, ana: np.ndarray, dt: float, mask: np.ndarray, distances: np.ndarray
 ):
@@ -81,10 +88,11 @@ def compute_correlations(
         m = mask[:, k]
         obs, ref = d[m, k], ana[m, k]  # raw
         obs_n, ref_n = max_norm(obs), max_norm(ref)  # normalised
-        xcorrs.append(xcorr_lags(ref_n, obs_n, dt))
-        envs.append(envelopes(ref, obs))
+        xcorr = xcorr_lags(ref_n, obs_n, dt)
+        env = envelopes(ref, obs)
 
-    xcorrs, envs = np.array(xcorrs), np.array(xcorrs)
+        xcorrs.append(make_json_safe(xcorr))
+        envs.append(make_json_safe(env))
 
     # extract peak lags
     lags = np.array([x["peak"] for x in xcorrs])
@@ -131,14 +139,14 @@ def run(cfg):
         nt=grid.nt,
         distances=list(distances),
         odil=dict(
-            xcorrs=xcorrs_o.tolist(),
-            envs=envs_o.tolist(),
+            xcorrs=xcorrs_o,
+            envs=envs_o,
             slope=slope_o,
             intercept=intercept_o,
         ),
         devito=dict(
-            xcorrs=xcorrs_d.tolist(),
-            envs=envs_d.tolist(),
+            xcorrs=xcorrs_d,
+            envs=envs_d,
             slope=slope_d,
             intercept=intercept_d,
         ),
