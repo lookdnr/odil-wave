@@ -94,14 +94,18 @@ def compute_correlations(
     return xcorrs, envs, slope, intercept
 
 
-def run(cfg):
+def run(cfg, n_workers):
     """Colelct results for the given config"""
     c = cfg.c_min
 
     # build problem, run, get observations
     grid, _, src, recvs, _, _, opt = build_problem(cfg)
     res = opt.minimise(
-        method=cfg.method, alpha=cfg.alpha, rtol=cfg.rtol, caching=cfg.caching
+        method=cfg.method,
+        alpha=cfg.alpha,
+        rtol=cfg.rtol,
+        caching=cfg.caching,
+        n_workers=n_workers,
     )
     d_odil, t_odil = recvs.extract_observations(res.solution.U), grid.t
 
@@ -139,6 +143,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--out", required=True)
     p.add_argument("--dry", required=False, action="store_true")
+    p.add_argument("--workers", required=False, default=32)
     a = p.parse_args()
 
     results = []
@@ -149,7 +154,7 @@ if __name__ == "__main__":
 
         # run
         if not a.dry:
-            results.append(run(cfg))
+            results.append(run(cfg, a.n_workers))
 
     # write
     if not a.dry:
