@@ -1,5 +1,4 @@
 import argparse
-import json
 from dataclasses import replace, dataclass
 
 import numpy as np
@@ -9,6 +8,7 @@ from common.analytic import src_rec_distance
 from common.compare import pre_reflection_mask
 from wave_specific.dsp import xcorr_lags, envelopes
 from odil_wave.grid.utils import nodes_for_ppw
+from accuracy import save
 
 SOURCE_LOC = (0.05, 0.05)
 RECV_DISTANCES = (
@@ -141,13 +141,16 @@ if __name__ == "__main__":
     p.add_argument("--dry", required=False, action="store_true")
     a = p.parse_args()
 
+    results = []
     for ppw in PPW_VALUES:
         # compute required nodes for given ppw and make problem
         n = nodes_for_ppw(BASE.xmax - BASE.xmin, BASE.f0, ppw, BASE.c_min)
         cfg = replace(BASE, nx=n, ny=n)
 
+        # run
         if not a.dry:
-            # run, write
-            row = run(cfg)
-            with open(a.out, "a") as f:
-                f.write(json.dumps(row, default=float) + "\n")
+            results.append(run(cfg))
+
+    # write
+    if not a.dry:
+        save(results, a.out)
