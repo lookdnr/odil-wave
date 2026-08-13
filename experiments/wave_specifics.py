@@ -52,17 +52,9 @@ class DispersionResult:
     ppw: float
     nx: int
     nt: int
-    distances: np.ndarray  # src-rec
-
-    metrics: dict  # velocity_error_slope, slope_r2, per solver
-
-    corr_odil: list  # full correlation array, one per receiver
-    lags_odil: list  # corresponding lag axis (s), one per receiver
-    env_odil: list  # (ref_envelope, test_envelope) per receiver
-
-    corr_dev: list
-    lags_dev: list
-    env_dev: list
+    distances: list
+    odil: dict  # xcorrs, envs, slope, intercept
+    devito: dict
 
 
 def max_norm(trace: np.ndarray) -> np.ndarray:
@@ -133,23 +125,13 @@ def run(cfg):
         d_dev, ana_dev, ref["dt"], mask_dev, distances
     )
 
-    return dict(
+    return DispersionResult(
         ppw=cfg.ppw,
         nx=cfg.nx,
         nt=grid.nt,
         distances=list(distances),
-        odil=dict(
-            xcorrs=xcorrs_o,
-            envs=envs_o,
-            slope=slope_o,
-            intercept=intercept_o,
-        ),
-        devito=dict(
-            xcorrs=xcorrs_d,
-            envs=envs_d,
-            slope=slope_d,
-            intercept=intercept_d,
-        ),
+        odil=dict(xcorrs=xcorrs_o, envs=envs_o, slope=slope_o, intercept=intercept_o),
+        devito=dict(xcorrs=xcorrs_d, envs=envs_d, slope=slope_d, intercept=intercept_d),
     )
 
 
