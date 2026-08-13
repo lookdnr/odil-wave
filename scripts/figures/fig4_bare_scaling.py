@@ -50,7 +50,7 @@ def plot_memory_scaling(cached, uncached, devito, ax):
     x0, y0 = cached["ns"].iloc[0], cached["peak_rss_GiB"].iloc[0]
 
     xs = np.linspace(
-        cached["ns"].min(), max(cached["ns"].max(), uncached["ns"].max()) * 2.5, 200
+        cached["ns"].min(), max(cached["ns"].max(), uncached["ns"].max()) * 1.2, 200
     )
 
     # odil theoretical upper/lower memory bounds:
@@ -132,7 +132,7 @@ def plot_time_per_mode_scaling(cached, uncached, devito, ax):
     # odil theoretical bounds
     x0, y0 = cached["ns"].iloc[0], per_mode_setup.iloc[0]
     xs = np.linspace(
-        cached["ns"].min(), max(cached["ns"].max(), uncached["ns"].max()) * 2.5, 200
+        cached["ns"].min(), max(cached["ns"].max(), uncached["ns"].max()) * 1.2, 200
     )
 
     lower = y0 * (xs / x0) ** 1.5  # O(n^3/2)
