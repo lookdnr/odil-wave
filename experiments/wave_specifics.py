@@ -154,7 +154,7 @@ if __name__ == "__main__":
 
         # run
         if not a.dry:
-            results.append(run(cfg, a.n_workers))
+            results.append(run(cfg, a.workers))
 
     # write
     if not a.dry:
