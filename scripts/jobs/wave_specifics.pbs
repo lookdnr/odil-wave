@@ -7,7 +7,6 @@
 # args:
 # MODE={cached/uncached},
 # SOLVER={odil,devito},
-# NCORES=n
 
 module purge
 module load tools/prod miniforge/3
@@ -24,8 +23,6 @@ pip install .
 
 OUT=results/performance/wave_specifics.pkl
 mkdir -p results/performance
-
-NCORES=128 # qsub can accept NCORES arg, useful for baseline to set NCORES=1
 
 # set thread affinity and location
 export OMP_PROC_BIND=close
