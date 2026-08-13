@@ -1,12 +1,11 @@
 #!/bin/bash
 #PBS -N wave-specifics
-#PBS -l walltime=02:00:00
+#PBS -l walltime=01:00:00
 #PBS -l select=1:ncpus=32:mem=16gb:cpu_type=rome
 
 # PBS script for running the wave-specific study on CX3
 # args:
 # MODE={cached/uncached},
-# SOLVER={odil,devito},
 
 module purge
 module load tools/prod miniforge/3
@@ -21,8 +20,8 @@ cd $PBS_O_WORKDIR
 # install latest package version
 pip install .
 
-OUT=results/performance/wave_specifics.pkl
-mkdir -p results/performance
+OUT=results/wave/wave_specifics.pkl
+mkdir -p results/wave
 
 # set thread affinity and location
 export OMP_PROC_BIND=close
