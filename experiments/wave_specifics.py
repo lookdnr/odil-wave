@@ -127,10 +127,10 @@ def run(cfg):
     distances = src_rec_distance(src, recvs)
 
     xcorrs_o, envs_o, slope_o, intercept_o = compute_correlations(
-        d_odil, ana_odil, cfg.dt, mask_odil, distances
+        d_odil, ana_odil, grid.dt, mask_odil, distances
     )
     xcorrs_d, envs_d, slope_d, intercept_d = compute_correlations(
-        d_dev, ana_dev, cfg.dt, mask_dev, distances
+        d_dev, ana_dev, ref["dt"], mask_dev, distances
     )
 
     return dict(
