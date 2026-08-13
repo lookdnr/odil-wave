@@ -1,0 +1,160 @@
+import argparse
+import json
+from dataclasses import replace, dataclass
+
+import numpy as np
+
+from common import RunConfig, build_problem, run_reference, analytical_traces
+from common.analytic import src_rec_distance
+from common.compare import pre_reflection_mask
+from wave_specific.dsp import xcorr_lags, envelopes
+from odil_wave.grid.utils import nodes_for_ppw
+
+SOURCE_LOC = (0.05, 0.05)
+RECV_DISTANCES = (
+    0.01,
+    0.02,
+    0.03,
+    0.04,
+    0.05,
+    0.06,
+    0.07,
+    0.08,
+    0.09,
+)  # metres, along +x from the source
+RECV_LOCS = tuple((SOURCE_LOC[0] + d, SOURCE_LOC[1]) for d in RECV_DISTANCES)
+
+BASE = RunConfig(
+    nx=100,
+    ny=100,  # overwritten per ppw below
+    xmin=0.0,
+    xmax=0.2,
+    ymin=0.0,
+    ymax=0.2,
+    c_min=1500.0,
+    c_max=1500.0,  # homogeneous
+    cfl_safety=0.7,
+    time_order=2,
+    space_order=6,
+    f0=100e3,
+    source_loc=SOURCE_LOC,
+    recv_mode="custom",
+    recv_locs=RECV_LOCS,
+    n_recvs=len(RECV_LOCS),
+    model="homogeneous",
+    method="paradiag",
+    alpha=1e-3,
+)
+
+
+@dataclass
+class DispersionResult:
+    ppw: float
+    nx: int
+    nt: int
+    distances: np.ndarray  # src-rec
+
+    metrics: dict  # velocity_error_slope, slope_r2, per solver
+
+    corr_odil: list  # full correlation array, one per receiver
+    lags_odil: list  # corresponding lag axis (s), one per receiver
+    env_odil: list  # (ref_envelope, test_envelope) per receiver
+
+    corr_dev: list
+    lags_dev: list
+    env_dev: list
+
+
+def max_norm(trace: np.ndarray) -> np.ndarray:
+    """Apply max normalisation to a trace"""
+    return trace / trace.max()
+
+
+def compute_correlations(
+    d: np.ndarray, ana: np.ndarray, dt: float, mask: np.ndarray, distances: np.ndarray
+):
+    """Per receiver lag + envelope ratio against the analytic reference"""
+    xcorrs, envs = [], []
+
+    # apply pre rec mask, max norm, and compute for all
+    for k in range(d.shape[1]):
+        m = mask[:, k]
+        obs, ref = max_norm(d[m, k]), max_norm(ana[m, k])
+        xcorrs.append(xcorr_lags(ref, obs, dt))
+        envs.append(envelopes(ref, obs))
+
+    xcorrs, envs = np.array(xcorrs), np.array(xcorrs)
+
+    # extract peak lags
+    lags = np.array(x["peak"] for x in xcorrs)
+
+    # compute slope: fit a line with slope dr/dl
+    slope, intercept = np.polyfit(distances, lags, 1)
+    return xcorrs, envs, slope, intercept
+
+
+def run(cfg):
+    """Colelct results for the given config"""
+    c = cfg.c_min
+
+    # build problem, run, get observations
+    grid, _, src, recvs, _, _, opt = build_problem(cfg)
+    res = opt.minimise(
+        method=cfg.method, alpha=cfg.alpha, rtol=cfg.rtol, caching=cfg.caching
+    )
+    d_odil, t_odil = recvs.extract_observations(res.solution.U), grid.t
+
+    # run devito, no need to account for JIT compile since we dc about time
+    ref = run_reference(cfg, recvs.recv_xy)
+    d_dev, t_dev = ref["traces"], ref["t"]
+
+    # compute analytical traces and masks
+    ana_odil = analytical_traces(src, recvs, t_odil, c)
+    mask_odil = pre_reflection_mask(src, recvs, t_odil, c)
+    ana_dev = analytical_traces(src, recvs, t_dev, c)
+    mask_dev = pre_reflection_mask(src, recvs, t_dev, c)
+
+    # compute src rec distances
+    distances = src_rec_distance(src, recvs)
+
+    xcorrs_o, envs_o, slope_o, intercept_o = compute_correlations(
+        d_odil, ana_odil, cfg.dt, mask_odil, distances
+    )
+    xcorrs_d, envs_d, slope_d, intercept_d = compute_correlations(
+        d_dev, ana_dev, cfg.dt, mask_dev, distances
+    )
+
+    return dict(
+        ppw=cfg.ppw,
+        nx=cfg.nx,
+        nt=grid.nt,
+        distances=list(distances),
+        odil=dict(
+            xcorrs=xcorrs_o.tolist(),
+            envs=envs_o.tolist(),
+            slope=slope_o,
+            intercept=intercept_o,
+        ),
+        devito=dict(
+            xcorrs=xcorrs_d.tolist(),
+            envs=envs_d.tolist(),
+            slope=slope_d,
+            intercept=intercept_d,
+        ),
+    )
+
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser()
+    p.add_argument("--ppw", type=float, required=True)
+    p.add_argument("--out", required=True)
+    a = p.parse_args()
+
+    # compute required nodes for given ppw and make problem
+    n = nodes_for_ppw(BASE.xmax - BASE.xmin, BASE.f0, a.ppw, BASE.c_min)
+    cfg = replace(BASE, nx=n, ny=n)
+
+    # run, write
+    row = run(cfg)
+    with open(a.out, "a") as f:
+        f.write(json.dumps(row, default=float) + "\n")
