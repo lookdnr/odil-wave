@@ -31,6 +31,7 @@ class Grid:
     c_min: float = 1.5  # reference wavespeed
     c_max: float = 2.0
     cfl_safety: float = 0.8  # fraction of theoretical safety to use for dt
+    allow_unstable: bool = False  # allow unstable cfl condtions
 
     # grid spacings
     dx: float = field(init=False)
@@ -81,9 +82,12 @@ class Grid:
             self.c_min = self.c_max
             self.c_max = temp
 
-        if not (0 < self.cfl_safety < 1.0):
+        if self.cfl_safety <= 0:
+            raise ValueError(f"arg cfl_safety must be positive , got {self.cfl_safety}")
+        if self.cfl_safety >= 1.0 and not self.allow_unstable:
             raise ValueError(
-                f"arg cfl_safety must be less than 1, got {self.cfl_safety}"
+                f"arg cfl_safety must be < 1, got {self.cfl_safety}. "
+                "pass allow_unstable=True to intentionally exceed the CFL limit"
             )
 
         # compute grid spacing
