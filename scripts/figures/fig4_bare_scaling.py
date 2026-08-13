@@ -199,6 +199,22 @@ def plot_raw_time(cached, uncached, devito, ax):
     return ax
 
 
+def plot_mem_scaling_f0(cached, uncached, devito, ax):
+    """Plot Peak RSS versus f0"""
+    for df, colour, label in [
+        (cached, COL["cached"], LABELS["cached"]),
+        (uncached, COL["uncached"], LABELS["uncached"]),
+        (devito, COL["na"], LABELS["na"]),
+    ]:
+        df = df.sort_values("f0")
+        ax.semilogy(df["f0"] / 1000.0, df["peak_rss_GiB"], "o-", color=colour)
+
+    ax.set_xlabel(r"$f_0$ (kHz)", fontsize=LABEL_FS)
+    ax.set_ylabel("Peak RSS (GiB)", fontsize=LABEL_FS)
+    ax.grid(True, which="both", alpha=0.3)
+    return ax
+
+
 def main():
     """Helper to assemble full plot"""
     # load all
@@ -216,15 +232,17 @@ def main():
         result = bytes_to_gib(result)
 
     fig = plt.figure(figsize=(16, 12))
-    grid = pltgs.GridSpec(2, 4, figure=fig)
+    grid = pltgs.GridSpec(2, 2, figure=fig)
 
-    ax_raw = fig.add_subplot(grid[0, 1:3])
-    ax_mem = fig.add_subplot(grid[1, 0:2])
-    ax_time = fig.add_subplot(grid[1, 2:4])
+    ax_time = fig.add_subplot(grid[0, 0])
+    ax_raw = fig.add_subplot(grid[0, 1])
+    ax_mem = fig.add_subplot(grid[1, 0])
+    ax_f0 = fig.add_subplot(grid[1, 1])
 
+    plot_time_per_mode_scaling(cached, uncached, devito, ax_time)
     plot_raw_time(cached, uncached, devito, ax_raw)
     plot_memory_scaling(cached, uncached, devito, ax_mem)
-    plot_time_per_mode_scaling(cached, uncached, devito, ax_time)
+    plot_mem_scaling_f0(cached, uncached, devito, ax_f0)
 
     legend_handles = [
         Patch(facecolor=COL["cached"], label=LABELS["cached"]),
@@ -243,7 +261,7 @@ def main():
     )
 
     # panel labels
-    for ax, lab in zip([ax_raw, ax_mem, ax_time], "abc"):
+    for ax, lab in zip([ax_raw, ax_mem, ax_time, ax_f0], "abcd"):
         ax.text(
             -0.12,
             1.05,
@@ -255,9 +273,8 @@ def main():
             fontsize=14,
         )
 
-    fig.savefig(FIGURE, dpi=1200, bbox_inches="tight", pad_inches=0.1)
+    fig.savefig(FIGURE, dpi=200, bbox_inches="tight", pad_inches=0.1)
     print("Results saved to", str(FIGURE))
-    plt.show()
 
 
 if __name__ == "__main__":
