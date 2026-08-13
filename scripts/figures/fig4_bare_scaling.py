@@ -190,10 +190,10 @@ def plot_raw_time(cached, uncached, devito, ax):
         (uncached, COL["uncached"], LABELS["uncached"]),
         (devito, COL["na"], LABELS["na"]),
     ]:
-        df = df.sort_values("ns")
-        ax.loglog(df["ns"], df["wall_mean"], "o-", color=colour, label=label)
+        df = df.sort_values("dof")
+        ax.plot(df["dof"], df["wall_mean"], "o-", color=colour, label=label)
 
-    ax.set_xlabel(r"$N_s$ (spatial DOF)", fontsize=LABEL_FS)
+    ax.set_xlabel(r"DOF ($N_x \times N_y \times N_t$)", fontsize=LABEL_FS)
     ax.set_ylabel("Wall clock time (s)", fontsize=LABEL_FS)
     ax.grid(True, which="both", alpha=0.3)
     return ax
