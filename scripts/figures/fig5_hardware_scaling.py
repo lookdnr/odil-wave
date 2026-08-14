@@ -127,6 +127,29 @@ def plot_memory_vs_cores(scaling, ax):
     return ax
 
 
+def plot_raw_timings(scaling, ax):
+    """Raw wall-clock time vs ncores"""
+    for (_, mode), sub in scaling.groupby(["solver", "mode"]):
+        sub = sub.sort_values("ncores")
+        ax.plot(
+            sub["ncores"],
+            sub["wall_mean"],
+            "o-",
+            label=LABELS[str(mode)],
+            color=COL[str(mode)],
+        )
+
+    cores = sorted(scaling["ncores"].unique())
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(cores, labels=[str(c) for c in cores])
+    ax.minorticks_off()
+
+    ax.set_xlabel("Number of cores", fontsize=LABEL_FS)
+    ax.set_ylabel("Wall-clock time (s)", fontsize=LABEL_FS)
+    ax.grid(True, which="both", alpha=0.3)
+    return ax
+
+
 def main():
     """Helper to assemble full plot"""
     scaling = load_jsonl(which=SCALING, path=RESULTS_DIR)
@@ -136,9 +159,10 @@ def main():
     scaling.drop(columns=EXCLUDE_COLS, inplace=True)
     bytes_to_gib(scaling)
 
-    fig, (ax_ss, ax_nc) = plt.subplots(1, 2, figsize=(14, 7))
+    fig, (ax_ss, ax_nc, ax_wall) = plt.subplots(1, 3, figsize=(20, 7))
     plot_strong_scaling(scaling, ax_ss)
     plot_memory_vs_cores(scaling, ax_nc)
+    plot_raw_timings(scaling, ax_wall)
 
     legend_handles = [
         Patch(facecolor=COL["cached"], label=LABELS["cached"]),
