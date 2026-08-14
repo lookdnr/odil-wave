@@ -76,8 +76,6 @@ def measure_accuracy(cfg: RunConfig) -> AccuracyResult:
     # extract ODIL observations at receivers
     d_odil = recvs.extract_observations(solve_res.solution.U)
     t_odil = grid.t
-    inner = solve_res.recorder.outers[-1].inner
-    iters = inner.iters if inner else solve_res.nit  # inner GMRES count
 
     # Devito
     # measures internally
