@@ -19,6 +19,5 @@ class Optimiser(ABC):
         maxiter: int,
         ftol: float,
         gtol: float,
-        callback,
     ):
         pass
