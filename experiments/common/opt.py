@@ -24,7 +24,7 @@ def run_optimiser(cfg: RunConfig, opt: GaussNewtonOptimiser | LBFGSB, maxiter=20
     )  # GN: GMRES iters; scipy: outer nit
 
     return dict(
-        method=cfg.method,
+        res=res,
         wall=wall,
         iters=iters,
         converged=res.success,
