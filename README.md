@@ -1,15 +1,41 @@
-# IRP Repository
+# ODIL-wave: a tool for solving the wave equation by Optimising a Discrete Loss (ODIL)
 
 ![Tests](https://github.com/ese-ada-lovelace-2025/irp-ld2022/actions/workflows/test-package.yml/badge.svg?branch=main)
 
-Please familiarise yourself with and follow [GitHub repository instructions](https://ese-msc.github.io/irp/repos/).
+## Overview
 
-Deleting or modifying the pre-existing GitHub Actions workflows or the directory structure in this repository is strictly prohibited. Your IRP files should "live" alongside pre-existing files.
+A modular, extensible framework for solving the two dimensional acoustic wave equation using the [Optimising a Discrete Loss](https://pmc.ncbi.nlm.nih.gov/articles/PMC10799659/) (ODIL) framework.
 
-## Inactivity Warnings
+The contents of this repository were developed Luke Dinsdale as part of the capstone module of the MSc Applied Computational Science and Engineering at Imperial College London.
 
-Scheduled workflows will periodically check whether `logbook.md` has been updated recently on `main` as well as whether **regular commits were made to the repository (to any branch)**. If an inactivity is detected, a warning will be automatically raised as an issue in this repository. **You must not close those issues.**
+## Getting started
 
----
+To begin, clone the repository. You may then install the package from the root of the project by running
 
-**Tip:** After you have familiarised yourself with this repository, you may delete the content of this file and replace it with your project-specific information.
+```
+pip install .
+```
+
+Alternatively, to install in editable mode with the optional dependencies (for use of dev tools or to run tests locally), run one of the following
+
+```
+pip install -e .[dev]
+pip install -e .[test]
+```
+
+## Repository structure
+
+```
+.
+├── README.md
+├── deliverables/               # project plan and repository
+├── experiments/                # scripts for generating experimental results in report
+├── logbook/                    # tracking log over the IRP period
+├── notebooks/                  # examples and scrapbooks
+├── pyproject.toml
+├── odil_wave/                  # source code
+├── scripts/                    # scripts for figure generation and PBS jobs
+├── tests/                      # module tests
+└── title/                      # IRP project title tracker
+```
+## Examples
