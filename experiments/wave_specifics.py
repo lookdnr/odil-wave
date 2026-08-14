@@ -106,7 +106,7 @@ def run(cfg, n_workers):
 
     # build problem, run, get observations
     grid, _, src, recvs, _, _, opt = build_problem(cfg)
-    res = run_optimiser(cfg, opt)
+    res = run_optimiser(cfg, opt, n_workers=n_workers)
     solve_res = res.res
     d_odil, t_odil = recvs.extract_observations(solve_res.solution.U), grid.t
 
