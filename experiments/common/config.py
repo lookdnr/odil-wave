@@ -37,6 +37,7 @@ class RunConfig:
 
     # time (optional)
     t_max: float | None = None
+    allow_unstable: bool = False
 
     # model
     model: str = "homogeneous"
