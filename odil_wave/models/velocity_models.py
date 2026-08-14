@@ -124,3 +124,24 @@ class OverDensityModel(VelocityModel):
         return np.where(
             mask, np.full_like(base, self.background_c + self.contrast), base
         )
+
+
+class CustomModel(VelocityModel):
+    """Custom velocity model built from a numpy array"""
+
+    def __init__(self, grid: Grid, c_array: np.ndarray):
+        super().__init__(grid, background_c=float(c_array.mean()), contrast=1.0)
+        self._c_array = c_array
+        self.c = self._build()
+        self.name = "Array Model (from file)"
+
+    def _build(self) -> np.ndarray:
+        return np.array(
+            resize(
+                self._c_array,
+                self.grid.shape,
+                anti_aliasing=True,
+                mode="reflect",
+                preserve_range=True,
+            )
+        )
