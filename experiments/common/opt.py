@@ -2,6 +2,18 @@ from .config import RunConfig
 from time import perf_counter
 from odil_wave import GaussNewtonOptimiser, LBFGSB
 
+from dataclasses import dataclass
+from odil_wave.metrics import SolveResult
+
+
+@dataclass
+class OptRunResult:
+    res: SolveResult
+    wall: float
+    iters: int
+    converged: bool
+    message: str
+
 
 def run_optimiser(
     cfg: RunConfig,
@@ -9,7 +21,7 @@ def run_optimiser(
     maxiter=2000,
     restart=10,
     n_workers=1,
-):
+) -> OptRunResult:
     """Shared util to run & time an optimisation"""
 
     t0 = perf_counter()
@@ -29,6 +41,6 @@ def run_optimiser(
     inner = res.recorder.outers[-1].inner
     iters = inner.iters if inner is not None else res.nit
 
-    return dict(
+    return OptRunResult(
         res=res, wall=wall, iters=iters, converged=res.success, message=res.message
     )
