@@ -71,7 +71,12 @@ def load_h5(path="../../alpha2D-TrueModel.h5") -> np.ndarray:
 def build_model(cfg: RunConfig, grid: Grid) -> VelocityModel:
     if cfg.model == "custom":
         c = load_h5()
-        return CustomModel(grid, c)
+        model = CustomModel(grid, c)
+
+        # must check velocities match
+        assert cfg.c_min == model.c_min
+        assert cfg.c_max == model.c_max
+        return model
     return MODELS[cfg.model](grid, **cfg.model_kwargs)
 
 
