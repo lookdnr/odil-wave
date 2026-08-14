@@ -28,6 +28,6 @@ export OMP_PROC_BIND=close
 export OMP_PLACES=cores
 export OMP_NUM_THREADS=1 # SuperLU BLAS pinning
 
-python3 experiments/wave_specifics.py --out "$OUT"
+python3 experiments/exp3_wave_specifics.py --out "$OUT"
 
 echo "done -> $OUT"

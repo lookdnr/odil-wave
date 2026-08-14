@@ -40,14 +40,14 @@ for c in $CORES; do
     # ODIL: parallelism comes from the worker pool, so pin OpenMP to 1
 
     # first, the cached run
-    OMP_NUM_THREADS=1 python3 experiments/performance_scaling.py --solver odil --mode cached --ncores "$c" --f0 $F0 --ppw $PPW --repeats $REPEATS --out "$OUT"
+    OMP_NUM_THREADS=1 python3 experiments/exp2_performance_scaling.py --solver odil --mode cached --ncores "$c" --f0 $F0 --ppw $PPW --repeats $REPEATS --out "$OUT"
 
     # second the on-the-fly
-    OMP_NUM_THREADS=1 python3 experiments/performance_scaling.py --solver odil --mode uncached --ncores "$c" --f0 $F0 --ppw $PPW --repeats $REPEATS --out "$OUT"
+    OMP_NUM_THREADS=1 python3 experiments/exp2_performance_scaling.py --solver odil --mode uncached --ncores "$c" --f0 $F0 --ppw $PPW --repeats $REPEATS --out "$OUT"
 
     # Devito: parallelism is OpenMP over the grid, so OMP is the knob
     export OMP_NUM_THREADS=$c 
-    python3 experiments/performance_scaling.py --solver devito --mode na --ncores "$c" --f0 $F0 --ppw $PPW --repeats $REPEATS --out "$OUT"
+    python3 experiments/exp2_performance_scaling.py --solver devito --mode na --ncores "$c" --f0 $F0 --ppw $PPW --repeats $REPEATS --out "$OUT"
 done
 
 echo "done -> $OUT"
