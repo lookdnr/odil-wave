@@ -56,7 +56,7 @@ class RunConfig:
 
     def __post_init__(self):
         assert self.recv_mode in ["custom", "ring"]
-        assert self.model in ["homogeneous", "inclusion", "shepp-logan"]
+        assert self.model in ["homogeneous", "inclusion", "shepp-logan", "custom"]
         assert self.method in ["paradiag", "gmres", "lbfgs"]
 
         if self.assert_ppw():
