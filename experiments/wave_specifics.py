@@ -3,7 +3,13 @@ from dataclasses import replace, dataclass
 
 import numpy as np
 
-from common import RunConfig, build_problem, run_reference, analytical_traces
+from common import (
+    RunConfig,
+    build_problem,
+    run_reference,
+    analytical_traces,
+    run_optimiser,
+)
 from common.analytic import src_rec_distance
 from common.compare import pre_reflection_mask
 from wave_specific.dsp import xcorr_lags, envelopes
@@ -100,14 +106,9 @@ def run(cfg, n_workers):
 
     # build problem, run, get observations
     grid, _, src, recvs, _, _, opt = build_problem(cfg)
-    res = opt.minimise(
-        method=cfg.method,
-        alpha=cfg.alpha,
-        rtol=cfg.rtol,
-        caching=cfg.caching,
-        n_workers=n_workers,
-    )
-    d_odil, t_odil = recvs.extract_observations(res.solution.U), grid.t
+    res = run_optimiser(cfg, opt)
+    solve_res = res.res
+    d_odil, t_odil = recvs.extract_observations(solve_res.solution.U), grid.t
 
     # run devito, no need to account for JIT compile since we dc about time
     ref = run_reference(cfg, recvs.recv_xy)
