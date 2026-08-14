@@ -14,9 +14,11 @@ from odil_wave import (
     ForwardLoss,
     Problem,
     GaussNewtonOptimiser,
+    LBFGSB,
 )
 
 from odil_wave.models.base import VelocityModel
+from odil_wave.optimisation.base import Optimiser
 
 MODELS = {
     "shepp-logan": SheppLoganModel,
@@ -60,6 +62,15 @@ def build_model(cfg: RunConfig, grid: Grid) -> VelocityModel:
     return MODELS[cfg.model](grid, **cfg.model_kwargs)
 
 
+def built_opt(cfg: RunConfig, loss: ForwardLoss) -> Optimiser:
+    meth = cfg.method
+    return (
+        GaussNewtonOptimiser(loss)
+        if meth == "paradiag" or meth == "gmres"
+        else LBFGSB(loss)
+    )
+
+
 def build_problem(
     cfg: RunConfig,
 ) -> Tuple[
@@ -69,7 +80,7 @@ def build_problem(
     Receivers,
     Wavefield,
     WaveEquation,
-    GaussNewtonOptimiser,
+    Optimiser,
 ]:
     """Build the components of an experiment run, the wavefield and optimiser"""
     grid = build_grid(cfg)
@@ -78,6 +89,8 @@ def build_problem(
     recvs = build_receivers(cfg, grid)
     wf = Wavefield(grid)
     we = WaveEquation(wf, model, time_order=cfg.time_order, space_order=cfg.space_order)
+    loss = ForwardLoss(Problem(we, src))
+    opt = built_opt(cfg, loss)
     return (
         grid,
         model,
@@ -85,5 +98,5 @@ def build_problem(
         recvs,
         wf,
         we,
-        GaussNewtonOptimiser(ForwardLoss(Problem(we, src))),
+        opt,
     )
