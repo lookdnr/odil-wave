@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -N f0_sweep
-#PBS -l walltime=08:00:00
+#PBS -l walltime=12:00:00
 #PBS -l select=1:ncpus=128:mem=512gb:cpu_type=rome
 
 # PBS script for running the frequency sweep study on CX3
@@ -28,7 +28,7 @@ OUT=results/performance/f0_sweep_${SOLVER}_${MODE}.jsonl
 mkdir -p results/performance
 
 PPW=10
-REPEATS=3
+REPEATS=${REPEATS:-3}
 NCORES=${NCORES:-128} # qsub can accept NCORES arg, useful for baseline to set NCORES=1
 
 # set thread affinity and location
@@ -49,9 +49,14 @@ fi
 
 
 # sweep frequency
-for f in 25e3 50e3 75e3 100e3 125e3 150e3 200e3; do
+for f in 25e3 50e3 75e3 100e3 125e3; do
     echo "=== $MODE f0=$f (repeats=$REPEATS) ==="
     python3 experiments/exp2_performance_scaling.py --solver "$SOLVER" --mode "$MODE" --ncores $NCORES --f0 $f --ppw $PPW --repeats $REPEATS --out "$OUT"
+done
+
+for f in 150e3 200e3; do
+    echo "=== $MODE f0=$f (repeats=$REPEATS) ==="
+    python3 experiments/exp2_performance_scaling.py --solver "$SOLVER" --mode "$MODE" --ncores $NCORES --f0 $f --ppw $PPW --repeats 1 --out "$OUT"
 done
 
 echo "done -> $OUT"
