@@ -1,4 +1,4 @@
-from common import RunConfig, build_problem, run_reference
+from common import RunConfig, build_problem, run_reference, run_optimiser
 from performance import peak_rss, analytic_memory, repeat
 from odil_wave.grid.utils import nodes_for_ppw
 
@@ -6,7 +6,6 @@ import argparse
 import json
 import os
 from dataclasses import replace
-from time import perf_counter
 from devito import configuration
 import resource
 
@@ -39,26 +38,24 @@ BASE = RunConfig(
 
 
 def run_odil(cfg, ncores, caching, restart):
+    cfg = replace(cfg, caching=caching)
     grid, _, _, _, _, we, opt = build_problem(cfg)
     # compute memory cost of the modes in the precond
     mem = analytic_memory(we, n_workers=ncores)
 
     # record baseline RSS (before fork)
     baseline = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
-    t0 = perf_counter()
-    res = opt.minimise(
-        method="paradiag",
-        alpha=cfg.alpha,
-        rtol=cfg.rtol,
-        restart=restart,
-        caching=caching,
-        n_workers=ncores,
-    )
-    wall = perf_counter() - t0
-    inner = res.recorder.outers[-1].inner
+
+    # optimise
+    res = run_optimiser(cfg, opt, restart=restart, n_workers=ncores)
+
+    # extract results
+    solve_res = res.res
+    inner = solve_res.recorder.outers[-1].inner
+
     return dict(
-        wall=wall,
-        t_setup=res.recorder.meta.get("t_setup"),
+        wall=res.wall,
+        t_setup=solve_res.recorder.meta.get("t_setup"),
         t_solve=inner.t_solve,
         iters=inner.iters,
         n_matvecs=inner.n_matvecs,
