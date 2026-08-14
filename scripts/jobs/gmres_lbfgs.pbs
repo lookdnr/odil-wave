@@ -1,0 +1,28 @@
+#!/bin/bash
+#PBS -N gmres-lbfgs
+#PBS -l walltime=04:00:00
+#PBS -l select=1:ncpus=1:mem=32gb:cpu_type=rome
+
+# PBS script for running the baseline optimiser study on CX3
+# args:
+# OUT=path_to_pkl.pkl
+
+module purge
+module load tools/prod miniforge/3
+
+# activate env via conda
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+conda activate irp
+
+# navigate to working dir
+cd $PBS_O_WORKDIR
+
+# install latest package version
+pip install .
+
+OUT=results/gmres_lbfgsb.pkl
+mkdir -p results/
+
+python3 experiments/exp0_baseline_opts.py --out "$OUT"
+
+echo "done -> $OUT"
