@@ -64,7 +64,7 @@ def build_model(cfg: RunConfig, grid: Grid) -> VelocityModel:
 def built_opt(cfg: RunConfig, loss: ForwardLoss) -> Union[GaussNewtonOptimiser, LBFGSB]:
     meth = cfg.method
     return (
-        GaussNewtonOptimiser(loss)
+        GaussNewtonOptimiser(loss, outer_maxiter=cfg.maxiter)
         if meth == "paradiag" or meth == "gmres"
         else LBFGSB(loss)
     )
