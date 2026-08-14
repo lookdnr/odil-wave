@@ -1,7 +1,12 @@
-from time import perf_counter
 from dataclasses import dataclass
 
-from common import RunConfig, build_problem, run_reference, analytical_traces
+from common import (
+    RunConfig,
+    build_problem,
+    run_reference,
+    analytical_traces,
+    run_optimiser,
+)
 from common.compare import pre_reflection_mask
 from odil_wave.metrics import normalised_trace_rel_l2
 from common.analytic import src_rec_distance
@@ -60,17 +65,19 @@ def measure_accuracy(cfg: RunConfig) -> AccuracyResult:
     grid, _, src, recvs, _, _, opt = build_problem(cfg)
 
     # measure ODIL solve time
-    t0 = perf_counter()
-    res = opt.minimise(
-        method=cfg.method, alpha=cfg.alpha, rtol=cfg.rtol, caching=cfg.caching
-    )
-    wall_odil = perf_counter() - t0
+    res = run_optimiser(cfg, opt)
+
+    # extract results
+    solve_res, wall_odil, iters = res.res, res.wall, res.iters
+
+    d_odil = recvs.extract_observations(solve_res.solution.U)
+    t_odil = grid.t
 
     # extract ODIL observations at receivers
-    d_odil = recvs.extract_observations(res.solution.U)
+    d_odil = recvs.extract_observations(solve_res.solution.U)
     t_odil = grid.t
-    inner = res.recorder.outers[-1].inner
-    iters = inner.iters if inner else res.nit  # inner GMRES count
+    inner = solve_res.recorder.outers[-1].inner
+    iters = inner.iters if inner else solve_res.nit  # inner GMRES count
 
     # Devito
     # measures internally
@@ -130,9 +137,7 @@ def measure_accuracy(cfg: RunConfig) -> AccuracyResult:
 def measure_accuracy_repeated(cfg: RunConfig, n_repeats: int = 3):
     # warm start solvers
     _, _, _, recvs, _, _, opt = build_problem(cfg)
-    _ = opt.minimise(
-        method=cfg.method, alpha=cfg.alpha, rtol=cfg.rtol, caching=cfg.caching
-    )  # warm start ODIL
+    _ = run_optimiser(cfg, opt)
     _ = run_reference(cfg, recvs.recv_xy)  # warm start devito
 
     # measure n_repeats runs
