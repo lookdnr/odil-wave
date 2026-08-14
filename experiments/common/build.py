@@ -18,6 +18,10 @@ from odil_wave import (
 )
 
 from odil_wave.models.base import VelocityModel
+from odil_wave.models import CustomModel
+
+import numpy as np
+import h5py
 
 MODELS = {
     "shepp-logan": SheppLoganModel,
@@ -58,7 +62,16 @@ def build_grid(cfg: RunConfig) -> Grid:
     )
 
 
+def load_h5(path="../../alpha2D-TrueModel.h5") -> np.ndarray:
+    """Load model from .h5 file. Defaults to proprietary Sonalis brain atlas"""
+    with h5py.File(path, "r") as f:
+        return f["data"][()]  # type: ignore
+
+
 def build_model(cfg: RunConfig, grid: Grid) -> VelocityModel:
+    if cfg.model == "custom":
+        c = load_h5()
+        return CustomModel(grid, c)
     return MODELS[cfg.model](grid, **cfg.model_kwargs)
 
 
