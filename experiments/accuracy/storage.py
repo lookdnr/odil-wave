@@ -1,12 +1,9 @@
 import pickle
 from pathlib import Path
-from typing import List
-
-from .measure_accuracy import AccuracyResult
 
 
-def save(results: List[AccuracyResult], path):
-    """Save an accuracy sweep (list of AccuracyResult objects)"""
+def save(results, path):
+    """Save a pickleable object to path"""
     path = Path(path)
 
     path.parent.mkdir(parents=True, exist_ok=True)
