@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Union
 
 from .config import RunConfig
 
@@ -18,7 +18,6 @@ from odil_wave import (
 )
 
 from odil_wave.models.base import VelocityModel
-from odil_wave.optimisation.base import Optimiser
 
 MODELS = {
     "shepp-logan": SheppLoganModel,
@@ -62,7 +61,7 @@ def build_model(cfg: RunConfig, grid: Grid) -> VelocityModel:
     return MODELS[cfg.model](grid, **cfg.model_kwargs)
 
 
-def built_opt(cfg: RunConfig, loss: ForwardLoss) -> Optimiser:
+def built_opt(cfg: RunConfig, loss: ForwardLoss) -> Union[GaussNewtonOptimiser, LBFGSB]:
     meth = cfg.method
     return (
         GaussNewtonOptimiser(loss)
@@ -80,7 +79,7 @@ def build_problem(
     Receivers,
     Wavefield,
     WaveEquation,
-    Optimiser,
+    Union[GaussNewtonOptimiser, LBFGSB],
 ]:
     """Build the components of an experiment run, the wavefield and optimiser"""
     grid = build_grid(cfg)
