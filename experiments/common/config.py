@@ -60,13 +60,13 @@ class RunConfig:
         assert self.model in ["homogeneous", "inclusion", "shepp-logan", "custom"]
         assert self.method in ["paradiag", "gmres", "lbfgs"]
 
-        if self.assert_ppw():
-            print("PPW:", self.ppw)
-
         if self.model == "custom":
             data = load_h5()
             self.c_min, self.c_max = data.min(), data.max()
             del data
+
+        if self.assert_ppw():
+            print("PPW:", self.ppw)
 
     @property
     def ppw(self) -> float:
