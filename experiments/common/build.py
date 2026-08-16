@@ -20,6 +20,8 @@ from odil_wave import (
 from odil_wave.models.base import VelocityModel
 from odil_wave.models import CustomModel
 
+from .utils import load_h5
+
 MODELS = {
     "shepp-logan": SheppLoganModel,
     "homogeneous": HomogeneousModel,
