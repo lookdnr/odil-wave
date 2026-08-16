@@ -32,7 +32,8 @@ test = [
     "devito",
     "h5py",
     "pytest",
-    "pytest-cov"
+    "pytest-cov",
+    "pandas"
 ]
 
 [tool.setuptools.packages.find]
