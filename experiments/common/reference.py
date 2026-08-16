@@ -42,14 +42,14 @@ def build_devito(cfg: RunConfig, rec_coords: np.ndarray, dt: float | None = None
     return model, geom, solver, dt_used 
 
 
-def run_reference(cfg, rec_coords, dt=None, nbl=20, return_u=False) -> dict:
+def run_reference(cfg, rec_coords, dt=None, nbl=20, return_u=False, save=False) -> dict:
     """Run the reference solver: Devito"""
     model, geom, solver, dt_used = build_devito(
         cfg, rec_coords, dt, nbl=nbl
     )
     
     start = perf_counter()
-    rec, u, summary = solver.forward(dt=dt_used)
+    rec, u, summary = solver.forward(dt=dt_used, save=save)
     wall = perf_counter() - start
 
     nt = rec.data.shape[0]
