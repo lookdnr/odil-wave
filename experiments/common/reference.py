@@ -70,7 +70,7 @@ def run_reference(cfg, rec_coords, dt=None, nbl=20, return_u=False) -> dict:
 
     # check solution is finite
     # only check u_out if it exists
-    finite = bool(np.all(np.isfinite(rec.data))) and (bool(np.all(np.isfinite(u_out))) if u_out else True)
+    finite = bool(np.all(np.isfinite(rec.data))) and (bool(np.all(np.isfinite(u_out))) if u_out is not None else True)
 
     return dict(
         traces=rec.data,
