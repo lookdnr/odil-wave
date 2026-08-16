@@ -16,7 +16,7 @@ conda activate irp
 cd $PBS_O_WORKDIR
 
 # install latest package version
-pip install .
+pip install .[test]
 
 OUT=results/performance/strong_scaling.jsonl
 mkdir -p results/performance

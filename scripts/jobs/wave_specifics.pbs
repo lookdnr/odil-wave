@@ -18,7 +18,7 @@ conda activate irp
 cd $PBS_O_WORKDIR
 
 # install latest package version
-pip install .
+pip install .[test]
 
 OUT=results/wave/wave_specifics.pkl
 mkdir -p results/wave

@@ -16,7 +16,7 @@ conda activate irp
 cd $PBS_O_WORKDIR
 
 # install latest package version
-pip install .
+pip install .[test]
 
 # run script
 python3 experiments/exp1_accuracy_sweep.py
