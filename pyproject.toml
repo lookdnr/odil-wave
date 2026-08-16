@@ -29,13 +29,10 @@ dev = [
 ]
 
 test = [
+    "devito",
+    "h5py",
     "pytest",
     "pytest-cov"
-]
-
-experiments =[
-    "devito",
-    "h5py"
 ]
 
 [tool.setuptools.packages.find]
