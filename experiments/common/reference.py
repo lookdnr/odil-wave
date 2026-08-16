@@ -42,7 +42,7 @@ def build_devito(cfg: RunConfig, rec_coords: np.ndarray, dt: float | None = None
     return model, geom, solver, dt_used 
 
 
-def run_reference(cfg, rec_coords, dt=None, nbl=20, return_u=False, save=False) -> dict:
+def run_reference(cfg, rec_coords, dt=None, nbl=20, save=False) -> dict:
     """Run the reference solver: Devito"""
     model, geom, solver, dt_used = build_devito(
         cfg, rec_coords, dt, nbl=nbl
@@ -62,15 +62,9 @@ def run_reference(cfg, rec_coords, dt=None, nbl=20, return_u=False, save=False) 
         sum((getattr(e, "gpointss", 0) or 0) for e in entries)
     )
 
-    u_out = None
-    # crop to interior if return u 
-    if return_u:
-        interior = np.array(u.data)[:, nbl:nbl + cfg.nx, nbl:nbl + cfg.ny]
-        u_out = interior.reshape(interior.shape[0], -1) # reshape to (nt, nx*ny)
-
     # check solution is finite
     # only check u_out if it exists
-    finite = bool(np.all(np.isfinite(rec.data))) and (bool(np.all(np.isfinite(u_out))) if u_out is not None else True)
+    finite = bool(np.all(np.isfinite(rec.data)))
 
     return dict(
         traces=rec.data,
@@ -79,7 +73,6 @@ def run_reference(cfg, rec_coords, dt=None, nbl=20, return_u=False, save=False) 
         wall=wall,
         kernel_time=kernel_time,
         gpointss=gpointss,
-        u=u_out,
         finite=finite,
         geom=geom,
     )
