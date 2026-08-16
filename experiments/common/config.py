@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Dict, Tuple
 
 from odil_wave.grid.utils import points_per_wavelength, nodes_for_ppw
+from .utils import load_h5
 
 
 @dataclass
@@ -61,6 +62,11 @@ class RunConfig:
 
         if self.assert_ppw():
             print("PPW:", self.ppw)
+
+        if self.model == "custom":
+            data = load_h5()
+            self.c_min, self.c_max = data.min(), data.max()
+            del data
 
     @property
     def ppw(self) -> float:
