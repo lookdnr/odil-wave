@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -N f0_sweep
-#PBS -l walltime=12:00:00
+#PBS -l walltime=24:00:00
 #PBS -l select=1:ncpus=128:mem=512gb:cpu_type=rome
 
 # PBS script for running the frequency sweep study on CX3
