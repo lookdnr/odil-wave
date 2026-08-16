@@ -8,7 +8,7 @@ from time import perf_counter
 import numpy as np
 
 
-def build_devito(cfg: RunConfig, rec_coords: np.ndarray, nbl: int = 20):
+def build_devito(cfg: RunConfig, rec_coords: np.ndarray, dt: float | None = None, nbl: int = 20):
     grid = build_grid(cfg)
     vmodel = build_model(cfg, grid)
     model = Model(
@@ -21,6 +21,7 @@ def build_devito(cfg: RunConfig, rec_coords: np.ndarray, nbl: int = 20):
         bcs="damp",
     )
     src_xy = np.asarray([cfg.source_loc])
+
     # dt=None corresponds to Devito's critical_dt
     geom = AcquisitionGeometry(
         model,
@@ -33,17 +34,24 @@ def build_devito(cfg: RunConfig, rec_coords: np.ndarray, nbl: int = 20):
         interpolation="sinc",
         r=4,  # half width for Kaiser-window
     )
-    return model, geom, AcousticWaveSolver(model, geom, space_order=cfg.space_order)
+
+    dt_used = dt if dt is not None else model.critical_dt
+    geom = geom.resample(dt_used) # resample to actual dt used
+
+    solver = AcousticWaveSolver(model, geom, space_order=cfg.space_order)
+    return model, geom, solver, dt_used 
 
 
 def run_reference(cfg, rec_coords, dt=None, nbl=20, return_u=False) -> dict:
-    model, geom, solver = build_devito(
-        cfg, rec_coords, nbl=nbl
-    )  # geom locked to critical_dt
-    dt_used = model.critical_dt if dt is None else dt
+    """Run the reference solver: Devito"""
+    model, geom, solver, dt_used = build_devito(
+        cfg, rec_coords, dt, nbl=nbl
+    )
+    
     start = perf_counter()
     rec, u, summary = solver.forward(dt=dt_used)
     wall = perf_counter() - start
+
     nt = rec.data.shape[0]
     t = np.arange(nt) * dt_used  # use operator clock, not the geom.time_axis
 
@@ -53,6 +61,17 @@ def run_reference(cfg, rec_coords, dt=None, nbl=20, return_u=False) -> dict:
     gpointss = float(  # g points per second: giga grid point updates / s
         sum((getattr(e, "gpointss", 0) or 0) for e in entries)
     )
+
+    u_out = None
+    # crop to interior if return u 
+    if return_u:
+        interior = np.array(u.data)[:, nbl:nbl + cfg.nx, nbl:nbl + cfg.ny]
+        u_out = interior.reshape(interior.shape[0], -1) # reshape to (nt, nx*ny)
+
+    # check solution is finite
+    # only check u_out if it exists
+    finite = bool(np.all(np.isfinite(rec.data))) and (bool(np.all(np.isfinite(u_out))) if u_out else True)
+
     return dict(
         traces=rec.data,
         t=t,
@@ -60,6 +79,7 @@ def run_reference(cfg, rec_coords, dt=None, nbl=20, return_u=False) -> dict:
         wall=wall,
         kernel_time=kernel_time,
         gpointss=gpointss,
-        u=(u if return_u else None),
+        u=u_out,
+        finite=finite,
         geom=geom,
     )
