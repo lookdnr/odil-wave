@@ -23,6 +23,6 @@ pip install .[test]
 OUT=results/gmres_lbfgsb.pkl
 mkdir -p results/
 
-python3 experiments/exp0_baseline_opts.py --out "$OUT"
+python3 experiments/exp0_baseline.py --out "$OUT"
 
 echo "done -> $OUT"
