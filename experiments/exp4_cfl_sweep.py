@@ -57,11 +57,11 @@ SL_BASE = replace(
 )
 
 
-def safe_run_devito(cfg, recv_xy, save):
+def safe_run_devito(cfg, recv_xy, save, dt):
     """Catch exceptions and flag non-finite output rather than letting one
     unstable config kill the whole sweep"""
     try:
-        ref = run_reference(cfg, recv_xy, save=save, r=2)
+        ref = run_reference(cfg, recv_xy, save=save, r=2, dt=dt)
     except Exception as e:
         return dict(traces=None, t=None, wall=float("nan"), finite=False, error=str(e))
 
@@ -91,7 +91,7 @@ def run(cfl_safety: float, save: bool, which: str = "homog"):
         err_odil = float("nan")
 
     # Devito
-    ref = safe_run_devito(cfg, recvs.recv_xy, save)
+    ref = safe_run_devito(cfg, recvs.recv_xy, save, grid.dt)
     if ref["traces"] is not None:
         d_dev, t_dev = ref["traces"], ref["t"]
         growth_dev = field_growth(d_dev)
