@@ -1,0 +1,29 @@
+#!/bin/bash
+#PBS -N cfl-sweep
+#PBS -l walltime=02:00:00
+#PBS -l select=1:ncpus=1:mem=16gb:cpu_type=rome
+
+# PBS script for the CFL sweep on CX3
+
+module purge
+module load tools/prod miniforge/3
+
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+conda activate irp
+
+cd $PBS_O_WORKDIR
+pip install .
+
+OUT=results/cfl_sweep.jsonl
+mkdir -p results
+
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+export OMP_NUM_THREADS=1
+
+for cfl in 0.5 0.7 0.9 0.95 1.0 1.05 1.1 1.3; do
+    echo "=== cfl_safety=$cfl ==="
+    python3 experiments/cfl_sweep.py --cfl-safety "$cfl" --out "$OUT"
+done
+
+echo "done -> $OUT"
