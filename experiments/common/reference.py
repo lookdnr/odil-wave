@@ -8,7 +8,13 @@ from time import perf_counter
 import numpy as np
 
 
-def build_devito(cfg: RunConfig, rec_coords: np.ndarray, dt: float | None = None, nbl: int = 20):
+def build_devito(
+    cfg: RunConfig,
+    rec_coords: np.ndarray,
+    dt: float | None = None,
+    nbl: int = 20,
+    r: int = 4,
+):
     grid = build_grid(cfg)
     vmodel = build_model(cfg, grid)
     model = Model(
@@ -32,22 +38,20 @@ def build_devito(cfg: RunConfig, rec_coords: np.ndarray, dt: float | None = None
         src_type="Ricker",
         f0=cfg.f0,
         interpolation="sinc",
-        r=4,  # half width for Kaiser-window
+        r=r,  # half width for Kaiser-window
     )
 
     dt_used = dt if dt is not None else model.critical_dt
-    geom = geom.resample(dt_used) # resample to actual dt used
+    geom = geom.resample(dt_used)  # resample to actual dt used
 
     solver = AcousticWaveSolver(model, geom, space_order=cfg.space_order)
-    return model, geom, solver, dt_used 
+    return model, geom, solver, dt_used
 
 
 def run_reference(cfg, rec_coords, dt=None, nbl=20, save=False) -> dict:
     """Run the reference solver: Devito"""
-    model, geom, solver, dt_used = build_devito(
-        cfg, rec_coords, dt, nbl=nbl
-    )
-    
+    model, geom, solver, dt_used = build_devito(cfg, rec_coords, dt, nbl=nbl)
+
     start = perf_counter()
     rec, u, summary = solver.forward(dt=dt_used, save=save)
     wall = perf_counter() - start
