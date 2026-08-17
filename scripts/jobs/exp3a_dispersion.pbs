@@ -20,7 +20,7 @@ cd $PBS_O_WORKDIR
 # install latest package version
 pip install .[test]
 
-OUT=results/wave/wave_specifics.pkl
+OUT=results/wave/dispersion.pkl
 mkdir -p results/wave
 
 # set thread affinity and location
