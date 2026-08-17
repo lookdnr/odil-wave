@@ -15,7 +15,7 @@ cd $PBS_O_WORKDIR
 pip install .[test]
 
 OUT=results/wave/cfl_sweep.jsonl
-mkdir -p results
+mkdir -p results/wave
 
 export OMP_PROC_BIND=close
 export OMP_PLACES=cores
