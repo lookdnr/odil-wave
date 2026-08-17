@@ -31,11 +31,13 @@ def field_growth(U: np.ndarray, tail_frac: float = 0.3) -> Dict:
 
     # detect infinite/ nan
     finite = bool(np.all(np.isfinite(U)))
-    if not finite or np.any(tail <= 0):
+
+    # filter
+    k_full = np.arange(tail_start, nt)
+    keep = tail > 0  # drop zero underflow samples
+    if not finite or keep.sum() < 2:
         return dict(max_u=max_u.tolist(), growth_rate=float("nan"), finite=finite)
 
     # fit slope to approximate growth rate er time step
-    k = np.arange(tail_start, nt)
-    slope, _ = np.polyfit(k, np.log(tail), 1)
-
+    slope, _ = np.polyfit(k_full[keep], np.log(tail[keep]), 1)
     return dict(max_u=max_u.tolist(), growth_rate=float(slope), finite=finite)
