@@ -139,7 +139,7 @@ if __name__ == "__main__":
     p.add_argument("--which", choices=["homog", "sl"], default="homog")
     a = p.parse_args()
 
-    row, snapshots = run(a.cfl_safety, a.save)
+    row, snapshots = run(a.cfl_safety, a.save, a.which)
     with open(a.out, "a") as f:
         f.write(json.dumps(row, default=float) + "\n")
 
