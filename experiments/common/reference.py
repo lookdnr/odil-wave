@@ -48,9 +48,9 @@ def build_devito(
     return model, geom, solver, dt_used
 
 
-def run_reference(cfg, rec_coords, dt=None, nbl=20, save=False) -> dict:
+def run_reference(cfg, rec_coords, dt=None, nbl=20, save=False, r: int = 4) -> dict:
     """Run the reference solver: Devito"""
-    model, geom, solver, dt_used = build_devito(cfg, rec_coords, dt, nbl=nbl)
+    model, geom, solver, dt_used = build_devito(cfg, rec_coords, dt, nbl=nbl, r=r)
 
     start = perf_counter()
     rec, u, summary = solver.forward(dt=dt_used, save=save)
