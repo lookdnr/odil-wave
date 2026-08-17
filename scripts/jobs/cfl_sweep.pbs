@@ -12,9 +12,9 @@ eval "$(~/miniforge3/bin/conda shell.bash hook)"
 conda activate irp
 
 cd $PBS_O_WORKDIR
-pip install .
+pip install .[test]
 
-OUT=results/cfl_sweep.jsonl
+OUT=results/wave/cfl_sweep.jsonl
 mkdir -p results
 
 export OMP_PROC_BIND=close
