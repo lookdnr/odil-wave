@@ -51,7 +51,7 @@ def safe_run_devito(cfg, recv_xy, save):
     """Catch exceptions and flag non-finite output rather than letting one
     unstable config kill the whole sweep"""
     try:
-        ref = run_reference(cfg, recv_xy, save=save)
+        ref = run_reference(cfg, recv_xy, save=save, r=2)
     except Exception as e:
         return dict(traces=None, t=None, wall=float("nan"), finite=False, error=str(e))
 
@@ -65,7 +65,7 @@ def run(cfl_safety: float, save: bool) -> dict:
     grid, _, src, recvs, _, _, opt = build_problem(cfg)
 
     # ODIL
-    res = run_optimiser(cfg, opt)
+    res = run_optimiser(cfg, opt, n_workers=32)
     U_odil = res.res.solution.U
     growth_odil = field_growth(U_odil)
 
