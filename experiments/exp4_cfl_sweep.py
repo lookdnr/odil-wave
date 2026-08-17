@@ -16,7 +16,7 @@ from odil_wave.metrics import normalised_trace_rel_l2
 from wave_specific.dsp import field_growth
 from odil_wave.grid.utils import nodes_for_ppw
 
-XMAX = 0.1
+XMAX = 0.2
 F0 = 100e3
 C_MIN = 1500.0
 PPW = 10.0
@@ -46,6 +46,16 @@ BASE = RunConfig(
     allow_unstable=True,
 )
 
+SL_BASE = replace(
+    BASE,
+    model="shepp-logan",
+    c_min=1500.0,  # background_c
+    c_max=2800.0,
+    contrast=1300.0,  # 1500 + 1300*1.0 = 2800 = c_max above
+    interior_fill=0.8,
+    mask_skull=False,
+)
+
 
 def safe_run_devito(cfg, recv_xy, save):
     """Catch exceptions and flag non-finite output rather than letting one
@@ -60,8 +70,9 @@ def safe_run_devito(cfg, recv_xy, save):
     return ref
 
 
-def run(cfl_safety: float, save: bool) -> dict:
-    cfg = replace(BASE, cfl_safety=cfl_safety)
+def run(cfl_safety: float, save: bool, which: str = "homog"):
+    model = {"homog": BASE, "sl": SL_BASE}[which]
+    cfg = replace(model, cfl_safety=cfl_safety)
     grid, _, src, recvs, _, _, opt = build_problem(cfg)
 
     # ODIL
@@ -69,27 +80,41 @@ def run(cfl_safety: float, save: bool) -> dict:
     U_odil = res.res.solution.U
     growth_odil = field_growth(U_odil)
 
-    d_odil = recvs.extract_observations(U_odil)
-    t_odil = grid.t
+    if cfg.model == "homogeneous":
+        d_odil = recvs.extract_observations(U_odil)
+        ana_odil = analytical_traces(src, recvs, grid.t, cfg.c_min)
+        mask_odil = pre_reflection_mask(src, recvs, grid.t, cfg.c_min)
+        err_odil = float(
+            normalised_trace_rel_l2(d_odil[mask_odil], ana_odil[mask_odil])
+        )
+    else:
+        err_odil = float("nan")
 
-    ana_odil = analytical_traces(src, recvs, t_odil, cfg.c_min)
-    mask_odil = pre_reflection_mask(src, recvs, t_odil, cfg.c_min)
-    err_odil = float(normalised_trace_rel_l2(d_odil[mask_odil], ana_odil[mask_odil]))
-
+    # Devito
     ref = safe_run_devito(cfg, recvs.recv_xy, save)
     if ref["traces"] is not None:
         d_dev, t_dev = ref["traces"], ref["t"]
         growth_dev = field_growth(d_dev)
-        ana_dev = analytical_traces(src, recvs, t_dev, cfg.c_min)
-        mask_dev = pre_reflection_mask(src, recvs, t_dev, cfg.c_min)
-        err_dev = float(normalised_trace_rel_l2(d_dev[mask_dev], ana_dev[mask_dev]))
 
+        if cfg.model == "homogeneous":
+            ana_dev = analytical_traces(src, recvs, t_dev, cfg.c_min)
+            mask_dev = pre_reflection_mask(src, recvs, t_dev, cfg.c_min)
+            err_dev = float(normalised_trace_rel_l2(d_dev[mask_dev], ana_dev[mask_dev]))
+        else:
+            err_dev = float("nan")
     else:
         growth_dev = dict(max_u=[], growth_rate=float("nan"), finite=False)
         err_dev = float("nan")
 
-    return dict(
+    # save field snapshots
+    snapshots = None
+    if cfg.model != "homogeneous":
+        idx = np.linspace(0, grid.nt - 1, 20, dtype=int)
+        snapshots = U_odil[idx].reshape(len(idx), grid.nx, grid.ny)
+
+    row = dict(
         cfl_safety=cfl_safety,
+        which=which,
         nx=cfg.nx,
         nt=grid.nt,
         wall=res.wall,
@@ -103,6 +128,7 @@ def run(cfl_safety: float, save: bool) -> dict:
         err_dev=err_dev,
         devito_error=ref["error"],
     )
+    return row, snapshots
 
 
 if __name__ == "__main__":
@@ -110,8 +136,13 @@ if __name__ == "__main__":
     p.add_argument("--cfl-safety", type=float, required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--save", action="store_true", required=False)
+    p.add_argument("--which", choices=["homog", "sl"], default="homog")
     a = p.parse_args()
 
-    row = run(a.cfl_safety, a.save)
+    row, snapshots = run(a.cfl_safety, a.save)
     with open(a.out, "a") as f:
         f.write(json.dumps(row, default=float) + "\n")
+
+    if snapshots is not None:
+        snap_path = a.out.rsplit(".", 1)[0] + f"_snap_{a.which}_{a.cfl_safety}.npz"
+        np.savez_compressed(snap_path, snapshots=snapshots)
