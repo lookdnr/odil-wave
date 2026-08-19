@@ -54,6 +54,8 @@ SL_BASE = replace(
     contrast=1300.0,  # 1500 + 1300*1.0 = 2800 = c_max above
     interior_fill=0.7,
     mask_skull=False,
+    source_loc=(0.09, 0.24),
+    recv_locs=((0.22, 0.08),),
 )
 
 FIELD_SAVE_CFLS = (0.7, 1.0, 1.1, 1.3)
