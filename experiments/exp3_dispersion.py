@@ -29,7 +29,7 @@ RECV_DISTANCES = (
     0.09,
 )  # metres, along +x from the source
 RECV_LOCS = tuple((SOURCE_LOC[0] + d, SOURCE_LOC[1]) for d in RECV_DISTANCES)
-PPW_VALUES = [10, 15, 20, 25, 30, 35, 40]
+PPW_VALUES = [10, 15, 20, 25, 30, 35]
 BASE = RunConfig(
     nx=100,
     ny=100,  # overwritten per ppw below
