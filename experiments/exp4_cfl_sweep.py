@@ -56,6 +56,12 @@ SL_BASE = replace(
     mask_skull=False,
 )
 
+FIELD_SAVE_CFLS = (0.7, 1.0, 1.1, 1.3)
+
+
+def _should_save_field(cfl_safety: float) -> bool:
+    return any(abs(cfl_safety - v) < 1e-6 for v in FIELD_SAVE_CFLS)
+
 
 def safe_run_devito(cfg, recv_xy, save, dt):
     """Catch exceptions and flag non-finite output rather than letting one
@@ -112,7 +118,7 @@ def run(cfl_safety: float, save: bool, which: str = "homog"):
 
     # save field snapshots
     snapshots = None
-    if cfg.model != "homogeneous":
+    if cfg.model != "homogeneous" and _should_save_field(cfl_safety):
         cfl_str = f"{cfl_safety:.3f}".replace(".", "p")
         field_path = a.out.rsplit(".", 1)[0] + f"_field_{which}_{cfl_str}"
         res.res.save(field_path, with_field=True)
