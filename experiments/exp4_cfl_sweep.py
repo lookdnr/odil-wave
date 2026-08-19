@@ -113,7 +113,8 @@ def run(cfl_safety: float, save: bool, which: str = "homog"):
     # save field snapshots
     snapshots = None
     if cfg.model != "homogeneous":
-        field_path = a.out.rsplit(".", 1)[0] + f"_field_{which}_{cfl_safety}"
+        cfl_str = f"{cfl_safety:.3f}".replace(".", "p")
+        field_path = a.out.rsplit(".", 1)[0] + f"_field_{which}_{cfl_str}"
         res.res.save(field_path, with_field=True)
 
     row = dict(
