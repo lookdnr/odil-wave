@@ -29,72 +29,59 @@ def to_frame(results):
     )
 
 
-def plot_error_vs_dof(df: pd.DataFrame, ax):
-    """Plot error of both methods on log-log space vs analytical soln"""
-    ax.loglog(df.dof, df.err_odil, "o-", color=COL["dev"])
-    ax.loglog(df.dof, df.err_dev, "s--", color=COL["odil"])
-
-    ax.set(
-        xlabel=r"DOF $(N_x \ \times N_y \ \times \ N_t)$", ylabel="Global Error Norm"
-    )
+def plot_error_vs_dof(df, ax):
+    ax.loglog(df.dof, df.err_odil, "o-", color=COL["odil"])
+    ax.loglog(df.dof, df.err_dev, "s--", color=COL["dev"])
+    ax.set(xlabel=r"DOF $(N_x \times N_y \times N_t)$", ylabel="Global Error Norm")
     ax.grid(True, which="both", alpha=0.3)
 
+    ax.set_yticks([0.01, 0.02, 0.03, 0.04, 0.05])
+    ax.set_yticklabels(["0.01", "0.02", "0.03", "0.04", "0.05"])
 
-def plot_receiver_map(
-    result, ax_odil, ax_dev, cmap="cividis", highlight_ks=(), labels=()
-):
-    """Plot receiver locations coloured by error"""
-    # extract coords and error from AccuracyResult
+
+def plot_diff_map(result, ax, highlight_k, cmap="RdBu_r"):
+    """Spatial map of relative (ODIL - Devito) error, centered at 0"""
     xy = np.array([rc.xy for rc in result.receivers])
     eo = np.array([rc.err_odil for rc in result.receivers])
     ed = np.array([rc.err_dev for rc in result.receivers])
+    rel = (eo - ed) / ed
 
-    # get limits for shared colorbar
-    vmin, vmax = min(eo.min(), ed.min()), max(eo.max(), eo.max())
+    sc = ax.scatter(
+        xy[:, 0],
+        xy[:, 1],
+        c=rel,
+        cmap=cmap,
+        vmin=-0.5,
+        vmax=0.5,
+        s=120,
+        edgecolor="k",
+        linewidth=0.8,
+    )
+    ax.scatter(0.1, 0.1, marker="*", s=180, color="orangered")
 
-    for ax, e, name in [(ax_odil, eo, "ODIL"), (ax_dev, ed, "Devito")]:
-        sc = ax.scatter(
-            xy[:, 0],
-            xy[:, 1],
-            c=e,
-            cmap=cmap,
-            vmin=vmin,
-            vmax=vmax,
-            s=120,
-            edgecolor="k",
-            linewidth=0.8,
-        )
-        ax.scatter(0.1, 0.1, marker="*", s=180, color="orangered")  # source
+    # indiate overlay receiver
+    ax.scatter(
+        *xy[highlight_k],
+        s=120,
+        facecolor="none",
+        edgecolor="r",
+        linewidth=2.2,
+        zorder=5,
+    )
 
-        for k, label in zip(highlight_ks, labels):
-            ax.scatter(
-                *xy[k], s=120, facecolor="none", edgecolor="r", linewidth=1.2, zorder=4
-            )
+    ax.annotate(
+        "c",
+        xy[highlight_k],
+        textcoords="offset points",
+        xytext=(12, -3),
+        fontsize=18,
+        fontweight="bold",
+        color="r",
+        zorder=5,
+    )
 
-            if label == "d":
-                ax.annotate(
-                    label,
-                    xy[k],
-                    textcoords="offset points",
-                    xytext=(12, -3),
-                    fontsize=18,
-                    fontweight="bold",
-                    zorder=5,
-                )
-            else:
-                ax.annotate(
-                    label,
-                    xy[k],
-                    textcoords="offset points",
-                    xytext=(-25, 0),
-                    fontsize=18,
-                    fontweight="bold",
-                    zorder=5,
-                )
-
-        ax.set_aspect("equal")
-        ax.set_title(name)
-
+    ax.set_aspect("equal")
+    ax.set(xlim=(0, 0.2), ylim=(0, 0.2), xlabel="x (m)", ylabel="y (m)")
     return sc
 
 
@@ -102,51 +89,40 @@ def _max_norm(data: np.ndarray):
     return data / np.max(np.abs(data))
 
 
-def plot_trace_overlays(result, ks, axes):
-    """Plot an overlay of trace at receiver indexes ks"""
+def plot_trace_overlay(result, k, ax):
+    to, td = result.trace(k, "odil"), result.trace(k, "dev")
+    t, window = td["t"] * 1e6, td["mask"]
+    tw0, tw1 = t[window][0], t[window][-1]
 
-    for k, ax in zip(ks, axes):
-        # extract recorded traces
-        to, td = result.trace(k, "odil"), result.trace(k, "dev")
+    ax.axvspan(tw0, tw1, color="limegreen", alpha=0.10, zorder=0)
 
-        # plot pre-reflection window
-        t, window = td["t"] * 1e6, td["mask"]
-        tw0, tw1 = t[window][0], t[window][-1]
-        ax.axvspan(tw0, tw1, color="limegreen", alpha=0.10, zorder=0)
+    ax.plot(
+        to["t"] * 1e6,
+        _max_norm(to["numerical"]),
+        color=COL["odil"],
+        linewidth=5,
+        solid_capstyle="round",
+        label="ODIL",
+    )
+    ax.plot(
+        td["t"] * 1e6,
+        _max_norm(td["numerical"]),
+        color=COL["dev"],
+        linewidth=2.5,
+        solid_capstyle="round",
+        label="Devito",
+    )
+    ax.plot(
+        td["t"] * 1e6,
+        _max_norm(td["analytical"]),
+        "k:",
+        linewidth=2,
+        label="Analytical",
+    )
 
-        # plot numerical solns
-        ax.plot(
-            to["t"] * 1e6,
-            _max_norm(to["numerical"]),
-            label="ODIL",
-            color=COL["odil"],
-            linewidth=5,
-            solid_capstyle="round",
-        )
-        ax.plot(
-            td["t"] * 1e6,
-            _max_norm(td["numerical"]),
-            label="Devito",
-            color=COL["dev"],
-            linewidth=2.5,
-            solid_capstyle="round",
-        )
-
-        # plot analytical soln
-        ax.plot(
-            td["t"] * 1e6,
-            _max_norm(td["analytical"]),
-            "k:",
-            label="Analytical",
-            linewidth=2,
-            solid_capstyle="round",
-        )
-
-        ax.set_title(f"Receiver {k+1}")
-
-    axes[0].text(
-        tw1 - 1,
-        1.0,
+    ax.text(
+        tw1 + 10,
+        0.9,
         r"Reflections",
         ha="center",
         va="top",
@@ -154,30 +130,54 @@ def plot_trace_overlays(result, ks, axes):
         clip_on=False,
     )
 
-    axes[0].annotate(
+    ax.annotate(
         "",
-        xy=(115, 0.25),
-        xytext=(tw1, 0.85),
+        xy=(115, 0.3),
+        xytext=(tw1 + 10, 0.7),
         fontsize=18,
         arrowprops=dict(arrowstyle="->", lw=1.5),
         annotation_clip=False,
     )
 
-    axes[1].text(
-        tw1 - 28,
-        1.0,
+    ax.text(
+        tw1 - 1,
+        -0.58,
+        ">",
+        ha="center",
+        va="top",
+        fontsize=18,
+        clip_on=False,
+        color="k",
+        alpha=0.8,
+    )
+
+    ax.text(
+        tw1 - 35,
+        -0.58,
         "Pre-reflection window",
         ha="center",
         va="top",
         fontsize=18,
         clip_on=False,
-        color="limegreen",
-        alpha=0.9,
+        color="k",
+        alpha=0.8,
+    )
+
+    ax.text(
+        tw0 + 1,
+        -0.58,
+        "<",
+        ha="center",
+        va="top",
+        fontsize=18,
+        clip_on=False,
+        color="k",
+        alpha=0.8,
     )
 
 
 def make_accuracy_figure(
-    results, map_idx=0, overlay_idx=0, overlay_ks=(0, 9), cmap="cividis"
+    results, map_idx=0, overlay_idx=0, overlay_k=0, cmap="cividis"
 ):
     """Make the accuracy figure panel from above functions"""
     df = to_frame(results)
@@ -185,53 +185,34 @@ def make_accuracy_figure(
     r_ovl = results[overlay_idx]  # trace overlay config
 
     # setup figure and panel
-    fig = plt.figure(figsize=(18, 9), constrained_layout=True)
-    grid = gs.GridSpec(2, 4, figure=fig, height_ratios=[1.0, 0.95])
+    fig = plt.figure(figsize=(14, 9), constrained_layout=True)
+    grid = gs.GridSpec(2, 1, figure=fig, height_ratios=[1.0, 0.8])
 
     # a) error vs dof
-    ax_dof = fig.add_subplot(grid[0, 0:2])
+    top = grid[0].subgridspec(1, 3, width_ratios=[1, 2, 1])
+    ax_dof = fig.add_subplot(top[0, 1])
     plot_error_vs_dof(df, ax_dof)
 
-    # b, c) error maps with 1 color bar
-    ax_o = fig.add_subplot(grid[0, 2])
-    ax_d = fig.add_subplot(grid[0, 3])
-    ov_labels = ("d", "e")
-    sc = plot_receiver_map(r_map, ax_o, ax_d, cmap, overlay_ks, ov_labels)
-
-    for ax in (ax_o, ax_d):
-        ax.set_xlim(0, 0.2)
-        ax.set_ylim(0, 0.2)
-        ax.set_xlabel("x (m)")
-
-    ax_o.set_ylabel("y (m)")
-    fig.colorbar(sc, ax=[ax_o, ax_d], shrink=0.95, label="Trace Error Norm")
-
-    # d,e) trace overlays
+    # b) receiver map differences
     # bottom two panels
-    ax_tr = [fig.add_subplot(grid[1, 0:2]), fig.add_subplot(grid[1, 2:4])]
-    plot_trace_overlays(r_ovl, overlay_ks, ax_tr)
+    bot = grid[1].subgridspec(1, 4, width_ratios=[1, 1, 1, 1])
+    ax_diff = fig.add_subplot(bot[0, 0])
+    sc = plot_diff_map(r_map, ax_diff, overlay_k)
 
-    for ax in ax_tr:
-        ax.set_xlabel(r"t ($\mu$s)")
+    fig.colorbar(sc, ax=ax_diff, shrink=0.9, pad=0.04, label="Relative error")
 
-    ax_tr[0].set_ylabel("Normalised amplitude")
+    # c) trace
+    ax_trace = fig.add_subplot(bot[0, 1:])
+    plot_trace_overlay(r_ovl, overlay_k, ax_trace)
 
     # panel labels
-    for ax, lab in zip([ax_dof, ax_o, ax_d, *ax_tr], "abcde"):
-        ax.text(
-            -0.12,
-            1.2,
-            f"({lab})",
-            transform=ax.transAxes,
-            va="top",
-            ha="left",
-            fontweight="bold",
-        )
+    for ax, lab in zip([ax_dof, ax_diff, ax_trace], "abc"):
+        ax.set_title(f"({lab})", loc="left", fontweight="bold", fontsize=14)
 
     legend_handles = [
         Patch(facecolor=COL["odil"], label="ODIL"),
         Patch(facecolor=COL["dev"], label="Devito"),
-        Line2D([0], [0], color="k", linestyle=":", linewidth=4, label="Analytical"),
+        Line2D([0], [0], color="k", linestyle=":", linewidth=4.1, label="Analytical"),
         Line2D(
             [],
             [],
@@ -239,7 +220,7 @@ def make_accuracy_figure(
             linestyle="none",
             markersize=20,
             color="orangered",
-            markeredgecolor="k",
+            markeredgecolor="r",
             label="Source",
         ),
         Line2D(
@@ -248,9 +229,11 @@ def make_accuracy_figure(
             marker="o",
             linestyle="none",
             markersize=15,
+            markeredgewidth=1.0,
             color="0.6",
             markeredgecolor="k",
-            label="Receivers",
+            fillstyle="none",
+            label="Receiver",
         ),
     ]
     fig.legend(
@@ -268,7 +251,7 @@ def main():
     results = load(str(RESULTS))
     fig = make_accuracy_figure(results)
 
-    fig.savefig(FIGURE, dpi=1000, bbox_inches="tight", pad_inches=0.1)
+    fig.savefig(FIGURE, dpi=200, bbox_inches="tight", pad_inches=0.1)
     print("Results saved to", str(FIGURE))
 
 
