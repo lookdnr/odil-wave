@@ -16,28 +16,30 @@ from odil_wave.metrics import normalised_trace_rel_l2
 from wave_specific.dsp import field_growth
 from odil_wave.grid.utils import nodes_for_ppw
 
-XMAX = 0.3
+XMAX_HOMOG = 0.1
+XMAX_SL = 0.3
 F0 = 100e3
 C_MIN = 1500.0
 PPW = 12.0
-N = nodes_for_ppw(XMAX, F0, PPW, C_MIN)
+N_HOMOG = nodes_for_ppw(XMAX_HOMOG, F0, PPW, C_MIN)
+N_SL = nodes_for_ppw(XMAX_SL, F0, PPW, C_MIN)
 
 BASE = RunConfig(
-    nx=N,
-    ny=N,
+    nx=N_HOMOG,
+    ny=N_HOMOG,
     xmin=0.0,
-    xmax=XMAX,
+    xmax=XMAX_HOMOG,
     ymin=0.0,
-    ymax=XMAX,
+    ymax=XMAX_HOMOG,
     c_min=C_MIN,
     c_max=C_MIN,
     cfl_safety=0.7,  # overwritten per run
     time_order=2,
     space_order=2,  # 2nd order -> cfl_safety=1.0 is max
     f0=F0,
-    source_loc=(XMAX / 2, XMAX / 2),
+    source_loc=(XMAX_HOMOG / 2, XMAX_HOMOG / 2),
     recv_mode="custom",
-    recv_locs=((XMAX * 0.8, XMAX / 2),),
+    recv_locs=((XMAX_HOMOG * 0.8, XMAX_HOMOG / 2),),
     n_recvs=1,
     model="homogeneous",
     method="paradiag",
@@ -48,6 +50,9 @@ BASE = RunConfig(
 
 SL_BASE = replace(
     BASE,
+    nx=N_SL,
+    ny=N_SL,
+    xmax=XMAX_SL,
     model="shepp-logan",
     c_min=1500.0,  # background_c
     c_max=2800.0,
