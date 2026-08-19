@@ -52,7 +52,7 @@ SL_BASE = replace(
     c_min=1500.0,  # background_c
     c_max=2800.0,
     contrast=1300.0,  # 1500 + 1300*1.0 = 2800 = c_max above
-    interior_fill=0.8,
+    interior_fill=0.7,
     mask_skull=False,
 )
 
