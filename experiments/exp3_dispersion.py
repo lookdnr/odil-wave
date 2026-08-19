@@ -149,14 +149,8 @@ if __name__ == "__main__":
 
     results = []
     for ppw in PPW_VALUES:
-        # compute required nodes for given ppw and make problem
         n = nodes_for_ppw(BASE.xmax - BASE.xmin, BASE.f0, ppw, BASE.c_min)
         cfg = replace(BASE, nx=n, ny=n)
-
-        # run
         if not a.dry:
             results.append(run(cfg, a.workers))
-
-    # write
-    if not a.dry:
-        save(results, a.out)
+            save(results, a.out)  # checkpoint after every point
