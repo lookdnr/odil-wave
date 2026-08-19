@@ -94,12 +94,16 @@ def run(cfl_safety: float, save: bool, which: str = "homog"):
     ref = safe_run_devito(cfg, recvs.recv_xy, save, grid.dt)
     if ref["traces"] is not None:
         d_dev, t_dev = ref["traces"], ref["t"]
-        growth_dev = field_growth(d_dev)
+        growth_dev = field_growth(d_dev)  # type: ignore
 
         if cfg.model == "homogeneous":
-            ana_dev = analytical_traces(src, recvs, t_dev, cfg.c_min)
-            mask_dev = pre_reflection_mask(src, recvs, t_dev, cfg.c_min)
-            err_dev = float(normalised_trace_rel_l2(d_dev[mask_dev], ana_dev[mask_dev]))
+            ana_dev = analytical_traces(src, recvs, t_dev, cfg.c_min)  # type: ignore
+            mask_dev = pre_reflection_mask(src, recvs, t_dev, cfg.c_min)  # type: ignore
+            err_dev = float(
+                normalised_trace_rel_l2(
+                    d_dev[mask_dev], ana_dev[mask_dev]  # type: ignore
+                )
+            )
         else:
             err_dev = float("nan")
     else:
