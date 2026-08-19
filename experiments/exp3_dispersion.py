@@ -1,6 +1,8 @@
 import argparse
 from dataclasses import replace, dataclass
 
+from typing import Union
+
 import numpy as np
 
 from common import (
@@ -63,9 +65,10 @@ class DispersionResult:
     devito: dict
 
 
-def max_norm(trace: np.ndarray) -> np.ndarray:
+def max_norm(trace: np.ndarray) -> Union[np.ndarray, None]:
     """Apply max normalisation to a trace"""
-    return trace / trace.max()
+    peak = trace.max()
+    return trace / peak if peak > 0 else None
 
 
 def make_json_safe(d: dict):
@@ -79,24 +82,33 @@ def compute_correlations(
     d: np.ndarray, ana: np.ndarray, dt: float, mask: np.ndarray, distances: np.ndarray
 ):
     """Per receiver lag + envelope ratio against the analytic reference"""
-    xcorrs, envs = [], []
+    xcorrs, envs, valid_distances = [], [], []
 
     # apply pre rec mask, max norm, and compute for all
     for k in range(d.shape[1]):
         m = mask[:, k]
         obs, ref = d[m, k], ana[m, k]  # raw
         obs_n, ref_n = max_norm(obs), max_norm(ref)  # normalised
+
+        if obs_n is None or ref_n is None:
+            continue
+
         xcorr = xcorr_lags(ref_n, obs_n, dt)
         env = envelopes(ref, obs)
 
         xcorrs.append(make_json_safe(xcorr))
         envs.append(make_json_safe(env))
+        valid_distances.append(distances[k])
+
+    # not enough points to compute slope
+    if len(xcorrs) < 2:
+        return xcorrs, envs, float("nan"), float("nan")
 
     # extract peak lags
     lags = np.array([x["peak"] for x in xcorrs])
 
     # compute slope: fit a line with slope dr/dl
-    slope, intercept = np.polyfit(distances, lags, 1)
+    slope, intercept = np.polyfit(valid_distances, lags, 1)
     return xcorrs, envs, slope, intercept
 
 
