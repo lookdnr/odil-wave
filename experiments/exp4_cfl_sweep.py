@@ -16,10 +16,10 @@ from odil_wave.metrics import normalised_trace_rel_l2
 from wave_specific.dsp import field_growth
 from odil_wave.grid.utils import nodes_for_ppw
 
-XMAX = 0.2
+XMAX = 0.3
 F0 = 100e3
 C_MIN = 1500.0
-PPW = 10.0
+PPW = 12.0
 N = nodes_for_ppw(XMAX, F0, PPW, C_MIN)
 
 BASE = RunConfig(
