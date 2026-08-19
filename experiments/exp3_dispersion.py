@@ -144,7 +144,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--out", required=True)
     p.add_argument("--dry", required=False, action="store_true")
-    p.add_argument("--workers", required=False, default=32)
+    p.add_argument("--workers", required=False, default=128)
     a = p.parse_args()
 
     results = []
