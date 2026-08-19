@@ -261,7 +261,7 @@ def main():
     )
 
     # panel labels
-    for ax, lab in zip([ax_raw, ax_mem, ax_time, ax_f0], "abcd"):
+    for ax, lab in zip([ax_time, ax_raw, ax_mem, ax_f0], "abcd"):
         ax.text(
             -0.12,
             1.05,
