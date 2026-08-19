@@ -109,8 +109,8 @@ def run(cfl_safety: float, save: bool, which: str = "homog"):
     # save field snapshots
     snapshots = None
     if cfg.model != "homogeneous":
-        idx = np.linspace(0, grid.nt - 1, 20, dtype=int)
-        snapshots = U_odil[idx].reshape(len(idx), grid.nx, grid.ny)
+        field_path = a.out.rsplit(".", 1)[0] + f"_field_{which}_{cfl_safety}"
+        res.res.save(field_path, with_field=True)
 
     row = dict(
         cfl_safety=cfl_safety,
@@ -142,7 +142,3 @@ if __name__ == "__main__":
     row, snapshots = run(a.cfl_safety, a.save, a.which)
     with open(a.out, "a") as f:
         f.write(json.dumps(row, default=float) + "\n")
-
-    if snapshots is not None:
-        snap_path = a.out.rsplit(".", 1)[0] + f"_snap_{a.which}_{a.cfl_safety}.npz"
-        np.savez_compressed(snap_path, snapshots=snapshots)
