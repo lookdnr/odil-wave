@@ -65,8 +65,7 @@ class RunConfig:
             self.c_min, self.c_max = data.min(), data.max()
             del data
 
-        if self.assert_ppw():
-            print("PPW:", self.ppw)
+        self.assert_ppw()
 
     @property
     def ppw(self) -> float:
