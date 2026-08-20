@@ -89,6 +89,9 @@ def run(cfl_safety: float, save: bool, which: str = "homog"):
     cfg = replace(model, cfl_safety=cfl_safety)
     grid, _, src, recvs, _, _, opt = build_problem(cfg)
 
+    # figure out whether or not to save
+    save_field = cfg.model != "homogeneous" and _should_save_field(cfl_safety)
+
     # ODIL
     res = run_optimiser(cfg, opt, n_workers=32)
     U_odil = res.res.solution.U
@@ -105,7 +108,7 @@ def run(cfl_safety: float, save: bool, which: str = "homog"):
         err_odil = float("nan")
 
     # Devito
-    ref = safe_run_devito(cfg, recvs.recv_xy, save, grid.dt)
+    ref = safe_run_devito(cfg, recvs.recv_xy, save_field, grid.dt)
     if ref["traces"] is not None:
         d_dev, t_dev = ref["traces"], ref["t"]
         growth_dev = field_growth(d_dev)  # type: ignore
@@ -124,12 +127,14 @@ def run(cfl_safety: float, save: bool, which: str = "homog"):
         growth_dev = dict(max_u=[], growth_rate=float("nan"), finite=False)
         err_dev = float("nan")
 
-    # save field snapshots
-    snapshots = None
-    if cfg.model != "homogeneous" and _should_save_field(cfl_safety):
-        cfl_str = f"{cfl_safety:.3f}".replace(".", "p")
-        field_path = a.out.rsplit(".", 1)[0] + f"_field_{which}_{cfl_str}"
-        res.res.save(field_path, with_field=True)
+    # save field
+    if save_field:
+        cfl_str = f"{cfl_safety:.2f}".replace(".", "p")
+        field_path = a.out.rsplit(".", 1)[0] + f"_field_{cfl_str}"
+        res.res.save(field_path + "_odil", with_field=True)
+
+        if ref["field"] is not None:
+            np.savez_compressed(field_path + "_devito.npz", u=ref["field"])
 
     row = dict(
         cfl_safety=cfl_safety,
