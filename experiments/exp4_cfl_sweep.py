@@ -77,7 +77,14 @@ def safe_run_devito(cfg, recv_xy, save, dt):
     try:
         ref = run_reference(cfg, recv_xy, save=save, r=2, dt=dt)
     except Exception as e:
-        return dict(traces=None, t=None, wall=float("nan"), finite=False, error=str(e))
+        return dict(
+            traces=None,
+            t=None,
+            field=None,
+            wall=float("nan"),
+            finite=False,
+            error=str(e),
+        )
 
     ref["finite"] = bool(np.all(np.isfinite(ref["traces"])))
     ref["error"] = None
