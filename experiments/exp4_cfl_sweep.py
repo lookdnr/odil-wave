@@ -152,7 +152,7 @@ def run(cfl_safety: float, save: bool, which: str = "homog"):
         err_dev=err_dev,
         devito_error=ref["error"],
     )
-    return row, snapshots
+    return row
 
 
 if __name__ == "__main__":
@@ -165,6 +165,6 @@ if __name__ == "__main__":
     a = p.parse_args()
 
     if not a.dry:
-        row, snapshots = run(a.cfl_safety, a.save, a.which)
+        row = run(a.cfl_safety, a.save, a.which)
         with open(a.out, "a") as f:
             f.write(json.dumps(row, default=float) + "\n")
