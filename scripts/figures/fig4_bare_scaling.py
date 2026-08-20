@@ -211,7 +211,21 @@ def plot_mem_scaling_f0(cached, uncached, devito, ax):
 
     ax.set_xlabel(r"$f_0$ (kHz)", fontsize=LABEL_FS)
     ax.set_ylabel("Peak RSS (GiB)", fontsize=LABEL_FS)
-    ax.grid(True, which="both", alpha=0.3)
+    return ax
+
+
+def plot_wall_scaling_f0(cached, uncached, devito, ax):
+    """Plot wall clock time versus f0"""
+    for df, colour in [
+        (cached, COL["cached"]),
+        (uncached, COL["uncached"]),
+        (devito, COL["na"]),
+    ]:
+        df = df.sort_values("f0")
+        ax.plot(df["f0"] / 1000.0, df["wall_mean"], "o-", color=colour)
+
+    ax.set_xlabel(r"$f_0$ (kHz)", fontsize=LABEL_FS)
+    ax.set_ylabel("Wall clock time (s)", fontsize=LABEL_FS)
     return ax
 
 
@@ -231,18 +245,24 @@ def main():
                 result.drop(columns=col, inplace=True)
         result = bytes_to_gib(result)
 
-    fig = plt.figure(figsize=(16, 12))
-    grid = pltgs.GridSpec(2, 2, figure=fig)
+    fig = plt.figure(figsize=(16, 10))
+    grid = pltgs.GridSpec(2, 6, figure=fig)
 
-    ax_time = fig.add_subplot(grid[0, 0])
-    ax_raw = fig.add_subplot(grid[0, 1])
-    ax_mem = fig.add_subplot(grid[1, 0])
-    ax_f0 = fig.add_subplot(grid[1, 1])
+    ax_time = fig.add_subplot(grid[0, 0:2])
+    ax_raw = fig.add_subplot(grid[0, 2:4])
+    ax_mem = fig.add_subplot(grid[0, 4:6])
+    ax_wcf0 = fig.add_subplot(grid[1, 1:3])
+    ax_mf0 = fig.add_subplot(grid[1, 3:5])
+
+    axes = [ax_time, ax_raw, ax_mem, ax_wcf0, ax_mf0]
+    for ax in axes:
+        ax.set_box_aspect(1)
 
     plot_time_per_mode_scaling(cached, uncached, devito, ax_time)
     plot_raw_time(cached, uncached, devito, ax_raw)
     plot_memory_scaling(cached, uncached, devito, ax_mem)
-    plot_mem_scaling_f0(cached, uncached, devito, ax_f0)
+    plot_wall_scaling_f0(cached, uncached, devito, ax_wcf0)
+    plot_mem_scaling_f0(cached, uncached, devito, ax_mf0)
 
     legend_handles = [
         Patch(facecolor=COL["cached"], label=LABELS["cached"]),
@@ -254,14 +274,14 @@ def main():
     fig.legend(
         handles=legend_handles,
         loc="lower center",
-        bbox_to_anchor=(0.5, 0.0),
+        bbox_to_anchor=(0.5, -0.05),
         frameon=False,
         fontsize=TITLE_FS,
         ncol=3,
     )
 
     # panel labels
-    for ax, lab in zip([ax_time, ax_raw, ax_mem, ax_f0], "abcd"):
+    for ax, lab in zip([ax_time, ax_raw, ax_mem, ax_wcf0, ax_mf0], "abcde"):
         ax.text(
             -0.12,
             1.05,
@@ -272,6 +292,8 @@ def main():
             fontweight="bold",
             fontsize=14,
         )
+
+    plt.tight_layout(h_pad=1)
 
     fig.savefig(FIGURE, dpi=200, bbox_inches="tight", pad_inches=0.1)
     print("Results saved to", str(FIGURE))
