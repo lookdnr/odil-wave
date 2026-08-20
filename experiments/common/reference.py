@@ -56,6 +56,11 @@ def run_reference(cfg, rec_coords, dt=None, nbl=20, save=False, r: int = 4) -> d
     rec, u, summary = solver.forward(dt=dt_used, save=save)
     wall = perf_counter() - start
 
+    field = None
+    if save:
+        n = model.nbl
+        field = np.array(u.data[:, n:-n, n:-n])
+
     nt = rec.data.shape[0]
     t = np.arange(nt) * dt_used  # use operator clock, not the geom.time_axis
 
@@ -71,6 +76,7 @@ def run_reference(cfg, rec_coords, dt=None, nbl=20, save=False, r: int = 4) -> d
     finite = bool(np.all(np.isfinite(rec.data)))
 
     return dict(
+        field=field,
         traces=rec.data,
         t=t,
         dt=dt_used,
