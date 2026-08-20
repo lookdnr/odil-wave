@@ -44,6 +44,8 @@
 
 \begin{document}
 
+\microtypesetup{expansion=false}
+
 \maketitlepage  % generate title page
 
 % Abstract
@@ -242,7 +244,7 @@ Here, the spatial indices are flattened into a single spatial degree of freedom 
 We define the temporal second derivative operator $D_{tt} \in \mathbb{R}^{N_t \times N_t}$ and the second spatial derivative operators $D_{xx} \in \mathbb{R}^{N_x \times N_x}$ and $D_{yy} \in \mathbb{R}^{N_y \times N_y}$. These matrices represent the action of the finite difference approximations of second derivatives on $\mathbf{u}$. In the absence of boundary modifications, the finite difference derivative matrices possess a Toeplitz structure, illustrated in Figure \ref{fig:sparsity}.
 
 \ifshowfigs
-\begin{figure}[!h]
+\begin{figure}[!ht]
     \centering
     \includegraphics[width=\linewidth]{figures/fig1_op_structure.png}
     \caption{Sparsity plots of the operator matrices $D_{xx},\ D_{yy}$, and $D_{tt}$ (a - c) and the global operator matrix $A$ (d) in the discretised wave equation for a second order centred difference. Blue squares represent the non-zero entries in the matrices, and red boxes indicate the BTTB structure of the global operator. The inset illustrates the block structure: off-diagonal blocks couple neighbouring time levels and the central block represents the current time with the spatial operator terms folded in. }
@@ -325,7 +327,7 @@ Circulant matrices are diagonalisable by discrete Fourier transform \cite{haripr
 The choice of $\alpha$ governs the conditioning of the preconditioned system \cite{ganderParaDiagParallelintimeAlgorithms2020}. The circulant approximation differs from the true temporal operator only in the corner block, weighted by $\alpha$, so the preconditioned operator $M^{-1}A$ deviates from an identity matrix only by a perturbation whose magnitude is controlled by $\alpha$. Consequently, the singular values of the preconditioned system cluster tightly around unity rather than spreading across a wide distribution, dramatically improving the conditioning of the system. For all of the results presented in this work, we use $\alpha = 0.001$ to balance numerical stability and solver performance. Figure \ref{fig:svd} illustrates the collapse of the singular value distribution after preconditioning.
 
 \ifshowfigs
-\begin{figure}[!h]
+\begin{figure}[!ht]
     \centering
     \includegraphics[width=\linewidth]{figures/fig2_sv_distribution.png}
     \caption{Sparsity plot of the global operator matrix $A$ (a) including boundary equations, and circulant approximation $M$ (b), the preconditioner, along with their singular value $\kappa$ distributions (c, d).}
@@ -420,14 +422,14 @@ As a baseline, we ran L-BFGS-B, unpreconditioned GMRES, and preconditioned GMRES
 In the accuracy study, we perform a sweep over the Degrees Of Freedom (DOF, the number of grid points), and compare the solution achieved by ODIL and Devito against the analytical solution described in Section \ref{subsect:experiments-accuracy}. In Appendix \ref{app:results}, Table \ref{tab:accuracy} we report the mean of the L2 norm of the normalised trace misfit for each of the 24 receivers in the homogeneous domain for both methodologies. In Figure \ref{fig:accuracy}, we illustrate the accuracy convergence against DOF, along with the per-receiver error, and some sample traces which also indicate the spurious reflections that are excluded from calculations by the pre-reflection window. 
 
 \ifshowfigs
-\begin{figure}[!h]
+\begin{figure}[!ht]
     \includegraphics[width=\textwidth]{figures/fig3_accuracy.png}
     \caption{Panel (a) indicates global error norm as a function of Degrees of Freedom (DOF). Panel (b) illustrates the relative difference between the normalised trace residual norms of ODIL and Devito. Panel (c) shows waveforms observed at the receiver indicated by the red circle in Panel (b) against the analytical solution. The trace panel also demonstrates spurious boundary reflections and the pre-reflection window which omits them from metric calculations. Panels (b) and (c) visualise the results on the coarsest grid (lowest DOF) of $N_z = N_y = 80$, giving approximately 10 points per wavelength.}
     \label{fig:accuracy}
 \end{figure}
 \fi
 
-Error norm measurements demonstrate that the ODIL methodology converges to the same solution as the time stepping approach. This is expected, since both methods rely on the same discretisation scheme. The accuracy of both methods refines with the number of degrees of freedom due to an increasing number of points per wavelength, as illustrated by Figure \ref{fig:accuracy}a. The error that remains represents numerical modelling errors resulting from the discretisation, along with diffusion and dissipation error. The results validate that the preconditioned ODIL methodology is capable of solving the forced acoustic wave equation in two dimensions to the same degree of accuracy as a time stepping methodology. This closes \hyperref[]{RQ1}.
+Error norm measurements demonstrate that the ODIL methodology converges to the same solution as the time stepping approach. This is expected, since both methods rely on the same discretisation scheme. The accuracy of both methods refines with the number of degrees of freedom due to an increasing number of points per wavelength, as illustrated by Figure \ref{fig:accuracy}a. The error that remains represents numerical modelling errors resulting from the discretisation, along with diffusion and dissipation error. The results validate that the preconditioned ODIL methodology is capable of solving the forced acoustic wave equation in two dimensions to the same degree of accuracy as a time stepping methodology. This closes \hyperref[rq:1]{RQ1}.
 
 \subsection{Computational Performance Properties}
 \label{subsect:results_perf}
@@ -441,7 +443,7 @@ For explicit time stepping, determining complexity is straightforward. In a time
 Figure \ref{fig:raw-scaling} presents the serial performance of the ODIL methodologies against Devito. Figures \ref{fig:raw-scaling}a and c demonstrate that our implementation of ODIL sits within the time and space complexity bounds discussed in this work, while Devito's initial departure from the proposed complexities for time stepping is likely due to Python process overheads dominating the measurements. Figure \ref{fig:raw-scaling}b demonstrates raw wall clock measurements and evidences that, when run in serial, ODIL severely underperforms Devito, which is primarily attributable to inferior algorithmic scalability.
 
 \ifshowfigs
-\begin{figure}[!h]
+\begin{figure}[!ht]
     \centering
     \includegraphics[width=\linewidth]{figures/fig4_bare_scaling.png}
     \caption{Serial (single core) runtime and memory performance behaviour, with comparisons to the discussed complexity bounds (signified by dashed lines/ grey regions).}
@@ -456,7 +458,7 @@ Figures \ref{fig:raw-scaling}c and d illustrate wall clock time and RSS as a fun
 Figure \ref{fig:hardware-scaling}a demonstrates the strong scaling behaviour of the three methodologies. ODIL demonstrates near-linear speedup up to 32 cores. The AMD Rome node used to execute the code has 4 NUMA domains, each formed of 32 cores. Thus it is reasonable to assume the departure from linear speedup is due to inefficiencies introduced by NUMA domain crosstalk. Speedup for Devito is negligible, which we attribute to MPI overhead undoing any of the (relatively small) potential speedup gains for this problem. Figure \ref{fig:hardware-scaling}c demonstrates that, for this problem, exploiting the parallelism in preconditioner allows ODIL to compete more closely with time stepping, though the lowest wall clock time measurement (at 128 cores/processes) is still $\sim$10 times greater than that of Devito.
 
 \ifshowfigs
-\begin{figure}[!h]
+\begin{figure}[!ht]
     \centering
     \includegraphics[width=\linewidth]{figures/fig5_hardware_scaling.png}
     \caption{Strong scaling behaviour of (caching and non-caching) ODIL versus Devito: parallel speedup (a) and memory consumption as a function of the number of cores (b). Panel (c) illustrates raw wall clock times as a function of the number of processes. The dashed lines in panel (b) are extrapolated values demonstrating the convergence in memory consumption of the non-caching method to that of the caching method.}
@@ -568,7 +570,6 @@ The discrete Laplacian operator is constructed using Kronecker products accordin
     D_{xx}\otimes I_y
     +
     I_x\otimes D_{yy},
-    \label{eq:lap}
 \end{equation}
 
 where $L_{xy}\in\mathbb{R}^{N_xN_y\times N_xN_y}$ acts on the vectorised spatial wave field. Here, $I_x \in \mathbb{R}^{Nx\times Nx}$ and $I_y \in \mathbb{R}^{Ny\times Ny}$ are the identity matrices.
@@ -632,7 +633,6 @@ For the present problem, however, the residual is linear in $\mathbf{u}$, such t
 
 \begin{equation}
     A^T A\delta \mathbf{u}_k = - A^T \mathbf{r}_k.
-    \label{eq:normal_eqs}
 \end{equation}
 
 Assuming that the discretised wave equation is uniquely solvable, such that $A$ is non-singular, $A^T$ is then also non-singular. Resultingly, Equation \eqref{eq:normal_eqs} can be written
@@ -761,7 +761,7 @@ which simplifies nicely down to the result stated in Equation \eqref{eq:reduced_
 \label{app:setup}
 This section summarises the numerical and physical parameters used across each of the described experiments. Key parameters are summarised in Tables \ref{tab:parameters_numerical} and \ref{tab:parameters_physical}, respectively, while a short discussion of other parameters follows below.
 
-\begin{table}[!h]
+\begin{table}[!ht]
     \centering
     \begin{subtable}[t]{\textwidth}
         \centering
@@ -839,7 +839,7 @@ This section summarises the numerical and physical parameters used across each o
 
     \vspace{1em}
 
-    \begin{subtable}[!h]{\textwidth}
+    \begin{subtable}[!ht]{\textwidth}
         \centering
         \begin{tabular}{l p{0.15\textwidth} c m{0.22\textwidth} c
         }
@@ -953,6 +953,6 @@ Other parameters include: $\alpha = 10^{-3}$ for the preconditioner, absolute to
 % References
 %TC:endignore
 \bibliographystyle{plain}
-\bibliography{references}  % BibTeX references are saved in references.bib
+\bibliography{references.bib} 
 
 \end{document}          
