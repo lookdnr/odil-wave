@@ -39,7 +39,7 @@ def plot_error_vs_dof(df, ax):
     ax.set_yticklabels(["0.01", "0.02", "0.03", "0.04", "0.05"])
 
 
-def plot_diff_map(result, ax, highlight_k, cmap="RdBu_r"):
+def plot_diff_map(result, ax, highlight_k, cmap="berlin"):
     """Spatial map of relative (ODIL - Devito) error, centered at 0"""
     xy = np.array([rc.xy for rc in result.receivers])
     eo = np.array([rc.err_odil for rc in result.receivers])
@@ -186,7 +186,7 @@ def make_accuracy_figure(
 
     # setup figure and panel
     fig = plt.figure(figsize=(14, 9), constrained_layout=True)
-    grid = gs.GridSpec(2, 1, figure=fig, height_ratios=[1.0, 0.8])
+    grid = gs.GridSpec(2, 1, figure=fig, height_ratios=[1.0, 1.0])
 
     # a) error vs dof
     top = grid[0].subgridspec(1, 3, width_ratios=[1, 2, 1])
@@ -199,7 +199,14 @@ def make_accuracy_figure(
     ax_diff = fig.add_subplot(bot[0, 0])
     sc = plot_diff_map(r_map, ax_diff, overlay_k)
 
-    fig.colorbar(sc, ax=ax_diff, shrink=0.9, pad=0.04, label="Relative error")
+    fig.colorbar(
+        sc,
+        ax=ax_diff,
+        shrink=0.95,
+        pad=0.04,
+        label=r"$\mathcal{E}_\mathrm{ODIL} - \mathcal{E}_\mathrm{Dev}$",
+        location="top",
+    )
 
     # c) trace
     ax_trace = fig.add_subplot(bot[0, 1:])
