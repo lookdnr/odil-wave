@@ -53,6 +53,7 @@ SL_BASE = replace(
     nx=N_SL,
     ny=N_SL,
     xmax=XMAX_SL,
+    ymax=XMAX_SL,
     model="shepp-logan",
     c_min=1500.0,  # background_c
     c_max=2800.0,
@@ -155,8 +156,10 @@ if __name__ == "__main__":
     p.add_argument("--out", required=True)
     p.add_argument("--save", action="store_true", required=False)
     p.add_argument("--which", choices=["homog", "sl"], default="homog")
+    p.add_argument("--dry", action="store_true")
     a = p.parse_args()
 
-    row, snapshots = run(a.cfl_safety, a.save, a.which)
-    with open(a.out, "a") as f:
-        f.write(json.dumps(row, default=float) + "\n")
+    if not a.dry:
+        row, snapshots = run(a.cfl_safety, a.save, a.which)
+        with open(a.out, "a") as f:
+            f.write(json.dumps(row, default=float) + "\n")
