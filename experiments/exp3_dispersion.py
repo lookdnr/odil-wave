@@ -67,7 +67,7 @@ class DispersionResult:
 
 def max_norm(trace: np.ndarray) -> Union[np.ndarray, None]:
     """Apply max normalisation to a trace"""
-    peak = trace.max()
+    peak = np.abs(trace).max()
     return trace / peak if peak > 0 else None
 
 
