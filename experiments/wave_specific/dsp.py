@@ -107,3 +107,28 @@ def pw_phase_velocity(
     c_max = c_grid[idx].copy()
 
     return c_max, stack, mag
+
+
+def compute_attenutation(
+    omegas: np.ndarray, mag: np.ndarray, radii: np.ndarray
+) -> np.ndarray:
+    """Approximate per frequency attenuation coeff in accordance
+    with Chekroun et al.
+
+    Estimates the coefficient by a least squares fit between distance and
+    amplitude spectra for each freq, determining the relationship between
+    amp decay and distance
+    """
+
+    # take natural log
+    log_amp = np.log(mag)
+
+    nf = len(omegas)
+    alphas = np.empty(nf)
+
+    # compute coeff for each freq
+    for f in range(nf):
+        slope, _ = np.polyfit(radii, log_amp, 1)
+        alphas[f] = slope
+
+    return alphas
