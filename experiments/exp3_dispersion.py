@@ -18,10 +18,10 @@ from wave_specific import xcorr_lags, envelopes, ray_receiver_locs
 from odil_wave.grid.utils import nodes_for_ppw
 from accuracy import save
 
-SOURCE_LOC = (0.04, 0.1)
+SOURCE_LOC = (0.05, 0.08)
 
 # receiver set up
-RADII = np.arange(0.02, 0.125, 0.005)  # src-rec distances, > wavelength
+RADII = np.arange(0.02, 0.12, 0.01)  # src-rec distances, > wavelength
 ANGLES = [0.0, 22.5, 45.0]  # deg
 RECV_LOCS = tuple(loc for loc in ray_receiver_locs(SOURCE_LOC, ANGLES, RADII))
 
