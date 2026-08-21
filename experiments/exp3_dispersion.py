@@ -1,9 +1,16 @@
 import argparse
-from dataclasses import replace, dataclass
+from dataclasses import replace
 
 import numpy as np
 
-from common import RunConfig, build_problem, run_reference, run_optimiser, ricker
+from common import (
+    RunConfig,
+    build_problem,
+    run_reference,
+    run_optimiser,
+    ricker,
+    DispersionResult,
+)
 
 from common.compare import pre_reflection_mask
 from wave_specific import (
@@ -45,15 +52,6 @@ BASE = RunConfig(
     method="paradiag",
     alpha=1e-3,
 )
-
-
-@dataclass
-class DispersionResult:
-    ppw: float
-    nx: int
-    nt: int
-    dt: float
-    angles: dict  # angle: dict(radii, freqs, c_{method}, alpha_{method})
 
 
 def run(cfg, n_workers):

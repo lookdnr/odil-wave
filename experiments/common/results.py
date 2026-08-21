@@ -47,3 +47,15 @@ class AccuracyResult:
             analytical=tr[f"ana_{s}"][:, k],
             mask=tr[f"mask_{s}"][:, k],
         )
+
+
+# exp3a
+
+
+@dataclass
+class DispersionResult:
+    ppw: float
+    nx: int
+    nt: int
+    dt: float
+    angles: dict  # angle: dict(radii, freqs, c_{method}, alpha_{method})
