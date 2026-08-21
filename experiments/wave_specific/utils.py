@@ -1,8 +1,8 @@
-from typing import Tuple
+from typing import Tuple, List
 import numpy as np
 
 
-def ray_receiver_locs(source_loc: Tuple, angles_deg: np.ndarray, radii: np.ndarray):
+def ray_receiver_locs(source_loc: Tuple, angles_deg: List, radii: np.ndarray):
     """Generate receiver locations along rays from `source_loc`"""
     # extract src
     sx, sy = source_loc
