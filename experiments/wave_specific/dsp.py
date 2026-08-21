@@ -42,3 +42,34 @@ def trace_spectra(
     ffts = np.fft.rfft(windowed, axis=0)
     omegas = np.fft.rfftfreq(nt, dt)  # nt samples, dt spacing
     return omegas, ffts
+
+
+def pw_phase_velocity(
+    omegas: np.ndarray,
+    ffts: np.ndarray,
+    radii: np.ndarray,
+    c_bounds: Tuple[float, float] = (1400, 1600),
+    n_trial: int = 500,
+) -> Tuple[np.ndarray, ...]:
+    """slowness-frequency stack to compute the numerical phase velocity in
+    accordance with
+    Chekroun et al. Section 4: https://arxiv.org/pdf/1202.3427"""
+
+    # set up trial slowness values across specified range
+    c_min, c_max = min(c_bounds), max(c_bounds)
+    c_grid = np.linspace(c_min, c_max, n_trial)
+
+    # compute slowness grid
+    p_trial_grid = 1.0 / c_grid
+
+    # convert to angular frequency, phase shift and stack
+    angular_f = 2 * np.pi * omegas
+    shift = np.exp(1j * angular_f * p_trial_grid * radii)
+    stack = np.sum(ffts * shift, axis=-1)
+    mag = np.abs(stack)
+
+    # extract max phase velocity
+    idx = np.argmax(mag, axis=1)
+    c_max = c_grid[idx].copy()
+
+    return c_max, stack, mag
