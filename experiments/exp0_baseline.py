@@ -1,7 +1,13 @@
 import argparse
-from dataclasses import dataclass, replace
+from dataclasses import replace
 
-from common import RunConfig, build_problem, run_optimiser, analytical_traces
+from common import (
+    RunConfig,
+    build_problem,
+    run_optimiser,
+    analytical_traces,
+    BaselineResult,
+)
 from common.compare import pre_reflection_mask
 from odil_wave.metrics import normalised_trace_rel_l2
 from accuracy.storage import save
@@ -36,16 +42,6 @@ BASE = RunConfig(
 )
 
 METHODS = ["paradiag", "gmres", "lbfgs"]
-
-
-@dataclass
-class BaselineResult:
-    method: str
-    wall: float
-    iters: int
-    converged: bool
-    message: str
-    err: float
 
 
 def run_one(method: str, maxiter: int) -> BaselineResult:
