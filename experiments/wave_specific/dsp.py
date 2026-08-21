@@ -132,3 +132,34 @@ def compute_attenuation(
         alphas[f] = -slope
 
     return alphas
+
+
+def analytical_phase_velocity(
+    ppw: int, angle: float, c: float, dt: float, h: float
+) -> float:
+    """Solve the dispersion relation for angular frequency, return phase velocity
+    C_h = w / k for a given ppw.
+
+    Holds for second order in time and space, equation given by
+    Alford, Kelly, and Boore: https://doi-org.iclibezp1.cc.ic.ac.uk/10.1190/1.1440470"""
+
+    # compute wavelength and wavenumber
+    wavelength = ppw * h  # assumes dx=dy=h
+    wavenumber = 2 * np.pi / wavelength
+
+    # convert angle to rad
+    theta = np.deg2rad(angle)
+
+    # compute constants in relation
+    courant = c * dt / h
+    kh_over_2 = wavenumber * h / 2
+
+    # comptue rhs of relation
+    rhs = courant**2 * (
+        np.sin(kh_over_2 * np.cos(theta)) ** 2 + np.sin(kh_over_2 * np.sin(theta)) ** 2
+    )
+
+    # lhs is sin^2 w dt / 2
+    # therefore w is 2/dt * arcsin(sqrt(rhs))
+    omega = 2.0 / dt * np.arcsin(np.sqrt(rhs))
+    return omega / wavenumber
