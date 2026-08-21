@@ -10,7 +10,7 @@ import sys
 # make experiments/ importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "experiments"))
 
-from accuracy.storage import load  # type: ignore
+from common import load  # type: ignore
 
 # set dirs
 ROOT = Path(__file__).resolve().parents[2]  # ../../
