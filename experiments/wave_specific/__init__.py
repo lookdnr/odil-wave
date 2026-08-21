@@ -1,4 +1,10 @@
-from .dsp import xcorr_lags, envelopes
+from .dsp import field_growth, trace_spectra, pw_phase_velocity, compute_attenuation
 from .utils import ray_receiver_locs
 
-__all__ = ["xcorr_lags", "envelopes", "ray_receiver_locs"]
+__all__ = [
+    "field_growth",
+    "trace_spectra",
+    "pw_phase_velocity",
+    "compute_attenuation",
+    "ray_receiver_locs",
+]
