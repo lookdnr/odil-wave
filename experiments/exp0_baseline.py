@@ -10,7 +10,7 @@ from common import (
 )
 from common.compare import pre_reflection_mask
 from odil_wave.metrics import normalised_trace_rel_l2
-from accuracy.storage import save
+from common import save
 from odil_wave.grid.utils import nodes_for_ppw
 
 XMAX = 0.1

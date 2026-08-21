@@ -4,7 +4,7 @@ from dataclasses import replace
 # test harness
 from common import RunConfig
 from accuracy import measure_accuracy_repeated
-from accuracy.storage import save
+from common import save
 
 # 24 receivers on a fixed circle: radius 0.045, centred, in the 0.2 m domain
 _theta = np.linspace(0, 2 * np.pi, 24, endpoint=False)

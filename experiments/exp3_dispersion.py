@@ -20,7 +20,7 @@ from wave_specific import (
     compute_attenuation,
 )
 from odil_wave.grid.utils import nodes_for_ppw
-from accuracy import save
+from common import save
 
 SOURCE_LOC = (0.05, 0.08)
 
