@@ -4,7 +4,7 @@ from .reference import run_reference
 from .analytic import ricker, analytical_traces
 from .opt import run_optimiser
 from .utils import load_h5
-from .results import BaselineResult
+from .results import BaselineResult, AccuracyResult, ReceiverReport
 
 __all__ = [
     "RunConfig",
@@ -19,4 +19,6 @@ __all__ = [
     "run_optimiser",
     "load_h5",
     "BaselineResult",
+    "ReceiverReport",
+    "AccuracyResult",
 ]

@@ -1,50 +1,17 @@
-from dataclasses import dataclass
-
 from common import (
     RunConfig,
     build_problem,
     run_reference,
     analytical_traces,
     run_optimiser,
+    AccuracyResult,
+    ReceiverReport,
 )
 from common.compare import pre_reflection_mask
 from odil_wave.metrics import normalised_trace_rel_l2
 from common.analytic import src_rec_distance
 
 import numpy as np
-
-
-@dataclass
-class ReceiverReport:
-    index: int
-    xy: np.ndarray  # (x, y)
-    r: float  # distance to source
-    err_odil: float  # windowed error, this receiver only
-    err_dev: float
-
-
-@dataclass
-class AccuracyResult:
-    metrics: dict
-    traces: dict
-    receivers: list[ReceiverReport]
-
-    def trace(self, k: int, solver: str = "odil"):
-        """(time, numerical, analytic, window mask) for kth receiver"""
-
-        if solver not in ["odil", "dev"]:
-            raise ValueError("solver must be 'odil' or 'dev', got", solver)
-        s = solver
-
-        tr, rec = self.traces, self.receivers[k]
-
-        return dict(
-            rec=rec,
-            t=tr[f"t_{s}"],
-            numerical=tr[f"d_{s}"][:, k],
-            analytical=tr[f"ana_{s}"][:, k],
-            mask=tr[f"mask_{s}"][:, k],
-        )
 
 
 def _per_receiver_err(d: np.ndarray, ana: np.ndarray, mask: np.ndarray):
