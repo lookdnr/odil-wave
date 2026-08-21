@@ -30,7 +30,7 @@ ANGLES = [0.0, 22.5, 45.0]  # deg
 LOCS, RAYS = ray_receiver_locs(SOURCE_LOC, ANGLES, RADII)
 RECV_LOCS = tuple(loc for loc in LOCS)  # cast to tuple for type hint
 
-PPW_VALUES = [10, 15, 20, 25, 30, 35]
+PPW_VALUES = [10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]
 BASE = RunConfig(
     nx=100,
     ny=100,  # overwritten per ppw below
