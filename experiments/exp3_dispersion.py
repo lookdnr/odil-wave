@@ -14,23 +14,17 @@ from common import (
 )
 from common.analytic import src_rec_distance
 from common.compare import pre_reflection_mask
-from wave_specific.dsp import xcorr_lags, envelopes
+from wave_specific import xcorr_lags, envelopes, ray_receiver_locs
 from odil_wave.grid.utils import nodes_for_ppw
 from accuracy import save
 
-SOURCE_LOC = (0.05, 0.05)
-RECV_DISTANCES = (
-    0.01,
-    0.02,
-    0.03,
-    0.04,
-    0.05,
-    0.06,
-    0.07,
-    0.08,
-    0.09,
-)  # metres, along +x from the source
-RECV_LOCS = tuple((SOURCE_LOC[0] + d, SOURCE_LOC[1]) for d in RECV_DISTANCES)
+SOURCE_LOC = (0.04, 0.1)
+
+# receiver set up
+RADII = np.arange(0.02, 0.125, 0.005)  # src-rec distances, > wavelength
+ANGLES = [0.0, 22.5, 45.0]  # deg
+RECV_LOCS = tuple(loc for loc in ray_receiver_locs(SOURCE_LOC, ANGLES, RADII))
+
 PPW_VALUES = [10, 15, 20, 25, 30, 35]
 BASE = RunConfig(
     nx=100,
@@ -43,7 +37,7 @@ BASE = RunConfig(
     c_max=1500.0,  # homogeneous
     cfl_safety=0.7,
     time_order=2,
-    space_order=6,
+    space_order=2,
     f0=50e3,
     source_loc=SOURCE_LOC,
     recv_mode="custom",
