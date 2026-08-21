@@ -67,7 +67,7 @@ def run(cfg, n_workers):
     d_odil = recvs.extract_observations(solve_res.solution.U)
 
     # run devito, no need to account for JIT compile since we dc about time
-    ref = run_reference(cfg, recvs.recv_xy, dt=grid.dt)
+    ref = run_reference(cfg, recvs.recv_xy, dt=grid.dt, r=2)
     d_dev = ref["traces"]
 
     # compute analytical traces and masks
