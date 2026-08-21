@@ -1,6 +1,32 @@
 import numpy as np
 import scipy.signal.windows as ssw
-from typing import Tuple
+from typing import Tuple, Dict
+
+
+def field_growth(U: np.ndarray, tail_frac: float = 0.3) -> Dict:
+    """Compute per timestep max|u| and a late time growth rate slope
+    tail_frac is the fraction of the trace (from the end) used for the growth-rate fit,
+    meant to exclude the active injection period
+    """
+    max_u = np.abs(U).max(axis=1)
+    nt = len(max_u)
+
+    # extract tail end, 1-tail_frac from final time step
+    tail_start = int(nt * (1 - tail_frac))
+    tail = max_u[tail_start:]
+
+    # detect infinite/ nan
+    finite = bool(np.all(np.isfinite(U)))
+
+    # filter
+    k_full = np.arange(tail_start, nt)
+    keep = tail > 0  # drop zero underflow samples
+    if not finite or keep.sum() < 2:
+        return dict(max_u=max_u.tolist(), growth_rate=float("nan"), finite=finite)
+
+    # fit slope to approximate growth rate er time step
+    slope, _ = np.polyfit(k_full[keep], np.log(tail[keep]), 1)
+    return dict(max_u=max_u.tolist(), growth_rate=float(slope), finite=finite)
 
 
 def masked_taper(trace: np.ndarray, mask: np.ndarray, edge_frac=0.1) -> np.ndarray:
