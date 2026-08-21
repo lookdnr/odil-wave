@@ -110,7 +110,7 @@ def pw_phase_velocity(
 
 
 def compute_attenutation(
-    omegas: np.ndarray, mag: np.ndarray, radii: np.ndarray
+    omegas: np.ndarray, ffts: np.ndarray, radii: np.ndarray
 ) -> np.ndarray:
     """Approximate per frequency attenuation coeff in accordance
     with Chekroun et al.
@@ -121,14 +121,14 @@ def compute_attenutation(
     """
 
     # take natural log
-    log_amp = np.log(mag)
+    log_amp = np.log(np.abs(ffts))
 
     nf = len(omegas)
     alphas = np.empty(nf)
 
     # compute coeff for each freq
     for f in range(nf):
-        slope, _ = np.polyfit(radii, log_amp, 1)
-        alphas[f] = slope
+        slope, _ = np.polyfit(radii, log_amp[f], 1)
+        alphas[f] = -slope
 
     return alphas
