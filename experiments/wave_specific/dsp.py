@@ -48,8 +48,8 @@ def pw_phase_velocity(
     omegas: np.ndarray,
     ffts: np.ndarray,
     radii: np.ndarray,
-    c_bounds: Tuple[float, float] = (1400, 1600),
-    n_trial: int = 500,
+    c_bounds: Tuple[float, float] = (1450, 1550),
+    n_trial: int = 2500,
 ) -> Tuple[np.ndarray, ...]:
     """slowness-frequency stack to compute the numerical phase velocity in
     accordance with
