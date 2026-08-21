@@ -3,12 +3,7 @@ from dataclasses import replace, dataclass
 
 import numpy as np
 
-from common import (
-    RunConfig,
-    build_problem,
-    run_reference,
-    run_optimiser,
-)
+from common import RunConfig, build_problem, run_reference, run_optimiser, ricker
 
 from common.compare import pre_reflection_mask
 from wave_specific import (
@@ -63,7 +58,7 @@ class DispersionResult:
 
 def run(cfg, n_workers):
     """Colelct results for the given config"""
-    c = cfg.c_min
+    c, f0 = cfg.c_min, cfg.f0
     grid, _, src, recvs, _, _, opt = build_problem(cfg)
 
     # run, get observations
@@ -77,6 +72,12 @@ def run(cfg, n_workers):
 
     # compute analytical traces and masks
     mask = pre_reflection_mask(src, recvs, grid.t, c)
+
+    # compute source spectrum
+    src_spectrum = np.abs(np.fft.rfft(ricker(grid.t, f0, 1 / f0)))
+
+    # create fiter: exclude bottom 10% of amplitude spectrum
+    band = src_spectrum > 0.1 * src_spectrum.max()
 
     n_radii = len(RADII)
     angles_out = {}
@@ -100,11 +101,11 @@ def run(cfg, n_workers):
 
         angles_out[angle] = dict(
             radii=RADII.tolist(),
-            freqs=omegas.tolist(),
-            v_odil=v_odil.tolist(),
-            v_dev=v_dev.tolist(),
-            alpha_odil=alpha_odil.tolist(),
-            alpha_dev=alpha_dev.tolist(),
+            freqs=omegas[band].tolist(),
+            v_odil=v_odil[band].tolist(),
+            v_dev=v_dev[band].tolist(),
+            alpha_odil=alpha_odil[band].tolist(),
+            alpha_dev=alpha_dev[band].tolist(),
             window_us=window_us.tolist(),
         )
 
