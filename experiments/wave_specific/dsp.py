@@ -109,7 +109,7 @@ def pw_phase_velocity(
     return c_max, stack, mag
 
 
-def compute_attenutation(
+def compute_attenuation(
     omegas: np.ndarray, ffts: np.ndarray, radii: np.ndarray
 ) -> np.ndarray:
     """Approximate per frequency attenuation coeff in accordance
