@@ -59,13 +59,21 @@ def pw_phase_velocity(
     c_min, c_max = min(c_bounds), max(c_bounds)
     c_grid = np.linspace(c_min, c_max, n_trial)
 
-    # compute slowness grid
-    p_trial_grid = 1.0 / c_grid
-
-    # convert to angular frequency, phase shift and stack
+    # convert to angular frequency
     angular_f = 2 * np.pi * omegas
-    shift = np.exp(1j * angular_f * p_trial_grid * radii)
-    stack = np.sum(ffts * shift, axis=-1)
+
+    # compute num modes, create stack output
+    nf = len(angular_f)
+    stack = np.zeros((nf, n_trial), dtype=complex)
+
+    # compute the p-w stack quantity for each trial slowness
+    for i, c_trial in enumerate(c_grid):
+        p_trial = 1.0 / c_trial
+        for k, omega in enumerate(angular_f):
+            shift = np.exp(1j * omega * p_trial * radii)
+            stack[k, i] = np.sum(ffts[k] * shift)  # apply shift and stack
+
+    # compute stack magnitude
     mag = np.abs(stack)
 
     # extract max phase velocity
