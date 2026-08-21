@@ -1,29 +1,32 @@
 import argparse
 from dataclasses import replace, dataclass
 
-from typing import Union
-
 import numpy as np
 
 from common import (
     RunConfig,
     build_problem,
     run_reference,
-    analytical_traces,
     run_optimiser,
 )
-from common.analytic import src_rec_distance
+
 from common.compare import pre_reflection_mask
-from wave_specific import xcorr_lags, envelopes, ray_receiver_locs
+from wave_specific import (
+    ray_receiver_locs,
+    trace_spectra,
+    pw_phase_velocity,
+    compute_attenuation,
+)
 from odil_wave.grid.utils import nodes_for_ppw
 from accuracy import save
 
 SOURCE_LOC = (0.05, 0.08)
 
 # receiver set up
-RADII = np.arange(0.02, 0.12, 0.01)  # src-rec distances, > wavelength
+RADII = np.arange(0.02, 0.085, 0.005)  # src-rec distances, > wavelength
 ANGLES = [0.0, 22.5, 45.0]  # deg
-RECV_LOCS = tuple(loc for loc in ray_receiver_locs(SOURCE_LOC, ANGLES, RADII))
+LOCS, RAYS = ray_receiver_locs(SOURCE_LOC, ANGLES, RADII)
+RECV_LOCS = tuple(loc for loc in LOCS)  # cast to tuple for type hint
 
 PPW_VALUES = [10, 15, 20, 25, 30, 35]
 BASE = RunConfig(
@@ -54,95 +57,59 @@ class DispersionResult:
     ppw: float
     nx: int
     nt: int
-    distances: list
-    odil: dict  # xcorrs, envs, slope, intercept
-    devito: dict
-
-
-def max_norm(trace: np.ndarray) -> Union[np.ndarray, None]:
-    """Apply max normalisation to a trace"""
-    peak = np.abs(trace).max()
-    return trace / peak if peak > 0 else None
-
-
-def make_json_safe(d: dict):
-    """Convert arrays to lists for json.dump"""
-    return {
-        key: (v.tolist() if isinstance(v, np.ndarray) else v) for key, v in d.items()
-    }
-
-
-def compute_correlations(
-    d: np.ndarray, ana: np.ndarray, dt: float, mask: np.ndarray, distances: np.ndarray
-):
-    """Per receiver lag + envelope ratio against the analytic reference"""
-    xcorrs, envs, valid_distances = [], [], []
-
-    # apply pre rec mask, max norm, and compute for all
-    for k in range(d.shape[1]):
-        m = mask[:, k]
-        obs, ref = d[m, k], ana[m, k]  # raw
-        obs_n, ref_n = max_norm(obs), max_norm(ref)  # normalised
-
-        if obs_n is None or ref_n is None:
-            continue
-
-        xcorr = xcorr_lags(ref_n, obs_n, dt)
-        env = envelopes(ref, obs)
-
-        xcorrs.append(make_json_safe(xcorr))
-        envs.append(make_json_safe(env))
-        valid_distances.append(distances[k])
-
-    # not enough points to compute slope
-    if len(xcorrs) < 2:
-        return xcorrs, envs, float("nan"), float("nan")
-
-    # extract peak lags
-    lags = np.array([x["peak"] for x in xcorrs])
-
-    # compute slope: fit a line with slope dr/dl
-    slope, intercept = np.polyfit(valid_distances, lags, 1)
-    return xcorrs, envs, slope, intercept
+    dt: float
+    angles: dict  # angle: dict(radii, freqs, c_{method}, alpha_{method})
 
 
 def run(cfg, n_workers):
     """Colelct results for the given config"""
     c = cfg.c_min
-
-    # build problem, run, get observations
     grid, _, src, recvs, _, _, opt = build_problem(cfg)
+
+    # run, get observations
     res = run_optimiser(cfg, opt, n_workers=n_workers)
     solve_res = res.res
-    d_odil, t_odil = recvs.extract_observations(solve_res.solution.U), grid.t
+    d_odil = recvs.extract_observations(solve_res.solution.U)
 
     # run devito, no need to account for JIT compile since we dc about time
-    ref = run_reference(cfg, recvs.recv_xy)
-    d_dev, t_dev = ref["traces"], ref["t"]
+    ref = run_reference(cfg, recvs.recv_xy, dt=grid.dt)
+    d_dev = ref["traces"]
 
     # compute analytical traces and masks
-    ana_odil = analytical_traces(src, recvs, t_odil, c)
-    mask_odil = pre_reflection_mask(src, recvs, t_odil, c)
-    ana_dev = analytical_traces(src, recvs, t_dev, c)
-    mask_dev = pre_reflection_mask(src, recvs, t_dev, c)
+    mask = pre_reflection_mask(src, recvs, grid.t, c)
 
-    # compute src rec distances
-    distances = src_rec_distance(src, recvs)
+    n_radii = len(RADII)
+    angles_out = {}
 
-    xcorrs_o, envs_o, slope_o, intercept_o = compute_correlations(
-        d_odil, ana_odil, grid.dt, mask_odil, distances
-    )
-    xcorrs_d, envs_d, slope_d, intercept_d = compute_correlations(
-        d_dev, ana_dev, ref["dt"], mask_dev, distances
-    )
+    # for each angle, compute phase velocity and attenutation coeff
+    for i, angle in enumerate(ANGLES):
+        cols = slice(i * n_radii, (i + 1) * n_radii)
+
+        omegas, ffts_odil = trace_spectra(d_odil[:, cols], grid.dt, mask[:, cols])
+        _, ffts_dev = trace_spectra(d_dev[:, cols], grid.dt, mask[:, cols])
+
+        # phase vels
+        v_odil, _, _ = pw_phase_velocity(omegas, ffts_odil, RADII)
+        v_dev, _, _ = pw_phase_velocity(omegas, ffts_dev, RADII)
+
+        # attenuation coeffs
+        alpha_odil = compute_attenuation(omegas, ffts_odil, RADII)
+        alpha_dev = compute_attenuation(omegas, ffts_dev, RADII)
+
+        window_us = mask[:, cols].sum(axis=0) * grid.dt * 1e6
+
+        angles_out[angle] = dict(
+            radii=RADII.tolist(),
+            freqs=omegas.tolist(),
+            v_odil=v_odil.tolist(),
+            v_dev=v_dev.tolist(),
+            alpha_odil=alpha_odil.tolist(),
+            alpha_dev=alpha_dev.tolist(),
+            window_us=window_us.tolist(),
+        )
 
     return DispersionResult(
-        ppw=cfg.ppw,
-        nx=cfg.nx,
-        nt=grid.nt,
-        distances=list(distances),
-        odil=dict(xcorrs=xcorrs_o, envs=envs_o, slope=slope_o, intercept=intercept_o),
-        devito=dict(xcorrs=xcorrs_d, envs=envs_d, slope=slope_d, intercept=intercept_d),
+        ppw=cfg.ppw, nx=cfg.nx, nt=grid.nt, dt=grid.dt, angles=angles_out
     )
 
 
