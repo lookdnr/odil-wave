@@ -122,6 +122,57 @@ def label_panel(ax, label):
         ha="right",
     )
 
+def plot_eigval_scatter(ax, eig, which="unprecond"):
+    """Plot a complex plane scatter plot of eigenvalues"""
+
+    # unpack config options
+    config = {"unprecond": {"title": r"Eigenvalues of $A$", "colour": UNPRECOND_COLOR},
+              "precond": {"title": r"Eigenvalues of $M^{-1}A$", "colour": PRECOND_COLOR}}[which]
+    
+    # unit circle for ref
+    theta = np.linspace(0, 2 * np.pi, 400)
+    ax.plot(np.cos(theta), np.sin(theta), color="gray", linestyle="--", linewidth=1)
+
+    # plot
+    ax.scatter(eig.real, eig.imag, s=18, color=config["colour"], alpha=0.8, edgecolors="none")
+
+    # inset for tight clustering
+    if which == "precond":
+        axins = ax.inset_axes([0.55, 0.4, 0.2, 0.2])
+        axins.plot(np.cos(theta), np.sin(theta), color="gray", linestyle="--", linewidth=0.8, zorder=5)
+        axins.scatter(eig.real, eig.imag, s=20, color=config["colour"], alpha=0.8, edgecolors="none")
+
+        pad = 0.025
+        imag_center = np.median(eig.imag)
+        axins.set_xlim(1 - pad, 1 + pad)
+        axins.set_ylim(imag_center - pad, imag_center + pad)
+        axins.set_aspect("equal")
+        axins.set_xticks([])
+        axins.set_yticks([])
+
+        axins2 = ax.inset_axes([0.15, 0.3, 0.3, 0.4])
+        axins2.plot(np.cos(theta), np.sin(theta), color="gray", linestyle="--", linewidth=0.8)
+        axins2.scatter(eig.real, eig.imag, s=15, color=config["colour"], alpha=0.8, edgecolors="none")
+
+        axins2.set_xticks([])
+        axins2.set_yticks([])
+
+        mult = 0.01
+        axins2.set_xlim(1 - pad * mult, 1 + pad * mult)
+        axins2.set_ylim(imag_center - pad * mult, imag_center + pad * mult)
+        axins2.set_aspect("equal")
+        
+
+        ax.indicate_inset_zoom(axins, edgecolor="black")
+        axins.indicate_inset_zoom(axins2, edgecolor="black")
+
+    ax.axhline(0, color="black", linewidth=0.5)
+    ax.axvline(0, color="black", linewidth=0.5)
+    ax.set_aspect("equal")
+    ax.set_title(config["title"], fontsize=16)
+    ax.set_xlabel("Re", fontsize=14)
+    ax.set_ylabel("Im", fontsize=14)
+        
 
 def plot_sval_dist(ax, s_A, s_A_precond):
     bins = np.logspace(
@@ -161,8 +212,8 @@ def main():
     s_MA = sl.svdvals(MA_dense)
     cond_MA = compute_cond(s_MA)
 
-    print(f"cond(A) = {cond_A:.3e}")
-    print(f"cond(M^-1 A) = {cond_MA:.3e}")
+    eig_A = sl.eigvals(A_dense)
+    eig_MA = sl.eigvals(MA_dense)
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
@@ -182,10 +233,12 @@ def main():
     )
     label_panel(axes[0, 1], "b")
 
-    plot_singular_vals(axes[1, 0], s_A, s_MA)
+    #plot_singular_vals(axes[1, 0], s_A, s_MA)
+    plot_eigval_scatter(axes[1, 0], eig_A, "unprecond")
     label_panel(axes[1, 0], "c")
 
-    plot_sval_dist(axes[1, 1], s_A, s_MA)
+    #plot_sval_dist(axes[1, 1], s_A, s_MA)
+    plot_eigval_scatter(axes[1, 1], eig_MA, "precond")
     label_panel(axes[1, 1], "d")
 
     fig.tight_layout()
