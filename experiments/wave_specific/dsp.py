@@ -118,10 +118,12 @@ def compute_attenuation(
     Estimates the coefficient by a least squares fit between distance and
     amplitude spectra for each freq, determining the relationship between
     amp decay and distance
+
+    Result is corrected for geometric spreading: 1/sqrt(r) term is removed
     """
 
     # take natural log
-    log_amp = np.log(np.abs(ffts))
+    log_amp = np.log(np.abs(ffts)) + 0.5 * np.log(radii)
 
     nf = len(omegas)
     alphas = np.empty(nf)
