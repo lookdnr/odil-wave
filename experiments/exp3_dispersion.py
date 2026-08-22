@@ -22,22 +22,22 @@ from wave_specific import (
 from odil_wave.grid.utils import nodes_for_ppw
 from common import save
 
-SOURCE_LOC = (0.07, 0.1)
+SOURCE_LOC = (0.1, 0.2)
 
 # receiver set up
-RADII = np.arange(0.02, 0.07, 0.001)  # src-rec distances, > wavelength
+RADII = np.arange(0.05, 0.15, 0.005)  # src-rec distances, > wavelength
 ANGLES = [0.0, 15.0, 30.0, 45.0]  # deg
 LOCS, RAYS = ray_receiver_locs(SOURCE_LOC, ANGLES, RADII)
 RECV_LOCS = tuple(loc for loc in LOCS)  # cast to tuple for type hint
 
 PPW_VALUES = [10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]
 BASE = RunConfig(
-    nx=100,
-    ny=100,  # overwritten per ppw below
+    nx=135,
+    ny=135,  # overwritten per ppw below
     xmin=0.0,
-    xmax=0.2,
+    xmax=0.4,
     ymin=0.0,
-    ymax=0.2,
+    ymax=0.4,
     c_min=1500.0,
     c_max=1500.0,  # homogeneous
     cfl_safety=0.7,
