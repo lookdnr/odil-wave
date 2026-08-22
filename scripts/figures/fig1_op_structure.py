@@ -118,7 +118,7 @@ def annotate_bttb(ax, ns, block_idx=5, color="crimson"):
         90,
         250,
         r"Toeplitz blocks",
-        color=color,
+        color="k",
         ha="center",
         va="top",
         fontsize=16,
@@ -129,10 +129,10 @@ def annotate_bttb(ax, ns, block_idx=5, color="crimson"):
     ax.annotate(
         "",
         xy=(220, 260),
-        xytext=(145, 257),
+        xytext=(155, 257),
         color="crimson",
         fontsize=12,
-        arrowprops=dict(arrowstyle="->", color=color, lw=1.0),
+        arrowprops=dict(arrowstyle="->", color="k", lw=1.0),
         annotation_clip=False,
     )
 
@@ -141,7 +141,7 @@ def annotate_bttb(ax, ns, block_idx=5, color="crimson"):
         "",
         xy=(110, 150),
         xytext=(100, 245),
-        arrowprops=dict(arrowstyle="->", color=color, lw=1.0),
+        arrowprops=dict(arrowstyle="->", color="k", lw=1.0),
         annotation_clip=False,
     )
 
