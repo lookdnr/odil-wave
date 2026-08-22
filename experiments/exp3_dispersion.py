@@ -22,11 +22,11 @@ from wave_specific import (
 from odil_wave.grid.utils import nodes_for_ppw
 from common import save
 
-SOURCE_LOC = (0.05, 0.08)
+SOURCE_LOC = (0.07, 0.1)
 
 # receiver set up
-RADII = np.arange(0.02, 0.085, 0.005)  # src-rec distances, > wavelength
-ANGLES = [0.0, 22.5, 45.0]  # deg
+RADII = np.arange(0.02, 0.07, 0.001)  # src-rec distances, > wavelength
+ANGLES = [0.0, 15.0, 30.0, 45.0]  # deg
 LOCS, RAYS = ray_receiver_locs(SOURCE_LOC, ANGLES, RADII)
 RECV_LOCS = tuple(loc for loc in LOCS)  # cast to tuple for type hint
 
