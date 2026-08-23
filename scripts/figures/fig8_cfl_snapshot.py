@@ -20,8 +20,6 @@ CFL_LOW, CFL_HIGH = 0.7, 1.3
 
 FIGURE = "fig8_cfl_snapshots.png"
 
-import copy
-
 def load_field_wavefield(cfl_safety, solver):
     """Load a saved CFL-sweep field snapshot into a Wavefield."""
     cfl_str = f"{cfl_safety:.2f}".replace(".", "p")
