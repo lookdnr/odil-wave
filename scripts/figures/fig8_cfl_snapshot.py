@@ -28,7 +28,7 @@ def load_field_wavefield(cfl_safety, solver):
 
     data = np.load(f"{PREFIX}_{cfl_str}_{solver}.npz")["u"]
 
-    return Wavefield(grid, init_amplitude=data["u"])
+    return Wavefield(grid, init_amplitude=data)
 
 def build_fine_model(base_cfg, fine_n=500):
     """High resolution model for plotting contours"""
@@ -66,7 +66,7 @@ def add_model_contours(ax, model, colour="k", alpha=0.5, linewidth=0.5, linestyl
             ax.plot(xs, ys, color=colour, linewidth=linewidth, linestyle=linestyle, alpha=alpha, zorder=3)
 
 
-def plot_cfl_snapshot(panel_size=2.3,gap_frac=0.4, label_frac=0.2):
+def plot_cfl_snapshot(gap_frac=0.1, label_frac=0.1):
     """Plot panel of ODIL vs Devito snapshots at specific time levels and CFL numbers"""
 
     # set up panel
@@ -88,8 +88,8 @@ def plot_cfl_snapshot(panel_size=2.3,gap_frac=0.4, label_frac=0.2):
 
     nrows = len(row_specs)
 
-    fig = plt.figure(figsize=(panel_size * ncols, panel_size * sum(height_ratios)))
-    gs = GridSpec(nrows, ncols, figure=fig, height_ratios=height_ratios, hspace=0.15, wspace=0.05)
+    fig = plt.figure(figsize=(14, 14))
+    gs = GridSpec(nrows, ncols, figure=fig, height_ratios=height_ratios, hspace=0.1, wspace=0.01)
 
     # build fine model to show SL phantom contour
     model = build_fine_model(SL_BASE)
