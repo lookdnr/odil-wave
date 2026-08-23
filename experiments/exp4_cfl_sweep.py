@@ -17,10 +17,10 @@ from wave_specific.dsp import field_growth
 from odil_wave.grid.utils import nodes_for_ppw
 
 XMAX_HOMOG = 0.1
-XMAX_SL = 0.3
+XMAX_SL = 0.35
 F0 = 100e3
 C_MIN = 1500.0
-PPW = 12.0
+PPW = 13.0
 N_HOMOG = nodes_for_ppw(XMAX_HOMOG, F0, PPW, C_MIN)
 N_SL = nodes_for_ppw(XMAX_SL, F0, PPW, C_MIN)
 
@@ -58,10 +58,11 @@ SL_BASE = replace(
     c_min=1500.0,  # background_c
     c_max=2800.0,
     contrast=1300.0,  # 1500 + 1300*1.0 = 2800 = c_max above
-    interior_fill=0.7,
+    interior_fill=0.65,
     mask_skull=False,
-    source_loc=(0.09, 0.24),
-    recv_locs=((0.22, 0.08),),
+    phantom_centre_frac=(0.95, 0.1),
+    source_loc=(0.165, 0.20),
+    recv_locs=((0.29, 0.05),)
 )
 
 FIELD_SAVE_CFLS = (0.7, 1.0, 1.1, 1.3)
