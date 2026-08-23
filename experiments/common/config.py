@@ -47,6 +47,7 @@ class RunConfig:
     radius: float | None = None
     interior_fill: float | None = None
     mask_skull: bool | None = None
+    phantom_centre_frac: Tuple[float, float] = (0.5, 0.5)
 
     # solving
     method: str = "paradiag"
@@ -105,6 +106,7 @@ class RunConfig:
                     contrast=self.contrast,
                     interior_fill=self.interior_fill,
                     mask_skull=self.mask_skull,
+                    centre_frac=self.phantom_centre_frac
                 )
         return kwargs
 
