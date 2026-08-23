@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import pandas as pd
+import pickle
 
 
 def load_jsonl(which: Path, path: Path) -> pd.DataFrame:
@@ -24,3 +25,9 @@ def bytes_to_gib(result: pd.DataFrame):
         if col in result.columns:
             result[col + "_GiB"] = result[col] / 2**30
     return result
+
+def load_pkl(path):
+    """Load an accuracy sweep from pickled file"""
+
+    with open(path, "rb") as f:
+        return pickle.load(f)
