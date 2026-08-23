@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import numpy as np
-from common import load_jsonl, bytes_to_gib
+from fig_utils import load_jsonl, bytes_to_gib
 
 RESULTS_DIR = Path("results/performance/")
 CACHED = Path("f0_sweep_odil_cached.jsonl")

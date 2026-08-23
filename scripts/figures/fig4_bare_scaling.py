@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import matplotlib.gridspec as pltgs
 import numpy as np
-from common import bytes_to_gib, load_jsonl
+from fig_utils import bytes_to_gib, load_jsonl
 
 RESULTS_DIR = Path("results/performance/")
 CACHED = Path("f0_sweep_odil_cached.jsonl")
