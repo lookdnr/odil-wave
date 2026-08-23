@@ -10,7 +10,7 @@ import sys
 # make experiments/ importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "experiments"))
 
-from common import load  # type: ignore
+from fig_utils import load_pkl  # type: ignore
 
 # set dirs
 ROOT = Path(__file__).resolve().parents[2]  # ../../
@@ -255,7 +255,7 @@ def make_accuracy_figure(
 
 
 def main():
-    results = load(str(RESULTS))
+    results = load_pkl(str(RESULTS))
     fig = make_accuracy_figure(results)
 
     fig.savefig(FIGURE, dpi=200, bbox_inches="tight", pad_inches=0.1)
