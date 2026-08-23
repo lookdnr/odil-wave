@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
+from matplotlib.lines import Line2D
 import numpy as np
 
 from fig_utils import load_pkl
@@ -73,6 +73,26 @@ def plot_dispersion_summary(results, angles, c=1500.0, figsize=(11, 9)):
             else:
                 a.set_ylabel("")
                 a.tick_params(labelleft=False)
+
+    # globasl legend
+    legend_handles = [
+        Line2D([0], [0], color=COL["odil"], marker="o", label="ODIL"),
+        Line2D([0], [0], color=COL["devito"], marker="s", label="Devito"),
+        Line2D([0], [0], color="k", linestyle="--", label="Analytical"),
+    ]
+    
+    fig.legend(
+        handles=legend_handles,
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.05),
+        frameon=False,
+        fontsize=TITLE_FS,
+        ncol=3,
+    )
+
+    for ax, lab in zip(axs.flat, "abcd"):
+        ax.text(-0.12, 1.05, f"({lab})", transform=ax.transAxes, va="top", ha="left",
+                 fontweight="bold", fontsize=14)
 
     return fig
 

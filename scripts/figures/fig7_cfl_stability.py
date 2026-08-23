@@ -1,5 +1,6 @@
 from pathlib import Path
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 import json
 
@@ -88,7 +89,27 @@ def plot_cfl_stability(rows, figsize=(11, 4.5)):
     fig, axs = plt.subplots(1, 2, figsize=figsize)
     plot_error_vs_cfl(rows, ax=axs[0])
     plot_growth_vs_cfl(rows, ax=axs[1])
-    fig.tight_layout()
+
+    legend_handles = [
+        Line2D([0], [0], color=COL["odil"], marker="o", label="ODIL"),
+        Line2D([0], [0], color=COL["devito"], marker="s", label="Devito"),
+        Line2D([0], [0], color="gray", linestyle=":", label="CFL limit"),
+        Line2D([0], [0], color="red", marker="x", linestyle="None", markersize=10, label="First non-finite"),
+    ]
+    fig.legend(
+        handles=legend_handles,
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.1),
+        frameon=False,
+        fontsize=TITLE_FS,
+        ncol=4,
+    )
+
+    for ax, lab in zip(axs, "ab"):
+        ax.text(-0.12, 1.05, f"({lab})", transform=ax.transAxes, va="top", ha="left",
+                 fontweight="bold", fontsize=14)
+
+    plt.tight_layout(h_pad=2)
     return fig
 
 
