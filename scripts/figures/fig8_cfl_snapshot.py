@@ -81,6 +81,10 @@ def add_model_contours(ax, model, colour="k", alpha=0.5, linewidth=0.5, linestyl
             ys = ymin + contour[:, 1] / (ny - 1) * (ymax - ymin)
             ax.plot(xs, ys, color=colour, linewidth=linewidth, linestyle=linestyle, alpha=alpha, zorder=3)
 
+def reshape(wf):
+    """Reshape flattened wavefield to plottable image"""
+    amp = wf.U.reshape(wf.grid.nt, *wf.grid.shape)
+    return amp, wf.grid.extent, wf.grid.t
 
 def plot_cfl_snapshot(gap_frac=0.1, label_frac=0.1):
     """Plot panel of ODIL vs Devito snapshots at specific time levels and CFL numbers"""
@@ -88,23 +92,31 @@ def plot_cfl_snapshot(gap_frac=0.1, label_frac=0.1):
     # set up panel
     ncols = len(TIME_LEVELS)
 
-    # 4 rows, 2 each for devito and odil at specified cfls
+    # 5 rows, 2 each for devito and odil at specified cfls, 1 for odil residual
     row_specs = [
         ("label", f"CFL = {CFL_LOW}"),
         ("ODIL", CFL_LOW), ("Devito", CFL_LOW),
-        None, # visual gap
+        None,
         ("label", f"CFL = {CFL_HIGH}"),
         ("ODIL", CFL_HIGH), ("Devito", CFL_HIGH),
+        None,
+        ("label", "ODIL residual"),
+        ("residual", None),
+        ("colorbar", None),
     ]
 
-    height_ratios = [
-        gap_frac if spec is None else (label_frac if spec[0] == "label" else 1.0)
-        for spec in row_specs
-    ]
+    height_ratios = []
+    for spec in row_specs:
+        if spec is None:
+            height_ratios.append(gap_frac)
+        elif spec[0] in ("label", "colorbar"):
+            height_ratios.append(label_frac)
+        else:
+            height_ratios.append(1.0)
 
     nrows = len(row_specs)
 
-    fig = plt.figure(figsize=(14, 14))
+    fig = plt.figure(figsize=(11, 13))
     gs = GridSpec(nrows, ncols, figure=fig, height_ratios=height_ratios, hspace=0.1, wspace=0.01)
 
     # build fine model to show SL phantom contour
@@ -119,8 +131,58 @@ def plot_cfl_snapshot(gap_frac=0.1, label_frac=0.1):
             ax = fig.add_subplot(gs[i, :])
             ax.axis("off")
             ax.text(0.5, 0.5, spec[1], transform=ax.transAxes, ha="center", va="bottom",
-                    fontsize=12, fontweight="bold")
+                    fontsize=14, fontweight="bold")
             continue
+
+        # residual plot of odil at high and low cfl
+        elif spec[0] == "residual":
+
+            # extract and reshape wf
+            amp_low_wf = load_field_wavefield(CFL_LOW, "odil")
+            amp_low, extent_low, t_low = reshape(amp_low_wf)
+            amp_high_wf = load_field_wavefield(CFL_HIGH, "odil")
+            amp_high, _, t_high = reshape(amp_high_wf)
+            (xmin, xmax), (ymin, ymax) = extent_low
+
+            # compute relative residuals
+            residuals = []
+            for t_us in TIME_LEVELS:
+                # get index of same time step
+                idx_low = int(np.argmin(np.abs(t_low - t_us * 1e-6)))
+                idx_high = int(np.argmin(np.abs(t_high - t_us * 1e-6)))
+
+                frame_low = amp_low[idx_low]
+                frame_high = amp_high[idx_high]
+                reference_peak = np.abs(frame_low).max() or 1.0
+
+                residuals.append(100 * (frame_high - frame_low) / reference_peak)
+
+            shared_peak = max(np.abs(r).max() for r in residuals) or 1.0
+
+            residual_axes, last_im = [], None
+            for j, res in enumerate(residuals):
+                ax = fig.add_subplot(gs[i, j])
+                last_im = ax.imshow(res.T, origin="lower", extent=(xmin, xmax, ymin, ymax), cmap="RdBu_r", vmin=-shared_peak, vmax=shared_peak)
+                add_model_contours(ax, model)
+                ax.set_xticks([]); ax.set_yticks([])
+                if j == 0:
+                    ax.set_ylabel("ODIL residual", fontsize=14, rotation=0, ha="right", va="center")
+                residual_axes.append(ax)
+
+                mean_abs = np.mean(np.abs(res))
+                ax.text(0.03, 0.97,f"Mean={mean_abs:.2f}%",
+                        transform=ax.transAxes, fontsize=12, color="black",
+                        va="top", ha="left")
+
+            continue
+
+        elif spec[0] == "colorbar":
+            mid = ncols // 2
+            cax = fig.add_subplot(gs[i, mid - 1:mid + 1] if ncols % 2 == 0 else gs[i, mid])
+            fig.colorbar(last_im, cax=cax, orientation="horizontal", pad=1.0, # type: ignore 
+                         label="Relative field difference (%)")
+            continue
+
 
         # load wavefield from spec
         solver_label, cfl = spec
@@ -128,9 +190,8 @@ def plot_cfl_snapshot(gap_frac=0.1, label_frac=0.1):
         wf = load_field_wavefield(cfl, solver)
 
         # reshape for plotting
-        amp = wf.U.reshape(wf.grid.nt, *wf.grid.shape)
-        (xmin, xmax), (ymin, ymax) = wf.grid.extent
-        t = wf.grid.t
+        amp, extent, t = reshape(wf)
+        (xmin, xmax), (ymin, ymax) = extent
 
         # plot at time intervals, adding a subplot for each
         for j, t_us in enumerate(TIME_LEVELS):
@@ -146,10 +207,10 @@ def plot_cfl_snapshot(gap_frac=0.1, label_frac=0.1):
             ax.set_xticks([]); ax.set_yticks([])
 
             if i in (1, 5):
-                ax.set_title(rf"{t_us:.0f}$\mu$s", fontsize=9)
+                ax.set_title(rf"{t_us:.0f}$\mu$s", fontsize=14)
 
             if j == 0:
-                ax.set_ylabel(solver_label, fontsize=9, rotation=0, ha="right", va="center")
+                ax.set_ylabel(solver_label, fontsize=14, rotation=0, ha="right", va="center")
 
 
     return fig
