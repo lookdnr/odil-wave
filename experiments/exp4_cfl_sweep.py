@@ -65,7 +65,8 @@ SL_BASE = replace(
     recv_locs=((0.29, 0.05),)
 )
 
-FIELD_SAVE_CFLS = (0.7, 1.0, 1.1, 1.3)
+# 9.2 is at approx nyquist
+FIELD_SAVE_CFLS = (0.7, 1.0, 1.3, 3.0, 6.0, 9.2)
 
 
 def _should_save_field(cfl_safety: float) -> bool:
