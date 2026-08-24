@@ -100,7 +100,7 @@ def plot_cfl_snapshot(gap_frac=0.1, label_frac=0.1):
         ("label", f"CFL = {CFL_HIGH}"),
         ("ODIL", CFL_HIGH), ("Devito", CFL_HIGH),
         None,
-        ("label", "ODIL residual"),
+        ("label", r"Relative ODIL residual between CFL regimes"),
         ("residual", None),
         ("colorbar", None),
     ]
@@ -165,8 +165,6 @@ def plot_cfl_snapshot(gap_frac=0.1, label_frac=0.1):
                 last_im = ax.imshow(res.T, origin="lower", extent=(xmin, xmax, ymin, ymax), cmap="RdBu_r", vmin=-shared_peak, vmax=shared_peak)
                 add_model_contours(ax, model)
                 ax.set_xticks([]); ax.set_yticks([])
-                if j == 0:
-                    ax.set_ylabel("ODIL residual", fontsize=14, rotation=0, ha="right", va="center")
                 residual_axes.append(ax)
 
                 mean_abs = np.mean(np.abs(res))
@@ -217,4 +215,4 @@ def plot_cfl_snapshot(gap_frac=0.1, label_frac=0.1):
 
 if __name__ == "__main__":
     fig = plot_cfl_snapshot()
-    fig.savefig(FIGURE, dpi=200)
+    fig.savefig(FIGURE, dpi=600)
