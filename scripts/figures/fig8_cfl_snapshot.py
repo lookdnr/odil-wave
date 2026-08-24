@@ -14,6 +14,8 @@ from common.build import build_grid, build_model # type: ignore
 
 from exp4_cfl_sweep import SL_BASE # type: ignore
 
+import copy
+
 PREFIX = "results/wave/cfl_sweep_sl_field"
 TIME_LEVELS = [15, 50, 80, 110]
 CFL_LOW, CFL_HIGH = 0.7, 1.3
@@ -27,6 +29,20 @@ def load_field_wavefield(cfl_safety, solver):
     grid = build_grid(cfg)
 
     data = np.load(f"{PREFIX}_{cfl_str}_{solver}.npz")["u"]
+
+    # saved field's nt may not match a rebuilt Grid's nt if
+    # SL_BASE has changed since the file was written
+    n_spatial = grid.nx * grid.ny
+    nt_actual, remainder = divmod(data.size, n_spatial)
+    if remainder != 0:
+        raise ValueError(
+            f"saved field size {data.size} isn't a multiple of nx*ny={n_spatial}"
+        )
+
+    if nt_actual != grid.nt:
+        grid = copy.copy(grid)
+        grid.nt = nt_actual
+        grid.t = np.linspace(0.0, grid.dt * (nt_actual - 1), nt_actual)
 
     return Wavefield(grid, init_amplitude=data)
 
