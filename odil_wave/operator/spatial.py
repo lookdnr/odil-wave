@@ -24,7 +24,23 @@ def _diff_matrix(ord: int, n: int, h: float, ghost_width: int = 0) -> sp.csr_mat
 
 
 class Laplacian(SparseOperator):
-    """2D Laplacian Operator"""
+    """2D Laplacian operator, assembled with ghost node boundary extrapolation.
+
+    Parameters
+    ----------
+    wavefield : Wavefield
+        Wavefield the operator acts on.
+    ord : {2, 4, 6, 8}, optional
+        Finite-difference accuracy order.
+
+    Attributes
+    ----------
+    L : scipy.sparse.csr_matrix
+        Assembled (nx*ny, nx*ny) Laplacian operator.
+    Dxx, Dyy : scipy.sparse.csr_matrix
+        Second derivative operators along x and y (with ghost support),
+        stored for reuse by `HigdonBC`.
+    """
 
     L: sp.csr_matrix
     Dxx: sp.csr_matrix  # second x derivative
@@ -35,7 +51,13 @@ class Laplacian(SparseOperator):
         self.L = self.assemble()
 
     def assemble(self) -> sp.csr_matrix:
-        """Assembles the 2D Laplacian operator: Dxx otimes Iy + Ix otimes Dyy"""
+        """Assemble the 2D Laplacian: Dxx kron Iy + Ix kron Dyy.
+
+        Returns
+        -------
+        scipy.sparse.csr_matrix
+            (nx*ny, nx*ny) Laplacian operator.
+        """
 
         # extract parameters
         ord = self.ord
@@ -70,5 +92,16 @@ class Laplacian(SparseOperator):
         return sp.csr_matrix(Dxx_kron @ Gx + Dyy_kron @ Gy)  # (nx*nx, ny*ny)
 
     def apply(self, U: np.ndarray) -> np.ndarray:
-        """Apply operator to a (time, space) ndarray"""
+        """Apply the Laplacian to a (time, space) array.
+
+        Parameters
+        ----------
+        U : np.ndarray
+            (nt, nx*ny) wavefield array.
+
+        Returns
+        -------
+        np.ndarray
+            (nt, nx*ny) Laplacian of `U`.
+        """
         return U @ self.L.T
