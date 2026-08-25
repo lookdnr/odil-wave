@@ -10,7 +10,15 @@ from .base import VelocityModel
 
 
 class HomogeneousModel(VelocityModel):
-    """Homeogenous velocity odel: background_c everywhere"""
+    """Homogeneous velocity model: `background_c` everywhere.
+
+    Parameters
+    ----------
+    grid : Grid
+        Grid the velocity field is defined on.
+    background_c : float, optional
+        Uniform wavespeed across the domain.
+    """
 
     def __init__(self, grid: Grid, background_c: float = 1.0):
         super().__init__(
@@ -24,7 +32,26 @@ class HomogeneousModel(VelocityModel):
 
 
 class SheppLoganModel(VelocityModel):
-    """Shepp-Logan phantom velocity model"""
+    """Shepp Logan phantom velocity model.
+
+    Parameters
+    ----------
+    grid : Grid
+        Grid the velocity field is defined on.
+    background_c : float, optional
+        Background wavespeed outside the phantom.
+    contrast : float, optional
+        Phantom intensity scale multiplier added to `background_c`.
+    interior_fill : float, optional
+        Fraction of the grid interior the phantom is resized to fill.
+    mask_skull : bool, optional
+        If True, threshold out the skull ring and fill it
+        with the median interior brain intensity.
+    centre_frac : tuple of (float, float), optional
+        Placement of the phantom within its available margin, as a
+        fraction (0=left/ bottom aligned, 1=right/top aligned) of the
+        free space.
+    """
 
     def __init__(
         self,
@@ -33,7 +60,7 @@ class SheppLoganModel(VelocityModel):
         contrast: float = 1.0,
         interior_fill: float = 0.7,
         mask_skull: bool = False,
-        centre_frac: Tuple[float, float] = (0.5, 0.5)
+        centre_frac: Tuple[float, float] = (0.5, 0.5),
     ):
         super().__init__(grid, background_c, contrast)
         self.interior_fill = (
@@ -75,7 +102,26 @@ class SheppLoganModel(VelocityModel):
 
 
 class OverDensityModel(VelocityModel):
-    """Cicular anomaly model"""
+    """Circular anomaly velocity model.
+
+    Parameters
+    ----------
+    grid : Grid
+        Grid the velocity field is defined on.
+    background_c : float, optional
+        Background wavespeed outside the anomaly.
+    contrast : float, optional
+        Wavespeed added to `background_c` inside the anomaly.
+    centre : tuple of (float, float), optional
+        Anomaly centre in spatial coordinates.
+    radius : float, optional
+        Anomaly radius.
+
+    Raises
+    ------
+    ValueError
+        If `radius` is not positive, or `centre` falls outside the grid extent.
+    """
 
     def __init__(
         self,
@@ -129,7 +175,18 @@ class OverDensityModel(VelocityModel):
 
 
 class CustomModel(VelocityModel):
-    """Custom velocity model built from a numpy array"""
+    """Velocity model built from an arbitrary numpy array.
+
+    The array is resized (with anti-aliasing) to the grid's (nx, ny)
+    shape. `background_c` is set to the array's mean.
+
+    Parameters
+    ----------
+    grid : Grid
+        Grid the velocity field is defined on.
+    c_array : np.ndarray
+        Source wavespeed array, resized onto `grid`.
+    """
 
     def __init__(self, grid: Grid, c_array: np.ndarray):
         super().__init__(grid, background_c=float(c_array.mean()), contrast=1.0)
