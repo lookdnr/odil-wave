@@ -1,0 +1,28 @@
+site_name: odil-wave
+theme:
+  name: material
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_root_heading: true
+            show_source: true
+            merge_init_into_class: true
+            members_order: source
+
+nav:
+  - Home: index.md
+  - API Reference:
+      - Grid: reference/grid.md
+      - Geometry: reference/geometry.md
+      - Wavefield: reference/wavefield.md
+      - Models: reference/models.md
+      - Operator: reference/operator.md
+      - Loss: reference/loss.md
+      - Optimisation: reference/optimisation.md
+      - Metrics: reference/metrics.md
+      - Utils: reference/utils.md
