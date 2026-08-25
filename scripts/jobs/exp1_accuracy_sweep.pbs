@@ -1,9 +1,9 @@
 #!/bin/bash
-#PBS -N baseline
-#PBS -l walltime=00:30:00
-#PBS -l select=1:ncpus=32:mem=96gb:cpu_type=rome
+#PBS -N accuracy_sweep
+#PBS -l walltime=01:30:00
+#PBS -l select=1:ncpus=128:mem=128gb:cpu_type=rome
 
-# PBS script for running the baseline model on CX3
+# PBS script for running the accuracy sweep on CX3
 
 module purge
 module load tools/prod miniforge/3
@@ -16,7 +16,7 @@ conda activate irp
 cd $PBS_O_WORKDIR
 
 # install latest package version
-pip install .
+pip install .[test]
 
 # run script
-python3 scripts/baseline.py # --dry
+python3 experiments/exp1_accuracy_sweep.py

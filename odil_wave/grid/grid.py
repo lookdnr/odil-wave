@@ -2,6 +2,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
+from .utils import points_per_wavelength, nodes_for_ppw
+
 import numpy as np
 
 
@@ -29,6 +31,7 @@ class Grid:
     c_min: float = 1.5  # reference wavespeed
     c_max: float = 2.0
     cfl_safety: float = 0.8  # fraction of theoretical safety to use for dt
+    allow_unstable: bool = False  # allow unstable cfl condtions
 
     # grid spacings
     dx: float = field(init=False)
@@ -79,9 +82,12 @@ class Grid:
             self.c_min = self.c_max
             self.c_max = temp
 
-        if not (0 < self.cfl_safety < 1.0):
+        if self.cfl_safety <= 0:
+            raise ValueError(f"arg cfl_safety must be positive , got {self.cfl_safety}")
+        if self.cfl_safety >= 1.0 and not self.allow_unstable:
             raise ValueError(
-                f"arg cfl_safety must be less than 1, got {self.cfl_safety}"
+                f"arg cfl_safety must be < 1, got {self.cfl_safety}. "
+                "pass allow_unstable=True to intentionally exceed the CFL limit"
             )
 
         # compute grid spacing
@@ -128,6 +134,43 @@ class Grid:
     def cfl(self, c_max: float) -> float:
         """Compute the value of the CFL condition for some wavespee c_max"""
         return c_max * self.dt * math.sqrt(1.0 / self.dx**2 + 1.0 / self.dy**2)
+
+    def ppw(self, f0: float, c: Optional[float] = None) -> float:
+        """Compute points per shortest wavelength (lambda = c / f0)"""
+        c = self.c_min if c is None else c
+        return points_per_wavelength(max(self.dx, self.dy), f0, c)
+
+    @classmethod
+    def from_ppw(
+        cls,
+        f0: float,
+        ppw: float,
+        *,
+        xmin: float,
+        xmax: float,
+        ymin: float,
+        ymax: float,
+        c_min: float,
+        c_max: float,
+        cfl_safety: float = 0.8,
+        t_max: Optional[float] = None,
+    ) -> "Grid":
+        """Construct a Grid sized to resolve at least `ppw` points per shortest
+        wavelength (lambda = c_min / f0) on each axis."""
+        nx = nodes_for_ppw(xmax - xmin, f0, ppw, c_min)
+        ny = nodes_for_ppw(ymax - ymin, f0, ppw, c_min)
+        return cls(
+            xmin=xmin,
+            xmax=xmax,
+            ymin=ymin,
+            ymax=ymax,
+            nx=nx,
+            ny=ny,
+            c_min=c_min,
+            c_max=c_max,
+            cfl_safety=cfl_safety,
+            t_max=t_max,
+        )
 
     @property
     def summary(self) -> str:

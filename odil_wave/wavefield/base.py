@@ -147,7 +147,7 @@ class Wavefield:
             data = np.clip(data, db_floor, 0.0)  # 60db range
             plot_kwargs = dict(cmap="magma", vmin=db_floor, vmax=0.0)
             cbar_label = "dB rel. max"
-        else:
+        elif scaling == "SymLog":
             norm = SymLogNorm(linthresh=1e-3 * u_max, vmin=-u_max, vmax=u_max)
             plot_kwargs = dict(cmap=cmap, norm=norm)
             cbar_label = "Amplitude"

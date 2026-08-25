@@ -48,8 +48,17 @@ class ScipyOptimiser(Optimiser):
 
         u0 = create_u0(u0, N)
 
+        # scale objective to unity
+        L0, _ = self.loss.evaluate(u0)
+        scale = 1.0 / L0 if L0 > 0 else 1.0
+
+        def scaled_obj(x):
+            """Normalised objective"""
+            L, g = self.loss.evaluate(x)
+            return scale * L, scale * g
+
         result = scopt.minimize(
-            fun=self.loss.evaluate,
+            fun=scaled_obj,
             x0=u0,
             method=self.method,
             jac=True,  # analytic gradient via rmatvec in ForwardLoss._grad

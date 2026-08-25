@@ -1,3 +1,8 @@
-from .velocity_models import SheppLoganModel, HomogeneousModel, OverDensityModel
+from .velocity_models import (
+    SheppLoganModel,
+    HomogeneousModel,
+    OverDensityModel,
+    CustomModel,
+)
 
-__all__ = ["SheppLoganModel", "HomogeneousModel", "OverDensityModel"]
+__all__ = ["SheppLoganModel", "HomogeneousModel", "OverDensityModel", "CustomModel"]

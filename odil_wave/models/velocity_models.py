@@ -33,6 +33,7 @@ class SheppLoganModel(VelocityModel):
         contrast: float = 1.0,
         interior_fill: float = 0.7,
         mask_skull: bool = False,
+        centre_frac: Tuple[float, float] = (0.5, 0.5)
     ):
         super().__init__(grid, background_c, contrast)
         self.interior_fill = (
@@ -40,6 +41,7 @@ class SheppLoganModel(VelocityModel):
         )
         # we might want to mask the skull for forward modelling purposes
         self.mask_skull = mask_skull
+        self.centre_frac = centre_frac
         self.c = self._build()
         self.name = "Shepp-Logan Phantom Model"
 
@@ -62,9 +64,9 @@ class SheppLoganModel(VelocityModel):
 
         phantom = resize(phantom, (s_nx, s_ny), anti_aliasing=True, mode="reflect")
 
-        # compute centre point
-        i0 = (self.grid.nx - s_nx) // 2
-        j0 = (self.grid.ny - s_ny) // 2
+        # position within available margin
+        i0 = int(np.clip(self.centre_frac[0], 0.0, 1.0) * (self.grid.nx - s_nx))
+        j0 = int(np.clip(self.centre_frac[1], 0.0, 1.0) * (self.grid.ny - s_ny))
 
         # create base and add anomalies
         c = np.full(self.grid.shape, self.background_c)
@@ -123,4 +125,25 @@ class OverDensityModel(VelocityModel):
         # apply mask to background with contrast
         return np.where(
             mask, np.full_like(base, self.background_c + self.contrast), base
+        )
+
+
+class CustomModel(VelocityModel):
+    """Custom velocity model built from a numpy array"""
+
+    def __init__(self, grid: Grid, c_array: np.ndarray):
+        super().__init__(grid, background_c=float(c_array.mean()), contrast=1.0)
+        self._c_array = c_array
+        self.c = self._build()
+        self.name = "Array Model (from file)"
+
+    def _build(self) -> np.ndarray:
+        return np.array(
+            resize(
+                self._c_array,
+                self.grid.shape,
+                anti_aliasing=True,
+                mode="reflect",
+                preserve_range=True,
+            )
         )

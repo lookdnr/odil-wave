@@ -17,6 +17,7 @@ dependencies = [
     "scipy",
     "matplotlib",
     "scikit-image",
+    "threadpoolctl",
 ]
 
 [project.optional-dependencies]
@@ -28,8 +29,11 @@ dev = [
 ]
 
 test = [
+    "devito",
+    "h5py",
     "pytest",
-    "pytest-cov"
+    "pytest-cov",
+    "pandas"
 ]
 
 [tool.setuptools.packages.find]

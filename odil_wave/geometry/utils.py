@@ -1,6 +1,7 @@
 import numpy as np
 import math
 from typing import Tuple
+import scipy.special as sps
 
 from odil_wave import Grid
 
@@ -29,11 +30,47 @@ def place_ellipse(
     return np.stack([i, j], axis=-1)
 
 
-def _sinc_weights(grid, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
-    """(nx, ny) sinc interpolation weights for a point source at (x_s, y_s).
+# Kaiser window parameters, half width r : beta
+# matches devito table
+_HICKS_BETA = {
+    2: 2.94,
+    3: 4.53,
+    4: 4.14,
+    5: 5.26,
+    6: 6.40,
+    7: 7.51,
+    8: 8.56,
+    9: 9.56,
+    10: 10.64,
+}
 
-    Each weight is sinc((x_s - x[i])/dx) * sinc((y_s - y[j])/dy), computed
-    over a window of n_sinc nodes per dimension centred on the nearest node.
+
+def _kaiser(offset: np.ndarray, R: float, beta: float):
+    """Kaiser window function that modulates the sinc function
+
+    offset = x - x_n, where x is the arbitrary src position and
+    x_n is the position of the nth grid point
+    R is the half width of the window and beta is the Kaiser window
+    shape parameter
+
+    see https://doi.org/10.1190/1.1451454
+    """
+    w = np.zeros_like(offset, dtype=float)
+    m = np.abs(offset) <= R
+
+    # I0 is a modified Bessel function
+    w[m] = sps.i0(beta * np.sqrt(1.0 - (offset[m] / R) ** 2)) / sps.i0(beta)
+    return w
+
+
+def _sinc_weights(grid, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
+    """(nx, ny) sinc interpolation weights for a point source at (x_s, y_s),
+    modulated by the Kaiser window function.
+
+    Each weight is
+        sinc((x_s - x[i])/dx) * sinc((y_s - y[j])/dy) * kaiser(offset, r, beta),
+    computed over a window of n_sinc nodes per dimension centred on
+    the nearest node.
     """
     (xmin, _), (ymin, _) = grid.extent
 
@@ -43,16 +80,20 @@ def _sinc_weights(grid, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
 
     # window of node indices centred on nearest node
     half = n_sinc // 2
-    i_win = np.arange(int(round(fi)) - half, int(round(fi)) + half)
-    j_win = np.arange(int(round(fj)) - half, int(round(fj)) + half)
+    beta = _HICKS_BETA[half]  # Kaiser shape parameter for this half width
+
+    # centre the window on the source
+    i_win = np.arange(int(np.ceil(fi - half)), int(np.floor(fi + half)) + 1)
+    j_win = np.arange(int(np.ceil(fj - half)), int(np.floor(fj + half)) + 1)
 
     # mask out indices that fall outside the grid
     i_mask = (i_win >= 0) & (i_win < grid.nx)
     j_mask = (j_win >= 0) & (j_win < grid.ny)
 
-    # 1-D sinc weights
-    wi = np.sinc(fi - i_win)
-    wj = np.sinc(fj - j_win)
+    # 1-D Kaiser-windowed sinc weights
+    d_i, d_j = fi - i_win, fj - j_win
+    wi = np.sinc(fi - i_win) * _kaiser(d_i, half, beta)
+    wj = np.sinc(fj - j_win) * _kaiser(d_j, half, beta)
 
     patch = np.outer(wi[i_mask], wj[j_mask])  # weights (before write)
 
@@ -61,6 +102,7 @@ def _sinc_weights(grid, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
 
     patch /= patch.sum() * grid.dx * grid.dy  # weights (normalised)
 
+    # crete weights matrix
     W = np.zeros((grid.nx, grid.ny))
     W[np.ix_(i_win[i_mask], j_win[j_mask])] = patch
     return W

@@ -6,4 +6,4 @@
 .coverage
 /results
 *.gif
-*.png
+*.h5

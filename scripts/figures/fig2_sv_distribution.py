@@ -11,11 +11,15 @@ import scipy.sparse as sp
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.patches import Patch
 from scipy.sparse.linalg import LinearOperator
 
 OUTFILE = "fig2_sv_distribution.png"
 
 NX, NY = 3, 3
+
+UNPRECOND_COLOR = "royalblue"
+PRECOND_COLOR = "orange"
 
 
 def make_problem(
@@ -84,13 +88,12 @@ def compute_cond(singular_vals):
 
 def plot_singular_vals(ax, s_A, s_A_precond):
     """Plot log(singular_vals) for the two matrices"""
-    ax.semilogy(s_A, color="royalblue", label=r"$A$")
-    ax.semilogy(s_A_precond, color="orange", label=r"$M^{-1}A$")
-    ax.set_title(r"Singular value distribution", fontsize=14)
-    ax.set_ylabel("Singular values")
-    ax.set_xlabel("Singular value index")
+    ax.semilogy(s_A, color=UNPRECOND_COLOR)
+    ax.semilogy(s_A_precond, color=PRECOND_COLOR)
+    ax.set_title(r"Singular value distribution", fontsize=16)
+    ax.set_ylabel("Singular values", fontsize=14)
+    ax.set_xlabel("Singular value index", fontsize=14)
     ax.set_yscale("log")
-    ax.legend()
 
 
 def spy(ax, matrix, color="royalblue", threshold=1e-8):
@@ -119,6 +122,57 @@ def label_panel(ax, label):
         ha="right",
     )
 
+def plot_eigval_scatter(ax, eig, which="unprecond"):
+    """Plot a complex plane scatter plot of eigenvalues"""
+
+    # unpack config options
+    config = {"unprecond": {"title": r"Eigenvalues of $A$", "colour": UNPRECOND_COLOR},
+              "precond": {"title": r"Eigenvalues of $M^{-1}A$", "colour": PRECOND_COLOR}}[which]
+    
+    # unit circle for ref
+    theta = np.linspace(0, 2 * np.pi, 400)
+    ax.plot(np.cos(theta), np.sin(theta), color="gray", linestyle="--", linewidth=1)
+
+    # plot
+    ax.scatter(eig.real, eig.imag, s=18, color=config["colour"], alpha=0.8, edgecolors="none")
+
+    # inset for tight clustering
+    if which == "precond":
+        axins = ax.inset_axes([0.55, 0.4, 0.2, 0.2])
+        axins.plot(np.cos(theta), np.sin(theta), color="gray", linestyle="--", linewidth=0.8, zorder=5)
+        axins.scatter(eig.real, eig.imag, s=20, color=config["colour"], alpha=0.8, edgecolors="none")
+
+        pad = 0.025
+        imag_center = np.median(eig.imag)
+        axins.set_xlim(1 - pad, 1 + pad)
+        axins.set_ylim(imag_center - pad, imag_center + pad)
+        axins.set_aspect("equal")
+        axins.set_xticks([])
+        axins.set_yticks([])
+
+        axins2 = ax.inset_axes([0.15, 0.3, 0.3, 0.4])
+        axins2.plot(np.cos(theta), np.sin(theta), color="gray", linestyle="--", linewidth=0.8)
+        axins2.scatter(eig.real, eig.imag, s=15, color=config["colour"], alpha=0.8, edgecolors="none")
+
+        axins2.set_xticks([])
+        axins2.set_yticks([])
+
+        mult = 0.01
+        axins2.set_xlim(1 - pad * mult, 1 + pad * mult)
+        axins2.set_ylim(imag_center - pad * mult, imag_center + pad * mult)
+        axins2.set_aspect("equal")
+        
+
+        ax.indicate_inset_zoom(axins, edgecolor="black")
+        axins.indicate_inset_zoom(axins2, edgecolor="black")
+
+    ax.axhline(0, color="black", linewidth=0.5)
+    ax.axvline(0, color="black", linewidth=0.5)
+    ax.set_aspect("equal")
+    ax.set_title(config["title"], fontsize=16)
+    ax.set_xlabel("Re", fontsize=14)
+    ax.set_ylabel("Im", fontsize=14)
+        
 
 def plot_sval_dist(ax, s_A, s_A_precond):
     bins = np.logspace(
@@ -126,13 +180,12 @@ def plot_sval_dist(ax, s_A, s_A_precond):
         np.log10(max(s_A.max(), s_A_precond.max())),
         26,
     )
-    ax.hist(s_A, bins=bins, alpha=0.6, color="royalblue", label=r"$A$")
-    ax.hist(s_A_precond, bins=bins, alpha=0.6, color="orange", label=r"$M^{-1}A$")
-    ax.set_title("Histogram of singular values", fontsize=14)
-    ax.set_xlabel("Singular values")
-    ax.set_ylabel("Count")
+    ax.hist(s_A, bins=bins, alpha=0.6, color=UNPRECOND_COLOR)
+    ax.hist(s_A_precond, bins=bins, alpha=0.6, color=PRECOND_COLOR)
+    ax.set_title("Histogram of singular values", fontsize=16)
+    ax.set_xlabel("Singular values", fontsize=14)
+    ax.set_ylabel("Count", fontsize=14)
     ax.set_xscale("log")
-    ax.legend()
 
 
 def main():
@@ -159,35 +212,62 @@ def main():
     s_MA = sl.svdvals(MA_dense)
     cond_MA = compute_cond(s_MA)
 
-    print(f"cond(A) = {cond_A:.3e}")
-    print(f"cond(M^-1 A) = {cond_MA:.3e}")
+    eig_A = sl.eigvals(A_dense)
+    eig_MA = sl.eigvals(MA_dense)
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
-    spy(axes[0, 0], A_dense, color="royalblue")
+    spy(axes[0, 0], A_dense, color=UNPRECOND_COLOR)
     axes[0, 0].set_title(
         rf"$A$, {A_dense.shape[0]} $\times$ {A_dense.shape[1]}, "
-        + rf"$\text{{cond(A)}} = {cond_A:.1e}$",
-        fontsize=14,
+        + rf"$\quad \kappa(A) = {cond_A:.1e}$",
+        fontsize=16,
     )
     label_panel(axes[0, 0], "a")
 
-    spy(axes[0, 1], M_dense, color="orange")
+    spy(axes[0, 1], M_dense, color=PRECOND_COLOR)
     axes[0, 1].set_title(
         rf"$M$, {M_dense.shape[0]} $\times$ {M_dense.shape[1]}, "
-        + rf"$\text{{cond}}(M^{{-1}}A) = {cond_MA:.1e}$",
-        fontsize=14,
+        + rf"$\quad \kappa(M^{{-1}}A) = {cond_MA:.1e}$",
+        fontsize=16,
     )
     label_panel(axes[0, 1], "b")
 
-    plot_singular_vals(axes[1, 0], s_A, s_MA)
+    #plot_singular_vals(axes[1, 0], s_A, s_MA)
+    plot_eigval_scatter(axes[1, 0], eig_A, "unprecond")
     label_panel(axes[1, 0], "c")
 
-    plot_sval_dist(axes[1, 1], s_A, s_MA)
+    #plot_sval_dist(axes[1, 1], s_A, s_MA)
+    plot_eigval_scatter(axes[1, 1], eig_MA, "precond")
     label_panel(axes[1, 1], "d")
 
     fig.tight_layout()
-    fig.savefig(OUTFILE, dpi=300, bbox_inches="tight")
+
+    # push the top row spy plots out to the outer edges of the bottom row
+    pos_tl, pos_tr = axes[0, 0].get_position(), axes[0, 1].get_position()
+    pos_bl, pos_br = axes[1, 0].get_position(), axes[1, 1].get_position()
+
+    axes[0, 0].set_position([pos_bl.x0, pos_tl.y0, pos_tl.width, pos_tl.height])
+    axes[0, 1].set_position(
+        [pos_br.x1 - pos_tr.width, pos_tr.y0, pos_tr.width, pos_tr.height]
+    )
+
+    gap_x = (pos_bl.x0 + pos_tl.width + pos_br.x1 - pos_tr.width) / 2
+    gap_y = pos_tl.y0 + pos_tl.height / 2
+
+    legend_handles = [
+        Patch(facecolor=UNPRECOND_COLOR, label=r"Unpreconditioned"),
+        Patch(facecolor=PRECOND_COLOR, label=r"Preconditioned"),
+    ]
+    fig.legend(
+        handles=legend_handles,
+        loc="center",
+        bbox_to_anchor=(gap_x, gap_y),
+        frameon=False,
+        fontsize=14,
+    )
+
+    fig.savefig(OUTFILE, dpi=1200, bbox_inches="tight")
     print(f"Saved figure to {OUTFILE}")
 
 

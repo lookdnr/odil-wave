@@ -2,7 +2,7 @@ from .base import Optimiser
 from odil_wave.wavefield import Wavefield
 from odil_wave.loss import DiscreteLoss
 from .utils import create_u0, CountedOperator
-from .precond import AlphaCirculantPreconditioner
+from .precond import AlphaCirculantPreconditioner, ParallelAlphaCirculantPreconditioner
 from odil_wave.metrics import SolveRecorder, InnerRecord
 
 from typing import Dict, Callable
@@ -46,9 +46,11 @@ class GaussNewtonOptimiser(Optimiser):
         self,
         u0: Wavefield | np.ndarray | None = None,
         method: str = "paradiag",
-        restart: int = 100,
+        restart: int = 10,
         rtol: float = 1e-8,
         alpha: float | None = 0.001,
+        caching: bool = True,
+        n_workers: int = 1,
     ):
         """Minimise a DiscreteLoss using Gauss-Newton.
 
@@ -81,6 +83,9 @@ class GaussNewtonOptimiser(Optimiser):
 
         alpha = alpha if alpha else None
 
+        if n_workers <= 0:
+            raise ValueError(f"arg n_workers must be > 0, got {n_workers}\n")
+
         meta = {
             "method": method,
             "alpha": alpha,
@@ -91,6 +96,8 @@ class GaussNewtonOptimiser(Optimiser):
             "nt": nt,
             "nx": nx,
             "ny": ny,
+            "caching": caching,
+            "n_workers": n_workers,
         }
         self.rec = SolveRecorder(meta)
 
@@ -104,9 +111,12 @@ class GaussNewtonOptimiser(Optimiser):
         s: np.ndarray,
         meta: Dict,
     ):
+        method = meta["method"]
         alpha = meta["alpha"]
         rtol = meta["rtol"]
         restart = meta["restart"]
+        caching = meta["caching"]
+        n_workers = meta["n_workers"]
 
         we = self.loss.problem.wave_eq
 
@@ -118,10 +128,19 @@ class GaussNewtonOptimiser(Optimiser):
         self.rec.meta["norm_s"] = np.linalg.norm(s)
 
         # create preconditioner
-        if alpha is not None:
+        M_obj = None
+        if method == "paradiag":
             start = perf_counter()
-            M = AlphaCirculantPreconditioner.from_wave_equation(we, alpha)
-            M = M.as_linear_operator()
+            if n_workers == 0:
+                M_obj = AlphaCirculantPreconditioner.from_wave_equation(
+                    we, alpha, cache_factors=caching
+                )
+
+            else:
+                M_obj = ParallelAlphaCirculantPreconditioner.from_wave_equation(
+                    we, n_workers, alpha, caching=caching
+                )
+            M = M_obj.as_linear_operator()
             end = perf_counter()
             self.rec.meta["t_setup"] = end - start
         else:
@@ -150,50 +169,56 @@ class GaussNewtonOptimiser(Optimiser):
         L_prev, nit, success = np.inf, 0, False
         message = f"Maximum outer iterations ({self.outer_maxiter}) reached"
 
-        for nit in range(1, self.outer_maxiter + 1):
-            r = Aop @ u - s  # reduced residual: THE r in A du = -r
-            g = rmatvec(r)
+        try:
+            for nit in range(1, self.outer_maxiter + 1):
+                r = Aop @ u - s  # reduced residual: THE r in A du = -r
+                g = rmatvec(r)
 
-            L = self.loss._eval_loss(r)
-            self.rec.log(r, g)
+                L = self.loss._eval_loss(r)
+                self.rec.log(r, g)
 
-            if np.linalg.norm(g) < self.outer_gtol:
-                success, message = True, "Gradient norm below outer_gtol"
-                break
-            if abs(L_prev - L) < self.outer_ftol:
-                success, message = True, "Loss change below outer_ftol"
-                break
-            L_prev = L
+                if np.linalg.norm(g) < self.outer_gtol:
+                    success, message = True, "Gradient norm below outer_gtol"
+                    break
+                if abs(L_prev - L) < self.outer_ftol:
+                    success, message = True, "Loss change below outer_ftol"
+                    break
+                L_prev = L
 
-            hist = []
-            c0 = Aop.count
-            start = perf_counter()
+                hist = []
+                c0 = Aop.count
+                start = perf_counter()
 
-            du, info = spl.gmres(
-                Aop,
-                -r,
-                M=M,
-                rtol=rtol,
-                restart=restart,
-                maxiter=1,
-                callback=lambda pr: hist.append(pr),
-                callback_type="pr_norm",
-            )
-            end = perf_counter()
-            n_matvecs = Aop.count - c0
+                du, info = spl.gmres(
+                    Aop,
+                    -r,
+                    M=M,
+                    rtol=rtol,
+                    restart=restart,
+                    maxiter=1,
+                    callback=lambda pr: hist.append(pr),
+                    callback_type="pr_norm",
+                )
+                end = perf_counter()
+                n_matvecs = Aop.count - c0
 
-            inner = InnerRecord(
-                residual_history=hist,
-                true_relres=float(np.linalg.norm(Aop @ du + r))
-                / self.rec.outers[-1].res,
-                converged=(info == 0),
-                n_matvecs=n_matvecs,
-                t_solve=end - start,
-            )
+                inner = InnerRecord(
+                    residual_history=hist,
+                    true_relres=float(np.linalg.norm(Aop @ du + r))
+                    / self.rec.outers[-1].res,
+                    converged=(info == 0),
+                    n_matvecs=n_matvecs,
+                    t_solve=end - start,
+                )
 
-            self.rec.log_inner(inner)
+                self.rec.log_inner(inner)
 
-            u = u + du  # alpha = 1 (exact for linear)
+                u = u + du  # alpha = 1 (exact for linear)
+
+        # close worker pool
+        finally:
+            if isinstance(M_obj, ParallelAlphaCirculantPreconditioner):
+                M_obj.shutdown()
 
         U = np.empty((nt, ns))
         U[0], U[1], U[2:] = s0, s1, u.reshape(ntm2, ns)
