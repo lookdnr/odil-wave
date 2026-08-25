@@ -12,6 +12,7 @@ LABEL_FS = 14
 
 COL = {"odil": "royalblue", "devito": "darkorange"}
 
+
 def load_jsonl(path):
     """Load a .jsonl results file into a list of dicts."""
     rows = []
@@ -21,6 +22,7 @@ def load_jsonl(path):
             if line:
                 rows.append(json.loads(line))
     return rows
+
 
 def get_first_non_finite(cfls, non_finite_mask):
     """Compute position of first non finite element in mask"""
@@ -41,15 +43,21 @@ def plot_error_vs_cfl(rows, ax):
     non_finite_dev = fin_dev == False
 
     # plot errors
-    ax.plot(cfls, e_odil, "o-", color=COL["odil"])
-    ax.plot(cfls[non_finite_dev != True], e_dev[non_finite_dev != True], "s-", color=COL["devito"])
+    ax.semilogx(cfls, e_odil, "o-", color=COL["odil"])
+    ax.semilogx(
+        cfls[non_finite_dev != True],
+        e_dev[non_finite_dev != True],
+        "s-",
+        color=COL["devito"],
+    )
 
     # mark non finite wiht crosses
     if non_finite_dev.any():
 
         fnf = get_first_non_finite(cfls, non_finite_dev)
-        ax.scatter(cfls[fnf - 1], e_dev[fnf - 1],
-                   marker="x", s=120, color="red", zorder=6)
+        ax.scatter(
+            cfls[fnf - 1], e_dev[fnf - 1], marker="x", s=120, color="red", zorder=6
+        )
 
     ax.axvline(1.0, color="gray", lw=0.8, ls=":")
     ax.set(xlabel="CFL", ylabel="Relative L2 trace error", title="Error vs CFL")
@@ -68,19 +76,25 @@ def plot_growth_vs_cfl(rows, ax):
     non_finite_dev = fin_dev == False
 
     # plot
-    ax.plot(cfls, g_odil, "o-", color=COL["odil"])
-    ax.plot(cfls, g_dev, "s-", color=COL["devito"])
+    ax.semilogx(cfls, g_odil, "o-", color=COL["odil"])
+    ax.semilogx(cfls, g_dev, "s-", color=COL["devito"])
 
     # mark non finite with cross
     if non_finite_dev.any():
         fnf = get_first_non_finite(cfls, non_finite_dev)
 
-        ax.scatter(cfls[fnf - 1], g_dev[fnf - 1],
-                   marker="x", s=120, color="red", zorder=6)
+        ax.scatter(
+            cfls[fnf - 1], g_dev[fnf - 1], marker="x", s=120, color="red", zorder=6
+        )
 
     ax.axhline(0.0, color="k", lw=0.8, ls="--")
     ax.axvline(1.0, color="gray", lw=0.8, ls=":")
-    ax.set(xlabel="CFL safety factor", ylabel="Growth rate", title="Field growth vs CFL")
+    ax.set(
+        xlabel="CFL safety factor", ylabel="Growth rate", title="Field growth vs CFL"
+    )
+    xticks = [0.7, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    xticks_labels = [str(tick) for tick in xticks]
+    ax.set_xticks(xticks, labels=xticks_labels)
     return ax
 
 
@@ -94,7 +108,15 @@ def plot_cfl_stability(rows, figsize=(11, 4.5)):
         Line2D([0], [0], color=COL["odil"], marker="o", label="ODIL"),
         Line2D([0], [0], color=COL["devito"], marker="s", label="Devito"),
         Line2D([0], [0], color="gray", linestyle=":", label="CFL limit"),
-        Line2D([0], [0], color="red", marker="x", linestyle="None", markersize=10, label="First non-finite"),
+        Line2D(
+            [0],
+            [0],
+            color="red",
+            marker="x",
+            linestyle="None",
+            markersize=10,
+            label="First non-finite",
+        ),
     ]
     fig.legend(
         handles=legend_handles,
@@ -106,8 +128,16 @@ def plot_cfl_stability(rows, figsize=(11, 4.5)):
     )
 
     for ax, lab in zip(axs, "ab"):
-        ax.text(-0.12, 1.05, f"({lab})", transform=ax.transAxes, va="top", ha="left",
-                 fontweight="bold", fontsize=14)
+        ax.text(
+            -0.12,
+            1.05,
+            f"({lab})",
+            transform=ax.transAxes,
+            va="top",
+            ha="left",
+            fontweight="bold",
+            fontsize=14,
+        )
 
     plt.tight_layout(h_pad=2)
     return fig
