@@ -1,3 +1,11 @@
+"""Error, trace, and convergence metrics for evaluating and recording solves.
+
+- `error`/ `trace` provide field and trace level error metrics.
+- `recording` provides `SolveRecorder`/ `SolveResult` for logging and persisting
+outer/ inner solve history for the Gauss Newton method.
+- `ErrorReport` bundles a solve's metrics into one report.
+"""
+
 from .error import (
     relative_l2,
     final_time_l2,
