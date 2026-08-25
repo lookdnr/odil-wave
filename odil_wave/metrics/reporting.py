@@ -21,7 +21,42 @@ from .trace import trace_misfit, trace_misfit_norm
 
 @dataclass
 class ErrorReport:
-    """Convenience object for collecting metrics"""
+    """Convenience object for collecting error metrics for a solve.
+
+    Which metric groups can be computed depends on which optional fields
+    are supplied: `u_ref` enables relative metrics, `A` + `sources` enable
+    PDE residual metrics, and `u_ref` + `receivers` enable trace metrics.
+    Warns naming any skipped groups, and raises if nothing can be computed.
+
+    Parameters
+    ----------
+    u : Wavefield or np.ndarray
+        Wavefield to on.
+    u_ref : Wavefield or np.ndarray, optional
+        Reference wavefield, for relative/trace metrics.
+    A : WaveEquation, optional
+        Discrete wave equation operator object, for residual metrics.
+    sources : Sources, optional
+        Source term, for residual metrics.
+    receivers : Receivers, optional
+        Receiver geometry, for trace metrics.
+
+    Attributes
+    ----------
+    can_compute_relative : bool
+        Whether relative metrics can be computed (`u_ref` supplied).
+    can_compute_residuals : bool
+        Whether residual metrics can be computed (`A` and `sources` supplied).
+    can_compute_trace : bool
+        Whether trace metrics can be computed (`u_ref` and `receivers` supplied).
+    results : dict
+        Populated by `generate`, maps metric name to its computed value.
+
+    Raises
+    ------
+    ValueError
+        If none of the optional fields needed for any metric group are supplied.
+    """
 
     # fields
     u: Wavefield | np.ndarray
