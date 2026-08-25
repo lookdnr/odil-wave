@@ -12,17 +12,35 @@ from odil_wave.operator.wave import WaveEquation
 
 
 class AlphaCirculantPreconditioner:
-    """alpha-circulant (ParaDiag-II) preconditioner for the reduced system.
+    """alpha-circulant (ParaDiag-II) preconditioner for the reduced BTTB system.
 
-    Approximates the BTTB operator by wrapping its time stencil
-    around the corner, damped by alpha.
+    Approximates the Block-Toeplitz-with-Toeplitz-Blocks (BTTB) operator
+    by wrapping its time stencil around the corner, damped by `alpha`.
+    The wrap makes the operator block-circulant and hence invertible by
+    FFT-in-time plus one spatial factorisation/solve per temporal
+    Fourier mode. Differs from the true operator only in two corner
+    block rows.
 
-    The wrap makes it block-circulant, and hence invertible by FFT-in-time
-    + one small spatial solve per mode.
+    Parameters
+    ----------
+    blocks : tuple of scipy.sparse.csr_array
+        Time stencil blocks (B0, B1, B2) of the reduced system, as
+        returned by `WaveEquation.reduced_blocks`.
+    n : int
+        Number of time steps in the reduced system.
+    alpha : float, optional
+        Damping parameter in (0, 1). alpha >= 1 gives the undamped,
+        operator.
+    dtype : numpy dtype, optional
+        Complex dtype used for the per-mode factorisations.
+    cache_factors : bool, optional
+        If True, cache per-mode LU factorisations after first use. If
+        False, factorise and discard on every `matvec` call.
 
-    Differs from the true operator only in two corner block rows.
-
-    alpha trades approximation error against taper roundoff
+    Raises
+    ------
+    ValueError
+        If `alpha` is not in (0, 1), or `blocks` contains complex data.
     """
 
     def __init__(
@@ -77,7 +95,18 @@ class AlphaCirculantPreconditioner:
         return self._lus
 
     def matvec(self, v: np.ndarray) -> np.ndarray:
-        """Compute the action of the preconditioner on a vector v"""
+        """Apply the preconditioner to a vector.
+
+        Parameters
+        ----------
+        v : np.ndarray
+            Flattened (n*ns,) vector to precondition.
+
+        Returns
+        -------
+        np.ndarray
+            Flattened (n*ns,) preconditioned vector.
+        """
         V = v.reshape(self.n, self.ns) * self._d[:, None]
 
         # perform fft in time
@@ -110,7 +139,14 @@ class AlphaCirculantPreconditioner:
         return W.ravel()
 
     def as_linear_operator(self) -> sl.LinearOperator:
-        """Return the preconditioner as a scipy.sparse.linalg.LinearOperator"""
+        """Wrap this preconditioner as a `scipy.sparse.linalg.LinearOperator`.
+
+        Returns
+        -------
+        scipy.sparse.linalg.LinearOperator
+            Operator suitable for use as the `M` argument to
+            `scipy.sparse.linalg.gmres`.
+        """
         N = self.n * self.ns
         return sl.LinearOperator(
             shape=(N, N), matvec=self.matvec, dtype=np.float64  # type: ignore
@@ -124,7 +160,24 @@ class AlphaCirculantPreconditioner:
         dtype: np.typing.DTypeLike = np.complex128,
         cache_factors: bool = True,
     ):
-        """Build the preconditioner from a WaveEquation object"""
+        """Build the preconditioner directly from a `WaveEquation`.
+
+        Parameters
+        ----------
+        we : WaveEquation
+            Wave equation to build the preconditioner for.
+        alpha : float, optional
+            Damping parameter in (0, 1).
+        dtype : numpy dtype, optional
+            Complex dtype used for the per-mode factorisations.
+        cache_factors : bool, optional
+            If True, cache per-mode LU factorisations after first use.
+
+        Returns
+        -------
+        AlphaCirculantPreconditioner
+            Preconditioner for `we`.
+        """
         return cls(we.reduced_blocks, we.nt - 2, alpha, dtype, cache_factors)
 
 
@@ -212,24 +265,43 @@ def _non_caching_worker(worker_endpoint: Connection, blocks, z_local, dtype):
 
 
 class ParallelAlphaCirculantPreconditioner:
-    """alpha-circulant (ParaDiag-II) preconditioner for the reduced system.
+    """alpha-circulant (ParaDiag-II) preconditioner, parallelised across processes.
 
-    Approximates the BTTB operator by wrapping its time stencil
-    around the corner, damped by alpha.
+    Same mathematical construction as `AlphaCirculantPreconditioner`, but
+    distributes the per-mode circulant block factorisations across
+    `multiprocessing` worker processes connected by pipes, since the
+    modes are entirely separable. Each worker factorises and solves its
+    partition of modes and returns its solution blocks.
 
-    The wrap makes it block-circulant, and hence invertible by FFT-in-time
-    + one small spatial solve per mode.
+    Parameters
+    ----------
+    blocks : tuple of scipy.sparse.csr_array
+        Time-stencil blocks (B0, B1, B2) of the reduced system, as
+        returned by `WaveEquation.reduced_blocks`.
+    n : int
+        Number of time steps in the reduced system.
+    n_workers : int
+        Requested number of worker processes. Clamped to the number of
+        available CPU cores and the number of Fourier modes, whichever
+        is smaller.
+    alpha : float, optional
+        Damping parameter in (0, 1). alpha >= 1 gives the undamped operator.
+    dtype : numpy dtype, optional
+        Complex dtype used for the per-mode factorisations.
+    cache_factors : bool, optional
+        If True, each worker caches its factorisations up front (faster,
+        more memory). If False, factorises and discards per mode.
 
-    Differs from the true operator only in two corner block rows.
+    Raises
+    ------
+    ValueError
+        If `alpha` is not in (0, 1), or `blocks` contains complex data.
 
-    Employs `multiprocessing` Process workers connected by Pipes to distribute
-    the circulant block factorisations, since they are entirely separable.
-    Each worker factorises its partition, solves its factorisations, and
-    sends its solution blocks.
-
-    When run on a single node, factorisation is spread across workers. Thus
-    we have the same memory requirements as in the 'cached' version of the
-    serial prconditioner, but can make better use of multiple NUMA domains
+    Warns
+    -----
+    UserWarning
+        If `n_workers` exceeds the available cores or the number of
+        modes, the pool size is clamped down in that case.
     """
 
     def __init__(
@@ -320,7 +392,18 @@ class ParallelAlphaCirculantPreconditioner:
             home_end.recv()
 
     def matvec(self, v: np.ndarray) -> np.ndarray:
-        """Compute the action of the preconditioner on a vector v"""
+        """Apply the preconditioner by scattering Fourier modes to workers.
+
+        Parameters
+        ----------
+        v : np.ndarray
+            Flattened (n*ns,) vector to precondition.
+
+        Returns
+        -------
+        np.ndarray
+            Flattened (n*ns,) preconditioned vector.
+        """
         V = v.reshape(self.n, self.ns) * self._d[:, None]
 
         # perform fft in time
@@ -344,7 +427,14 @@ class ParallelAlphaCirculantPreconditioner:
         return W.ravel()
 
     def as_linear_operator(self) -> sl.LinearOperator:
-        """Return the preconditioner as a scipy.sparse.linalg.LinearOperator"""
+        """Wrap this preconditioner as a `scipy.sparse.linalg.LinearOperator`.
+
+        Returns
+        -------
+        scipy.sparse.linalg.LinearOperator
+            Operator suitable for use as the `M` argument to
+            `scipy.sparse.linalg.gmres`.
+        """
         N = self.n * self.ns
         return sl.LinearOperator(
             shape=(N, N), matvec=self.matvec, dtype=np.float64  # type: ignore
@@ -359,11 +449,34 @@ class ParallelAlphaCirculantPreconditioner:
         dtype: np.typing.DTypeLike = np.complex128,
         caching: bool = True,
     ):
-        """Build the preconditioner from a WaveEquation object"""
+        """Build the preconditioner directly from a `WaveEquation`.
+
+        Parameters
+        ----------
+        we : WaveEquation
+            Wave equation to build the preconditioner for.
+        n_workers : int
+            Requested number of worker processes.
+        alpha : float, optional
+            Damping parameter in (0, 1).
+        dtype : numpy dtype, optional
+            Complex dtype used for the per-mode factorisations.
+        caching : bool, optional
+            If True, each worker caches its factorisations up front.
+
+        Returns
+        -------
+        ParallelAlphaCirculantPreconditioner
+            Preconditioner for `we`'s reduced system.
+        """
         return cls(we.reduced_blocks, we.nt - 2, n_workers, alpha, dtype, caching)
 
     def shutdown(self):
-        """Shutdown the workers in the parallel pool"""
+        """Terminate the worker pool.
+
+        Sends a stop signal to each worker and joins its process,
+        force terminating any that don't exit within 5 seconds.
+        """
         for endpoint in self._home_endpoints:
             try:
                 endpoint.send(None)  # kill while True worker loop with None flag
