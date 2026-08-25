@@ -12,13 +12,24 @@ from time import perf_counter
 
 
 class GaussNewtonOptimiser(Optimiser):
-    """Gauss Newton Optimiser. Approximates the Hessian by H ~ J^T J, where
-    J is the Jacobian of the functional, then solves:
+    """Gauss-Newton optimiser for the forward wave equation problem.
 
-        - J^T J du = -J^t r for du (matrix-free, choice of solve method)
-        - u_k+1 = u_k + du to update
+    Approximates the Hessian by H ~ J^T J, where J is the Jacobian of the
+    residual, then at each outer step solves the inner linear system
+    Adu = -r for du (matrix-free, via GMRES with an optional
+    ParaDiag preconditioner) and updates u_{k+1} = u_k + du. For a linear
+    residual (as here) this converges in one outer step.
 
-    For a linear residual this converges in one outer step.
+    Parameters
+    ----------
+    loss : DiscreteLoss
+        Loss function (and underlying `Problem`) being minimised.
+    outer_maxiter : int, optional
+        Maximum number of outer Gauss Newton iterations.
+    outer_gtol : float, optional
+        Outer convergence tolerance on the gradient norm.
+    outer_ftol : float, optional
+        Outer convergence tolerance on the loss change between iterations.
     """
 
     rec: SolveRecorder
@@ -52,17 +63,41 @@ class GaussNewtonOptimiser(Optimiser):
         caching: bool = True,
         n_workers: int = 1,
     ):
-        """Minimise a DiscreteLoss using Gauss-Newton.
+        """Minimise the loss using Gauss-Newton with a GMRES inner solve.
 
-        Inner solves are orchestrated by spl.linalg iterative methods
+        Parameters
+        ----------
+        u0 : Wavefield or np.ndarray, optional
+            Initial guess, zero initialised if None.
+        method : {"paradiag", "gmres"}, optional
+            Inner solve preconditioning: "paradiag" uses the
+            alpha-circulant (ParaDiag-II) preconditioner, "gmres" runs
+            unpreconditioned GMRES with a larger restart.
+        restart : int, optional
+            GMRES restart length.
+        rtol : float, optional
+            GMRES relative residual tolerance.
+        alpha : float, optional
+            Damping parameter for the ParaDiag preconditioner, ignored
+            if `method` is "gmres".
+        caching : bool, optional
+            If True, cache per-mode LU factorisations in the
+            preconditioner (faster, more memory). If False, factorise
+            and discard per solve.
+        n_workers : int, optional
+            Number of worker processes for the ParaDiag preconditioner,
+            0 runs serially.
 
-        This implementation relies on the fact that for a nonsingular A,
-        the exact minimiser of 1/2 ||A du + r||^2 is the solution to the
-        linear problem A du = - r. This is the 'inner' problem we solve
-        using an iterative method.
+        Returns
+        -------
+        SolveResult
+            Solution wavefield and recorded outer/inner solve history.
 
-        This allows us to apply our block circulant preconditioner M that
-        is an approximation of A-1.
+        Raises
+        ------
+        ValueError
+            If `method` is not one of "paradiag"/"gmres", or
+            `n_workers` <= 0.
         """
 
         grid = self.loss.problem.wavefield.grid
