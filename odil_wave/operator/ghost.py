@@ -29,7 +29,23 @@ def _lagrange_weights(p: float, nodes: np.ndarray) -> np.ndarray:
 
 @dataclass
 class GhostFill:
-    """Operator to extend array of n values by g ghost values at each end"""
+    """Extend an array of `n` values by `ghost_width` extrapolated values per side.
+
+    Ghost values are computed by Lagrange extrapolation from the nearest
+    interior nodes, avoiding stencil truncation at domain boundaries.
+
+    Parameters
+    ----------
+    n : int
+        Number of physical (interior) nodes along this direction.
+    ghost_width : int
+        Number of ghost nodes appended at each end.
+
+    Attributes
+    ----------
+    G : scipy.sparse.csr_array
+        (n + 2*ghost_width, n) ghost extension matrix.
+    """
 
     n: int  # physical nodes in this direction
     ghost_width: int  # g nodes per side
@@ -70,9 +86,31 @@ class GhostFill:
         return sp.vstack([left, sp.eye(n), right], format="csr")  # type: ignore
 
     def expand_x(self, ny: int) -> sp.csr_array:
-        """(ny*(n+2g), n*ny), extends the x-direction"""
+        """Extend the x direction ghost operator over a full 2D grid.
+
+        Parameters
+        ----------
+        ny : int
+            Number of nodes along y.
+
+        Returns
+        -------
+        scipy.sparse.csr_array
+            (ny*(n+2g), n*ny) ghost extension operator for the x direction.
+        """
         return sp.kron(self.G, sp.eye(ny)).tocsr()
 
     def expand_y(self, nx: int) -> sp.csr_array:
-        """(nx*(n+2g), nx*n). extends the y-direction"""
+        """Extend the y direction ghost operator over a full 2D grid.
+
+        Parameters
+        ----------
+        nx : int
+            Number of nodes along x.
+
+        Returns
+        -------
+        scipy.sparse.csr_array
+            (nx*(n+2g), nx*n) ghost extension operator for the y direction.
+        """
         return sp.kron(sp.eye(nx), self.G).tocsr()
