@@ -10,7 +10,18 @@ from .utils import create_u0
 
 
 class ScipyOptimiser(Optimiser):
-    """Wrapper around scipy.optimize.minimize"""
+    """Wrapper around `scipy.optimize.minimize` for wavefield optimisation.
+
+    Parameters
+    ----------
+    loss : DiscreteLoss
+        Loss function (and underlying `Problem`) being minimised.
+    method : str, optional
+        `scipy.optimize.minimize` method name, e.g. "L-BFGS-B", "Newton-CG".
+    **opts
+        Extra options forwarded to `scipy.optimize.minimize`
+        (e.g. maxiter, ftol).
+    """
 
     def __init__(self, loss: DiscreteLoss, method: str = "L-BFGS-B", **opts) -> None:
         super().__init__(loss)
@@ -25,6 +36,30 @@ class ScipyOptimiser(Optimiser):
         gtol=1e-10,
         callback=None,
     ) -> SolveResult:
+        """Minimise the loss via `scipy.optimize.minimize`.
+
+        The objective is rescaled by 1/L(u0) so it starts at unity,
+        which keeps `ftol`/`gtol` meaningful across problems of
+        different scale.
+
+        Parameters
+        ----------
+        u0 : Wavefield or np.ndarray, optional
+            Initial guess, zero initialised if None.
+        maxiter : int, optional
+            Maximum number of iterations.
+        ftol : float, optional
+            Loss-change convergence tolerance.
+        gtol : float, optional
+            Gradient norm convergence tolerance.
+        callback : callable, optional
+            Callback forwarded to `scipy.optimize.minimize`.
+
+        Returns
+        -------
+        SolveResult
+            Solution wavefield and recorded solve history.
+        """
 
         self.opts.update(maxiter=maxiter, ftol=ftol, gtol=gtol)
 
@@ -77,7 +112,15 @@ class ScipyOptimiser(Optimiser):
 
 
 class LBFGSB(ScipyOptimiser):
-    """Subclass for L-BFGS-B"""
+    """`ScipyOptimiser` preconfigured for the L-BFGS-B method.
+
+    Parameters
+    ----------
+    loss : DiscreteLoss
+        Loss function (and underlying `Problem`) being minimised.
+    **opts
+        Extra options forwarded to `scipy.optimize.minimize`.
+    """
 
     def __init__(self, loss: DiscreteLoss, **opts) -> None:
         super().__init__(loss, method="L-BFGS-B", **opts)
