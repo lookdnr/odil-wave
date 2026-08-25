@@ -26,6 +26,9 @@ dev = [
     "flake8>=7.0",
     "pre-commit>=3.0",
     "ipykernel",
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocstrings[python]",
 ]
 
 test = [
