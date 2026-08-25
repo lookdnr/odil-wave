@@ -9,10 +9,55 @@ import numpy as np
 
 @dataclass
 class Grid:
-    """2D space + time discretization grid.
+    """2D space + time discretisation grid.
 
-    The user specifies the (nx, ny) shape and physical extent.
-    The wavefield optimisation variable lives on the full extended grid `(NT, NX*NY)`.
+    The user specifies the (nx, ny) spatial shape and physical extent.
+    Time step count `nt` and spacing (dx, dy, dt) are derived automatically
+    from the CFL condition. The wavefield optimisation variable lives on
+    the full extended grid `(nt, nx*ny)`.
+
+    Parameters
+    ----------
+    xmin, xmax : float, optional
+        Physical extent of the domain along x [m].
+    ymin, ymax : float, optional
+        Physical extent of the domain along y [m].
+    t_max : float, optional
+        Total simulation duration [s], if None, set to 1.2x the time for
+        a wave travelling at `c_min` to cross the domain diagonal.
+    nx, ny : int, optional
+        Number of spatial grid nodes along x and y (each >= 3 for 2nd order stencil).
+    c_min, c_max : float, optional
+        Reference minimum/ maximum wavespeed, used to set `t_max` and the
+        CFL step size.
+    cfl_safety : float, optional
+        Fraction of the theoretical CFL limit used for `dt`, must be < 1
+        unless `allow_unstable` is True.
+    allow_unstable : bool, optional
+        If True, allow `cfl_safety` >= 1 (intentionally unstable regime).
+
+    Attributes
+    ----------
+    nt : int
+        Number of time steps, derived from `t_max` and the CFL condition.
+    dx, dy, dt : float
+        Spatial and temporal grid spacing.
+    x, y, t : np.ndarray
+        1D coordinate arrays along x, y, and t.
+    X, Y : np.ndarray
+        2D meshgrid coordinate arrays.
+
+    Raises
+    ------
+    ValueError
+        If `xmin == xmax` or `ymin == ymax`, if `nx` or `ny` is less than
+        3, if `c_min`/`c_max` are not strictly positive, or if
+        `cfl_safety` is not positive (or >= 1 without `allow_unstable=True`).
+
+    Notes
+    -----
+    Can be constructed to resolve a desired number of Points Per Wavelength
+    (PPW) using `Grid.from_ppw`.
     """
 
     # spatial parameters
@@ -123,20 +168,45 @@ class Grid:
 
     @property
     def shape(self) -> Tuple[int, int]:
-        """Spatial grid shape (nx, ny)."""
+        """tuple of int: Spatial grid shape (nx, ny)."""
         return (self.nx, self.ny)
 
     @property
     def extent(self) -> Tuple[Tuple[float, float], ...]:
-        """Get the spatial extent of the grid"""
+        """tuple of tuple of float: ((xmin, xmax), (ymin, ymax)) spatial extent."""
         return self._extent
 
     def cfl(self, c_max: float) -> float:
-        """Compute the value of the CFL condition for some wavespee c_max"""
+        """Compute the CFL number for a given wavespeed `c_max`.
+
+        Parameters
+        ----------
+        c_max : float
+            Wavespeed to evaluate the CFL condition at.
+
+        Returns
+        -------
+        float
+            CFL number.
+        """
         return c_max * self.dt * math.sqrt(1.0 / self.dx**2 + 1.0 / self.dy**2)
 
     def ppw(self, f0: float, c: Optional[float] = None) -> float:
-        """Compute points per shortest wavelength (lambda = c / f0)"""
+        """Compute points per shortest wavelength at a given frequency.
+
+        Parameters
+        ----------
+        f0 : float
+            Frequency to evaluate [Hz].
+        c : float, optional
+            Wavespeed to use, defaults to `c_min` if None.
+
+        Returns
+        -------
+        float
+            Points per wavelength lambda = c / f0, resolved by the
+            coarsest grid spacing.
+        """
         c = self.c_min if c is None else c
         return points_per_wavelength(max(self.dx, self.dy), f0, c)
 
@@ -155,8 +225,28 @@ class Grid:
         cfl_safety: float = 0.8,
         t_max: Optional[float] = None,
     ) -> "Grid":
-        """Construct a Grid sized to resolve at least `ppw` points per shortest
-        wavelength (lambda = c_min / f0) on each axis."""
+        """Construct a Grid sized to resolve at least `ppw` points per wavelength.
+
+        Parameters
+        ----------
+        f0 : float
+            Peak requency to resolve [Hz].
+        ppw : float
+            Minimum points per shortest wavelength (lambda = c_min / f0).
+        xmin, xmax, ymin, ymax : float
+            Physical extent of the domain.
+        c_min, c_max : float
+            Reference minimum/ maximum wavespeed.
+        cfl_safety : float, optional
+            Fraction of the theoretical CFL limit used for `dt`.
+        t_max : float, optional
+            Total simulation duration [s], auto-computed if None.
+
+        Returns
+        -------
+        Grid
+            A grid whose (nx, ny) resolve at least `ppw` points per wavelength.
+        """
         nx = nodes_for_ppw(xmax - xmin, f0, ppw, c_min)
         ny = nodes_for_ppw(ymax - ymin, f0, ppw, c_min)
         return cls(
@@ -174,6 +264,7 @@ class Grid:
 
     @property
     def summary(self) -> str:
+        """str: return a string summary of the Grid"""
         (xmin, xmax), (ymin, ymax) = self.extent
         return (
             f"Nx, Ny, Nt: {self.nx}, {self.ny}, {self.nt}"
