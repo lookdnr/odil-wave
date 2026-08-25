@@ -11,7 +11,32 @@ from odil_wave.grid import Grid
 
 @dataclass
 class VelocityModel(ABC):
-    """2D velocity field c(x, y) attached to a Grid (full extended grid)."""
+    """2D velocity field attached to a Grid.
+
+    Subclasses implement `_build` to construct `c` from `background_c`/`contrast`
+    and any model specific geometry.
+
+    Parameters
+    ----------
+    grid : Grid
+        Grid the velocity field is defined on.
+    background_c : int or float, optional
+        Background wavespeed.
+    contrast : float, optional
+        Anomaly contrast multiplier relative to the background.
+
+    Attributes
+    ----------
+    c : np.ndarray
+        (nx, ny) wavespeed field, built by `_build` in each subclass.
+    name : str
+        Model identifier, set by each subclass.
+
+    Warns
+    -----
+    UserWarning
+        If `background_c` or `contrast` is negative (nonphysical wavespeed).
+    """
 
     grid: Grid  # discrete grid
     background_c: int | float = 1.0  # background wave speed
@@ -43,14 +68,17 @@ class VelocityModel(ABC):
 
     @abstractmethod
     def _build(self) -> np.ndarray:
+        """Construct and return the wavespeed model."""
         pass
 
     @property
     def c_max(self) -> float:
+        """float: Maximum wavespeed in the field"""
         return float(self.c.max())
 
     @property
     def c_min(self) -> float:
+        """float: Maximum wavespeed in the field"""
         return float(self.c.min())
 
     def show(
@@ -61,6 +89,24 @@ class VelocityModel(ABC):
         vmax: Optional[float] = None,
         cmap: str = "viridis",
     ):
+        """Plot the velocity field c(x, y).
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw on, a new figure is created if None.
+        title : str, optional
+            Plot title, defaults to "c(x, y) [<model name>]".
+        vmin, vmax : float, optional
+            Colour scale limits passed to `imshow`.
+        cmap : str, optional
+            Colourmap name.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The axes the field was plotted on.
+        """
         # create ax if not specified
         if ax is None:
             _, ax = plt.subplots(figsize=(5.5, 4.5))
