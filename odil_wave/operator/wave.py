@@ -15,7 +15,34 @@ from scipy.sparse.linalg import LinearOperator, factorized
 
 @dataclass
 class WaveEquation:
-    """Discrete acoustic wave equation u_tt - c^2*lap(u) = f."""
+    """Encapsulates the 2D discrete acoustic wave equation.
+
+    Assembles the second time derivative and Laplacian operators together
+    with Higdon absorbing boundary conditions on all four edges into the
+    full discrete PDE operator A. Exposes `matvec`/`rmatvec`/`residual`
+    for the ODIL forward solve, plus a reduced BTTB block form
+    for the preconditioner and a direct time marching reference solver.
+
+    Parameters
+    ----------
+    wavefield : Wavefield
+        Wavefield the equation is discretised on.
+    model : VelocityModel
+        Wavespeed field.
+    time_order : int, optional
+        Finite difference accuracy order for the time derivative.
+    space_order : int, optional
+        Finite difference accuracy order for the Laplacian.
+    bc_angles : tuple of (float, float), optional
+        Higdon absorption angles [deg], shared by all four boundaries.
+
+    Attributes
+    ----------
+    C2L : scipy.sparse.csr_matrix
+        Precomputed c^2 * Laplacian operator.
+    dt, dt2 : float
+        Time step and its square, used to scale the PDE block.
+    """
 
     wavefield: Wavefield
     model: VelocityModel
@@ -91,20 +118,55 @@ class WaveEquation:
         return AU.ravel()
 
     def apply_pde(self, u: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """Apply the operator A to a vector u and Higdon BCs. This is the
-        Toeplitz form of the product (no ICs, required separately for precond)
+        """Apply the interior PDE operator and Higdon BCs (no ICs).
+
+        The Toeplitz form of the matvec product, needed separately
+        (without IC rows) for the reduced system preconditioner.
+
+        Parameters
+        ----------
+        u : np.ndarray
+            Flattened (nt*nx*ny,) candidate solution.
+
+        Returns
+        -------
+        AU : np.ndarray
+            (nt, nx*ny) operator action with BCs applied, ICs not yet applied.
+        U : np.ndarray
+            `u` reshaped to (nt, nx*ny), for reuse by the caller.
         """
         AU, U = self._apply_interior(u)
         return self._apply_bcs(AU, U), U
 
     def matvec(self, u: np.ndarray) -> np.ndarray:
-        """Compute the matrix vector product Au with IC and BC application"""
+        """Compute the matrix vector product Au, with ICs and BCs applied.
+
+        Parameters
+        ----------
+        u : np.ndarray
+            Flattened (nt*nx*ny,) candidate solution.
+
+        Returns
+        -------
+        np.ndarray
+            Flattened (nt*nx*ny,) operator action Au.
+        """
         AU, U = self.apply_pde(u)
         return self._apply_ic(AU, U)
 
     def rmatvec(self, r: np.ndarray) -> np.ndarray:
-        """Compute the transposed matrix vector product A^T r
-        (no explicit A formation)"""
+        """Compute the transposed matrix vector product A^T r.
+
+        Parameters
+        ----------
+        r : np.ndarray
+            Flattened (nt*nx*ny,) residual vector.
+
+        Returns
+        -------
+        np.ndarray
+            Flattened (nt*nx*ny,) adjoint action A^T r.
+        """
         R = r.reshape(self.nt, self.nx * self.ny)
 
         Rz = R.copy()
@@ -136,9 +198,20 @@ class WaveEquation:
         return ATv.ravel()
 
     def residual(self, u: np.ndarray, f: np.ndarray) -> np.ndarray:
-        """Compute Au - f, where A encodes the derivatives and boundary conditions
+        """Compute the PDE residual Au - s.
 
-        Note that sources may be a (n_txy * n_shots) matrix encoding each of the shots
+        Parameters
+        ----------
+        u : np.ndarray
+            Flattened (nt*nx*ny,) candidate solution.
+        f : np.ndarray
+            Flattened (nt*nx*ny,) source term, may encode multiple shots
+            as an (n_txy, n_shots) matrix.
+
+        Returns
+        -------
+        np.ndarray
+            Flattened residual Au - s.
         """
         # apply dt**2 scaling to source term
         F = f.reshape(self.nt, self.nx * self.ny)
@@ -149,20 +222,15 @@ class WaveEquation:
 
     @cached_property
     def reduced_blocks(self) -> Tuple[sp.csr_array, ...]:
-        """Build the time stencil blocks of the reduced system:
+        """tuple of scipy.sparse.csr_array: Reduced system time stencil
+        blocks (B0, B1, B2) satisfying B0 u_{m+1} + B1 u_m + B2 u_{m-1}
+        = dt^2 f_m, used to build the preconditioner system.
 
-            B0 u_{m+1} + B1 u_m + B2 u_{m-1} = dt^2 f_m
-
-        B0, B1, and B2 make up the time stencil, they are the block stencil
-        coefficients where
-
-            - B0 is whatever multiplies the next slice u_{m+1}
-            - B1 is whatever multiplies the current slice u_{m}
-            - B2 is whatever multiplies the previous slice u_{m-1}
-
-        Building these separately is required for the downstream preconditioner
-        since they allow us to build the Block Toeplitz with Toeplitz Blocks
-        (BTTB) system
+        Raises
+        ------
+        NotImplementedError
+            If `time_order > 2` (blocks are only implemented for 2nd
+            order in time).
 
         TODO: currently hardcoded for 2nd order in time, generalising is a bigger task
         """
@@ -223,10 +291,14 @@ class WaveEquation:
         return B0, B1, B2
 
     def reduced_operator(self) -> LinearOperator:
-        """Return the BTTB operator for unknowns u_2 ... u_{nt-1}
+        """Return the reduced BTTB operator for unknowns u_2 ... u_{nt-1}.
+
         IC rows are clipped since they break the BTTB structure.
 
-        Returned as scipy.sparse.linalg.LinearOperator for application in GMRES
+        Returns
+        -------
+        scipy.sparse.linalg.LinearOperator
+            Operator suitable for use with GMRES on the reduced system.
         """
         ntm2, ns = self.nt - 2, self.nx * self.ny
 
@@ -244,7 +316,20 @@ class WaveEquation:
         )
 
     def reduced_rhs(self, f: np.ndarray) -> Tuple[np.ndarray, ...]:
-        """RHS of Au = f woth known IC slices eliminated from the RHS"""
+        """Compute the RHS of the reduced system, with known IC slices eliminated.
+
+        Parameters
+        ----------
+        f : np.ndarray
+            Flattened (nt*nx*ny,) source term.
+
+        Returns
+        -------
+        rhs : np.ndarray
+            Flattened reduced system right hand side.
+        f0, f1 : np.ndarray
+            The eliminated initial condition source slices.
+        """
         F = f.reshape(self.nt, self.nx * self.ny)
         f0, f1 = F[0], F[1]  # extract terms corresponding to IC
 
@@ -264,7 +349,18 @@ class WaveEquation:
 
     def march(self, f: np.ndarray) -> np.ndarray:
         """Solve the reduced system exactly by forward substitution in time.
+
         Useful for generating reference solutions.
+
+        Parameters
+        ----------
+        f : np.ndarray
+            Flattened (nt*nx*ny,) source term.
+
+        Returns
+        -------
+        np.ndarray
+            (nt, nx*ny) exact solution obtained by marching forward in time.
         """
         B0, B1, B2 = self.reduced_blocks
         ns = self.nx * self.ny
