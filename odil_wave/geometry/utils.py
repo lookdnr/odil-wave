@@ -13,7 +13,24 @@ def place_ellipse(
     a_frac: float = 0.5,
     b_frac: float = 0.5,
 ) -> np.ndarray:
-    """Return (n, 2) integer grid indices on an ellipse within the domain."""
+    """Compute grid indices lying on an ellipse within the domain.
+
+    Parameters
+    ----------
+    grid : Grid
+        Grid the ellipse is placed on.
+    n_locations : int
+        Number of points to distribute uniformly around the ellipse.
+    ring_centre : tuple of (float, float), optional
+        Centre of the ellipse in spatial coordinates.
+    a_frac, b_frac : float, optional
+        Semi axis fractions of the ellipse.
+
+    Returns
+    -------
+    np.ndarray
+        (n_locations, 2) array of nearest node grid indices.
+    """
     (xmin, xmax), (ymin, ymax) = grid.extent
     cx, cy = ring_centre
     a = a_frac * (xmax - xmin) / 2.0
@@ -109,10 +126,26 @@ def _sinc_weights(grid, x_s: float, y_s: float, n_sinc: int) -> np.ndarray:
 
 
 def build_weight_matrix(grid, xy, n_objects, n_sinc: int) -> np.ndarray:
-    """Precompute (nx*ny, n_sources) sinc injection weight matrix.
-    The weight matrix is built such that multiplication by W encodes injection
-    and multplication by W.T encodes extraction. This gives adjoint-safety for the
-    inverse problem.
+    """Precompute the sinc injection/ extraction weight matrix for a set of points.
+
+    Built so that multiplying by `W` encodes injection and by `W.T` encodes
+    extraction, giving adjoint safety for the inverse problem.
+
+    Parameters
+    ----------
+    grid : Grid
+        Grid the points live on.
+    xy : np.ndarray
+        (n_objects, 2) array of spatial (x, y) coordinates.
+    n_objects : int
+        Number of points (sources or receivers).
+    n_sinc : int
+        Width of the sinc interpolation window per dimension.
+
+    Returns
+    -------
+    np.ndarray
+        (nx*ny, n_objects) weight matrix.
     """
     W = np.zeros((grid.nx * grid.ny, n_objects))
 
