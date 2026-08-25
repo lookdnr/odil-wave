@@ -28,13 +28,37 @@ def _first_diff_spatial(ord: int, n: int, h: float, ghost_width: int) -> sp.csr_
 
 @dataclass
 class HigdonBC:
-    """Higdon 2nd order ABC rows for one boundary edge.
+    """Higdon 2nd-order absorbing boundary condition rows for one edge.
 
     Enforces:
+
         (cos(theta1)dt + cdn)(cos(theta2)dt + cdn)u
             = a1a2 u_tt + (a1+a2) c u_nt + c^2 u_nn.
 
-    where n is the outward normal direction
+    where `n` is the outward normal direction of this boundary and
+    `a_i = cos(theta_i)`.
+
+    Parameters
+    ----------
+    wavefield : Wavefield
+        Wavefield the boundary condition is built for.
+    model : VelocityModel
+        Velocity model, used for the local wavespeed at boundary nodes.
+    space_order : int
+        Finite difference order for the spatial normal derivatives.
+    time_order : int
+        Finite difference order for the time derivatives.
+    boundary : {"left", "right", "bottom", "top"}
+        Which domain edge this instance represents.
+    angles : tuple of (float, float), optional
+        Absorption angles theta1, theta2 [deg] defining the Higdon operator.
+
+    Attributes
+    ----------
+    bdry_cols : np.ndarray
+        Flattened spatial indices of the nodes on this boundary.
+    Dn, Dnn : scipy.sparse.csr_matrix
+        First and second normal derivative operators at the boundary nodes.
     """
 
     wavefield: Wavefield
@@ -121,7 +145,18 @@ class HigdonBC:
         self.c_bdry = self.model.c.ravel()[self.bdry_cols]  # (n_bdry,)
 
     def apply(self, U: np.ndarray) -> np.ndarray:
-        """Higdon residual at this boundary. U: (nt, nx*ny) -> (nt, n_bdry)"""
+        """Apply the Higdon condition at this boundary.
+
+        Parameters
+        ----------
+        U : np.ndarray
+            (nt, nx*ny) full wavefield array.
+
+        Returns
+        -------
+        np.ndarray
+            (nt, n_bdry) Higdon boundary residual.
+        """
 
         utt = self.Dtt @ U[:, self.bdry_cols]  # (nt, n_bdry)
         unn = U @ self.Dnn.T  # (nt, n_bdry)
@@ -139,7 +174,18 @@ class HigdonBC:
         )
 
     def apply_transpose(self, R: np.ndarray) -> np.ndarray:
-        """Add Higdon adjoint to ATv. R: is the (nt, nx*ny) full residual."""
+        """Add the Higdon adjoint contribution to A^T v.
+
+        Parameters
+        ----------
+        R : np.ndarray
+            (nt, nx*ny) full residual array.
+
+        Returns
+        -------
+        np.ndarray
+            (nt, nx*ny) adjoint contribution to add to A^T v.
+        """
 
         Rb = R[:, self.bdry_cols]  # boundary residual (nt, n_bdry)
 
