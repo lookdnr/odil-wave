@@ -12,6 +12,21 @@ from odil_wave.models.base import VelocityModel
 
 @dataclass
 class Wavefield:
+    """Amplitude field on a fixed Grid.
+
+    Stores the (nt, nx*ny) wavefield as a flat (time, space) array, with
+    convenience accessors for the reshaped view via `U` and the fully
+    flattened `(nt*nx*ny,)` optimisation vector via `flat_data`.
+
+    Parameters
+    ----------
+    grid : Grid
+        Grid the field is discretised on.
+    init_amplitude : np.ndarray, optional
+        Initial amplitude values, reshaped to (nt, nx*ny);
+        zero-initialised if None.
+    """
+
     grid: Grid
     _amplitude: np.ndarray = field(init=False)
     init_amplitude: np.ndarray | None = None  # optionally initialise amplitude
@@ -29,6 +44,7 @@ class Wavefield:
 
     @property
     def U(self) -> np.ndarray:
+        """np.ndarray: (nt, nx*ny) amplitude field."""
         return self._amplitude
 
     @U.setter
@@ -39,7 +55,9 @@ class Wavefield:
 
     @property
     def flat_data(self) -> np.ndarray:
-        """Return flat parameter vector amp (nt*nx*ny) as np.ndarray"""
+        """np.ndarray: Flattened (nt*nx*ny,) amplitude vector, the
+        optimisation variable. Assigning a flat vector reshapes it back
+        into (nt, nx*ny); a mismatched size raises `ValueError`."""
         return self._amplitude.ravel()
 
     @flat_data.setter
@@ -57,6 +75,30 @@ class Wavefield:
             ) from e
 
     def show(self, idx: int, title="Wavefield", view: str = "xy"):
+        """Plot a 2D amplitude slice of the field.
+
+        Parameters
+        ----------
+        idx : int
+            Index along the sliced axis (time or one spatial axis,
+            depending on `view`).
+        title : str, optional
+            Figure title.
+        view : {"xy", "ty", "tx"}, optional
+            Which plane to slice: "xy" is a spatial snapshot at time
+            `idx`; "ty"/"tx" are space-time slices at a fixed spatial
+            index.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Figure containing the sliced amplitude plot.
+
+        Raises
+        ------
+        ValueError
+            If `idx` is outside the valid range for the selected `view`.
+        """
         assert view in [
             "xy",
             "ty",
@@ -117,12 +159,52 @@ class Wavefield:
     ) -> str:
         """Render the amplitude field over all time steps to an animated GIF.
 
-        Optionally overlays dashed contours from a velocity model to give
-        structural context without competing with the wavefield colours.
+        Optionally overlays dashed contours from a velocity model to
+        give structural context without competing with the wavefield
+        colours.
 
-        model can be either:
-        - a VelocityModel instance (uses model.c), or
-        - a raw ndarray with shape (Nx, Ny) or (Ny, Nx).
+        Parameters
+        ----------
+        filename : str, optional
+            Output path for the GIF.
+        fps : int, optional
+            Frames per second.
+        cmap : str, optional
+            Colormap used when `scaling` is None or "SymLog".
+        title : str, optional
+            Figure title.
+        scaling : {"dB", "SymLog", None}, optional
+            Amplitude scaling: "dB" clips to `db_floor` dB below the
+            peak amplitude. "SymLog" uses a symmetric log colour norm.
+            None uses a given cmap.
+        db_floor : float, optional
+            Dynamic range floor in dB, used when `scaling` is "dB".
+        model : VelocityModel or np.ndarray, optional
+            Velocity model to overlay as contours: either a
+            `VelocityModel` (uses `model.c`) or a raw array.
+        model_levels : int or array-like, optional
+            Number of evenly spaced contour levels (if int), or explicit
+            level values.
+        model_colour : str, optional
+            Contour line colour.
+        model_alpha : float, optional
+            Contour line transparency.
+        model_linewidth : float, optional
+            Contour line width.
+        model_linestyle : str, optional
+            Contour line style.
+
+        Returns
+        -------
+        str
+            Path to the saved GIF (equal to `filename`).
+
+        Raises
+        ------
+        ValueError
+            If `scaling` is not one of None, "dB", "SymLog".
+        TypeError
+            If `model` is neither a `VelocityModel` nor an ndarray.
         """
         if scaling not in [None, "dB", "SymLog"]:
             raise ValueError(
