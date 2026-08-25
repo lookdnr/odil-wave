@@ -4,7 +4,25 @@ from odil_wave import Wavefield
 
 
 def create_u0(u0: Wavefield | np.ndarray | None = None, N: int = -1) -> np.ndarray:
-    """Utility for creating flattened u0"""
+    """Create a flattened initial guess vector.
+
+    Parameters
+    ----------
+    u0 : Wavefield, np.ndarray, or None, optional
+        Initial guess, a zero vector of length `N` is used if None.
+    N : int, optional
+        Length of the zero vector used when `u0` is None.
+
+    Returns
+    -------
+    np.ndarray
+        Flattened (N,) initial guess.
+
+    Raises
+    ------
+    TypeError
+        If `u0` is not one of Wavefield, np.ndarray, or None.
+    """
     if u0 is None:
         u0 = np.zeros(N)
     elif isinstance(u0, Wavefield):
@@ -19,7 +37,18 @@ def create_u0(u0: Wavefield | np.ndarray | None = None, N: int = -1) -> np.ndarr
 
 
 class CountedOperator(LinearOperator):
-    """Wraps LinearOperator to count matvec calls"""
+    """`scipy.sparse.linalg.LinearOperator` wrapper that counts `matvec` calls.
+
+    Parameters
+    ----------
+    A : scipy.sparse.linalg.LinearOperator
+        Operator to wrap and count calls to.
+
+    Attributes
+    ----------
+    count : int
+        Running count of matvec applications.
+    """
 
     def __init__(self, A: LinearOperator) -> None:
         super().__init__(dtype=A.dtype, shape=A.shape)
