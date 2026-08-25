@@ -381,3 +381,14 @@ It'll be a long month ahead, but things are starting to take shape.
 I met fairly breifly with Ben today and spoke about my research direction and current state. I have pretty much gotten all the results I want to get for my accuracy study, and I am nearly closing out the performance study, to. One thing he pointed out was that I have been leading my performance with hardware parallelism, but I shoudl enter with algorithmic complexity, so that is what I am working on getting some measurements for now. 
 
 My report is coming along pretty well, but it is not very put together at the minute. In particular I am not happy with my introduction structure just yet, and I need to integrate experiment details into the methodology more clearly. Results and discussion will follow soon. Can't wait to be done!
+
+# 24/08: weekly meeting
+
+I missed the last entry, whoops.
+
+Today was our final meeting of the IRP. I walked through my report with Carlos and discussed some results. Not too much to report here.
+
+It has been very enjoyable to work on this project for the last few months, and I have gotten some interesting results. The next few days are for cleaning up my report and code. This will probably be my last entry.
+
+Bye bye :)
+:wq
