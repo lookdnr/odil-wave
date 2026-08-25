@@ -16,7 +16,22 @@ from odil_wave.wavefield import Wavefield
 
 @dataclass
 class InnerRecord:
-    """History for one inner solve of the GN problem"""
+    """History for one inner solve of the Gauss-Newton problem.
+    That inner solve is Adu = -r, orchestrated by GMRES.
+
+    Parameters
+    ----------
+    residual_history : list of float
+        Residual norm curve over inner iterations.
+    true_relres : float
+        True relative residual ||Adu + r|| / ||r|| at exit.
+    converged : bool
+        Whether the inner solve met its convergence tolerance.
+    n_matvecs : int
+        Number of matrix-vector products used.
+    t_solve : float
+        Inner solve wall clock duration [s].
+    """
 
     residual_history: List[float]  # full pr_norm curve
     true_relres: float  # ||Adu + r|| / ||r|| at exit
@@ -26,12 +41,15 @@ class InnerRecord:
 
     @property
     def iters(self):
-        """Number of inner iterations"""
+        """int: number of inner iterations."""
         return len(self.residual_history)
 
     @property
     def rho(self):
-        """Estimated convergence factor: geometric mean of successive ratios"""
+        """float: Estimated convergence factor, computed as the geometric mean
+        of successive residual ratios. NaN with a warning if fewer than 2
+        iterations were recorded.
+        """
         r_arr = np.array(self.residual_history)
 
         if len(r_arr) < 2:
@@ -47,7 +65,19 @@ class InnerRecord:
 
 @dataclass
 class OuterRecord:
-    """Record for one outer GN step"""
+    """Record for one outer Gauss Newton iteration.
+
+    Parameters
+    ----------
+    res : float
+        PDE residual norm ||Au - s||.
+    grad_norm : float
+        Gradient norm at this step.
+    relres : float
+        Relative residual ||Au - s|| / ||s||.
+    inner : InnerRecord or None
+        Inner solve history for this step, None for scipy optimisers.
+    """
 
     res: float  # ||Au - s||
     grad_norm: float  # norm of gradient
@@ -57,13 +87,29 @@ class OuterRecord:
 
 @dataclass
 class SolveRecorder:
-    """Dataclass for recording solve history"""
+    """Recorder for the full outer/inner history of a Gauss Newton solve.
+
+    Parameters
+    ----------
+    meta : dict, optional
+        Run metadata (method, alpha, rtol, restart, ...).
+    outers : list of OuterRecord, optional
+        Per outer iteration records, appended to via `log`/`log_inner`.
+    """
 
     meta: Dict = field(default_factory=dict)  # method, alpha, rtol, restart, ...
     outers: List[OuterRecord] = field(default_factory=list)
 
     def log(self, residuals: np.ndarray, grad=None) -> None:
-        """Log norms for one outer solve"""
+        """Log residual and gradient norms for one outer iteration.
+
+        Parameters
+        ----------
+        residuals : np.ndarray
+            PDE residual at this outer iteration.
+        grad : np.ndarray, optional
+            Gradient at this outer iteration, logged as NaN if None.
+        """
         r = float(np.linalg.norm(residuals))
         norm_s = self.meta.get("norm_s")
         self.outers.append(
@@ -76,15 +122,51 @@ class SolveRecorder:
         )
 
     def log_inner(self, record: InnerRecord) -> None:
+        """Attach an inner solve record to the most recent outer iteration.
+
+        Parameters
+        ----------
+        record : InnerRecord
+            Inner solve history to attach.
+        """
         self.outers[-1].inner = record
 
     def finalise(
         self, wavefield: Wavefield, nit: int, success: bool, message: str = ""
     ) -> SolveResult:
+        """Package the recorded history into a `SolveResult`.
+
+        Parameters
+        ----------
+        wavefield : Wavefield
+            Final solution wavefield.
+        nit : int
+            Number of outer iterations taken.
+        success : bool
+            Whether the solve converged.
+        message : str, optional
+            Solver termination message.
+
+        Returns
+        -------
+        SolveResult
+            The finalised solve result.
+        """
         return SolveResult(wavefield, self, nit, success, message)
 
     def save(self, path: str | Path) -> Path:
-        """Write metadata + full outer/inner history to JSON"""
+        """Write metadata and full outer/inner history to JSON.
+
+        Parameters
+        ----------
+        path : str or Path
+            Output path; a ".json" suffix is enforced.
+
+        Returns
+        -------
+        pathlib.Path
+            Path the history was written to.
+        """
         self.meta.setdefault("saved_at", datetime.now().isoformat())
         path = Path(path).with_suffix(".json")
         payload = {"meta": self.meta, "outers": [asdict(o) for o in self.outers]}
@@ -93,7 +175,18 @@ class SolveRecorder:
 
     @classmethod
     def load(cls, path: str | Path) -> SolveRecorder:
-        """Load metadata and outer/inner history from JSON payload"""
+        """Load metadata and outer/inner history from a JSON payload.
+
+        Parameters
+        ----------
+        path : str or Path
+            Path to a JSON file previously written by `save`.
+
+        Returns
+        -------
+        SolveRecorder
+            Recorder reconstructed from the saved history.
+        """
         data = json.loads(Path(path).read_text())
         outers = []
 
@@ -106,7 +199,25 @@ class SolveRecorder:
 
 
 class SolveResult(OptimizeResult):
-    """End state of a solve: solution wavefield + full recording."""
+    """End state of a solve: solution wavefield plus full recording.
+
+    Subclasses `scipy.optimize.OptimizeResult`, so standard fields (`x`,
+    `fun`, `nit`, `success`, `message`) are populated alongside
+    `wavefield` and `recorder`.
+
+    Parameters
+    ----------
+    wavefield : Wavefield
+        Final solution wavefield.
+    recorder : SolveRecorder
+        Full outer/inner solve history.
+    nit : int
+        Number of outer iterations taken.
+    success : bool
+        Whether the solve converged.
+    message : str, optional
+        Solver termination message.
+    """
 
     def __init__(
         self,
@@ -132,10 +243,23 @@ class SolveResult(OptimizeResult):
 
     @property
     def solution(self) -> Wavefield:
+        """Wavefield: the solution wavefield"""
         return self.wf
 
     def show_convergence(self, title: str = "Convergence"):
-        """Plot outer convergence history"""
+        """Plot outer iteration convergence history.
+
+        Parameters
+        ----------
+        title : str, optional
+            Figure title.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Figure with two panels: relative residual and gradient norm
+            vs outer iteration.
+        """
         outers = self["recorder"].outers
 
         fig, axs = plt.subplots(1, 2, figsize=(10, 4))
@@ -151,7 +275,20 @@ class SolveResult(OptimizeResult):
         return fig
 
     def show_inner(self, title: str = "Inner solve history"):
-        """Plot the inner solve history"""
+        """Plot inner solve convergence history across outer iterations.
+
+        Parameters
+        ----------
+        title : str, optional
+            Figure title.
+
+        Returns
+        -------
+        matplotlib.figure.Figure or None
+            Figure with GMRES residual curves and iteration counts per
+            outer step, None (with a printed message) if no inner solves
+            were recorded.
+        """
         inners = [
             (k, o.inner) for k, o in enumerate(self["recorder"].outers) if o.inner
         ]
@@ -182,7 +319,20 @@ class SolveResult(OptimizeResult):
         return fig
 
     def save(self, path: str | Path, with_field: bool = False) -> Path:
-        """Persist the recording to disk, optionally with the solution field"""
+        """Persist the recording to disk, optionally with the solution field.
+
+        Parameters
+        ----------
+        path : str or Path
+            Output path for the recorder JSON.
+        with_field : bool, optional
+            If True, also save the solution array to a companion ".npz" file.
+
+        Returns
+        -------
+        Path
+            Path the recorder JSON was written to.
+        """
         out = self["recorder"].save(path)
 
         if with_field:
