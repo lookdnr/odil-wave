@@ -1,3 +1,23 @@
+"""odil_wave: solving the 2D wave equation via ODIL.
+
+Provides the full pipeline for an ODIL solve:
+
+grid and velocity model setup
+(`Grid`, `SheppLoganModel`, `HomogeneousModel`, `OverDensityModel`),
+
+acquisition geometry (`Sources`, `Receivers`, `AcquisitionGeometry`),
+
+the discrete wave equation operator (`WaveEquation`),
+
+wavefield (`Wavefield`),
+
+a `Problem`/`ForwardLoss` pair defining the Gauss-Newton least-squares problem,
+
+matrix free optimisers (`GaussNewtonOptimiser`, with a ParaDiag preconditioner)
+
+`SolveRecorder`/`SolveResult` for recording and inspecting convergence history.
+"""
+
 from odil_wave.grid import Grid
 from odil_wave.geometry import AcquisitionGeometry, Sources, Receivers
 from odil_wave.models import SheppLoganModel, HomogeneousModel, OverDensityModel
