@@ -1,102 +1,20 @@
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-import skimage.measure as skm
-from dataclasses import replace
 import numpy as np
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "experiments"))
-
-from odil_wave import Wavefield
-
-from common.build import build_grid, build_model  # type: ignore
-
+from fig_utils import (
+    load_field_wavefield,
+    add_model_contours,
+    build_fine_model,
+    reshape,
+)
 from exp4_cfl_sweep import SL_BASE  # type: ignore
-
-import copy
 
 PREFIX = "results/wave/cfl_sweep_sl_field"
 TIME_LEVELS = [15, 50, 80, 110]
 CFL_LOW, CFL_HIGH = 0.7, 1.3
 
 FIGURE = "fig9_cfl_snapshots.png"
-
-
-def load_field_wavefield(cfl_safety, solver):
-    """Load a saved CFL-sweep field snapshot into a Wavefield."""
-    cfl_str = f"{cfl_safety:.2f}".replace(".", "p")
-    cfg = replace(SL_BASE, cfl_safety=cfl_safety)
-    grid = build_grid(cfg)
-
-    data = np.load(f"{PREFIX}_{cfl_str}_{solver}.npz")["u"]
-
-    # saved field's nt may not match a rebuilt Grid's nt if
-    # SL_BASE has changed since the file was written
-    n_spatial = grid.nx * grid.ny
-    nt_actual, remainder = divmod(data.size, n_spatial)
-    if remainder != 0:
-        raise ValueError(
-            f"saved field size {data.size} isn't a multiple of nx*ny={n_spatial}"
-        )
-
-    if nt_actual != grid.nt:
-        grid = copy.copy(grid)
-        grid.nt = nt_actual
-        grid.t = np.linspace(0.0, grid.dt * (nt_actual - 1), nt_actual)
-
-    return Wavefield(grid, init_amplitude=data)
-
-
-def build_fine_model(base_cfg, fine_n=500):
-    """High resolution model for plotting contours"""
-    fine_cfg = replace(base_cfg, nx=fine_n, ny=fine_n)
-    fine_grid = build_grid(fine_cfg)
-    return build_model(fine_cfg, fine_grid)
-
-
-def add_model_contours(ax, model, colour="k", alpha=0.5, linewidth=0.5, linestyle="-"):
-    """Plot contours of the model. Forms a mask for levels in the model,
-    labels them, then extracts contours using marchiong squares from skimage"""
-    c = model.c
-    (xmin, xmax), (ymin, ymax) = model.grid.extent
-    nx, ny = c.shape
-
-    c_int = c.astype(int)  # cast to int to avoid granular contours
-
-    # extract velocity levels against background
-    background = c_int.min()
-    levels = np.unique(c_int.astype(int))
-    levels = levels[levels != background]  # filter for non-bg levels
-
-    # for each level, create mask, label regions, adn build contour
-    for lvl in levels:
-        mask = np.isclose(c_int, lvl)
-        region_labels = np.array(skm.label(mask))
-
-        # build mask for region in this level
-        for region_id in range(1, region_labels.max() + 1):
-            region_mask = region_labels == region_id
-
-        # build contour and plot
-        for contour in skm.find_contours(region_mask.astype(float)):
-            xs = xmin + contour[:, 0] / (nx - 1) * (xmax - xmin)
-            ys = ymin + contour[:, 1] / (ny - 1) * (ymax - ymin)
-            ax.plot(
-                xs,
-                ys,
-                color=colour,
-                linewidth=linewidth,
-                linestyle=linestyle,
-                alpha=alpha,
-                zorder=3,
-            )
-
-
-def reshape(wf):
-    """Reshape flattened wavefield to plottable image"""
-    amp = wf.U.reshape(wf.grid.nt, *wf.grid.shape)
-    return amp, wf.grid.extent, wf.grid.t
 
 
 def plot_cfl_snapshot(gap_frac=0.1, label_frac=0.1):
@@ -163,9 +81,9 @@ def plot_cfl_snapshot(gap_frac=0.1, label_frac=0.1):
         elif spec[0] == "residual":
 
             # extract and reshape wf
-            amp_low_wf = load_field_wavefield(CFL_LOW, "odil")
+            amp_low_wf = load_field_wavefield(SL_BASE, PREFIX, CFL_LOW, "odil")
             amp_low, extent_low, t_low = reshape(amp_low_wf)
-            amp_high_wf = load_field_wavefield(CFL_HIGH, "odil")
+            amp_high_wf = load_field_wavefield(SL_BASE, PREFIX, CFL_HIGH, "odil")
             amp_high, _, t_high = reshape(amp_high_wf)
             (xmin, xmax), (ymin, ymax) = extent_low
 
@@ -231,7 +149,7 @@ def plot_cfl_snapshot(gap_frac=0.1, label_frac=0.1):
         # load wavefield from spec
         solver_label, cfl = spec
         solver = "odil" if solver_label == "ODIL" else "devito"
-        wf = load_field_wavefield(cfl, solver)
+        wf = load_field_wavefield(SL_BASE, PREFIX, cfl, solver)
 
         # reshape for plotting
         amp, extent, t = reshape(wf)
