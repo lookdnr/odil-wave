@@ -53,7 +53,7 @@ def main():
         "Homogeneous\nHalo geometry",
         "Inclusion",
         "Shepp Logan Phantom",
-        "Homogeneous\nLinear geometry",
+        "Homogeneous\nRay geometry",
     ]
 
     # compute bounds for global cbar
