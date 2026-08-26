@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import sys
 from pathlib import Path
+import cmcrameri.cm as cmc
 
 from odil_wave.geometry import AcquisitionGeometry
 
@@ -17,6 +18,8 @@ from exp1_accuracy_sweep import BASE as HOMOG  # type: ignore
 from exp2_performance_scaling import BASE as INCL  # type: ignore
 from exp3_dispersion import BASE as RAYS  # type: ignore
 from exp4_cfl_sweep import SL_BASE as SL  # type: ignore
+
+FIGURE = "fig3_models.png"
 
 
 def build_components(cfg):
@@ -59,7 +62,12 @@ def main():
 
     for i, ax in enumerate(axs.ravel()):
         geoms[i].show(
-            models[i], ax, cbar=False, vmin=vmin, vmax=vmax, cmap="cmc.batlow"
+            models[i],
+            ax,
+            cbar=False,
+            vmin=vmin,
+            vmax=vmax,
+            cmap=cmc.batlow,  # type: ignore
         )
         ax.get_legend().remove()
         ax.set_title(titles[i])
@@ -125,8 +133,9 @@ def main():
             fontsize=14,
         )
 
-    plt.show()
+    return fig
 
 
 if __name__ == "__main__":
-    main()
+    fig = main()
+    plt.savefig(FIGURE, dpi=200)
