@@ -22,7 +22,12 @@ def field_growth(U: np.ndarray, dt: float, tail_frac: float = 0.3) -> Dict:
     k_full = np.arange(tail_start, nt)
     keep = tail > 0  # drop zero underflow samples
     if not finite or keep.sum() < 2:
-        return dict(max_u=max_u.tolist(), growth_rate=float("nan"), finite=finite)
+        return dict(
+            max_u=max_u.tolist(),
+            growth_rate=float("nan"),
+            r2=float("nan"),
+            finite=finite,
+        )
 
     # convert to units of time
     t_tail = k_full[keep] * dt
