@@ -64,6 +64,7 @@ class AcquisitionGeometry:
         velocity_model: VelocityModel,
         ax: matplotlib.axes.Axes | None = None,
         cmap: str | None = None,
+        cbar: bool = True,
     ):
         """Plot the acquisition geometry over the velocity model.
 
@@ -93,6 +94,7 @@ class AcquisitionGeometry:
             vmin=velocity_model.c_min,
             vmax=velocity_model.c_max,
             cmap=cmap,
+            cbar=cbar,
         )
 
         x = self.sources.grid.x
