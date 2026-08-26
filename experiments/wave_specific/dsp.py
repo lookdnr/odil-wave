@@ -3,7 +3,7 @@ import scipy.signal.windows as ssw
 from typing import Tuple, Dict
 
 
-def field_growth(U: np.ndarray, tail_frac: float = 0.3) -> Dict:
+def field_growth(U: np.ndarray, dt: float, tail_frac: float = 0.3) -> Dict:
     """Compute per timestep max|u| and a late time growth rate slope
     tail_frac is the fraction of the trace (from the end) used for the growth-rate fit,
     meant to exclude the active injection period
@@ -24,9 +24,21 @@ def field_growth(U: np.ndarray, tail_frac: float = 0.3) -> Dict:
     if not finite or keep.sum() < 2:
         return dict(max_u=max_u.tolist(), growth_rate=float("nan"), finite=finite)
 
+    # convert to units of time
+    t_tail = k_full[keep] * dt
+    log_tail = np.log(tail[keep])
+
     # fit slope to approximate growth rate er time step
-    slope, _ = np.polyfit(k_full[keep], np.log(tail[keep]), 1)
-    return dict(max_u=max_u.tolist(), growth_rate=float(slope), finite=finite)
+    slope, intercept = np.polyfit(t_tail, log_tail, 1)
+
+    pred = slope * t_tail + intercept  # compute prediction based on slope
+
+    # compute R2 coeff
+    ss_res = np.sum((log_tail - pred) ** 2)  # resid sum of sqr
+    ss_tot = np.sum((log_tail - log_tail.mean()) ** 2)  # tot sum of sqr
+    r2 = float(1.0 - ss_res / ss_tot) if ss_tot > 0 else float("nan")  # r2
+
+    return dict(max_u=max_u.tolist(), growth_rate=float(slope), r2=r2, finite=finite)
 
 
 def masked_taper(trace: np.ndarray, mask: np.ndarray, edge_frac=0.1) -> np.ndarray:
