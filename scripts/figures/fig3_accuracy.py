@@ -175,6 +175,9 @@ def plot_trace_overlay(result, k, ax):
         alpha=0.8,
     )
 
+    ax.set_xlabel(r"t ($\mu$s)", fontsize=16)
+    ax.set_ylabel("Amplitude", fontsize=16)
+
 
 def make_accuracy_figure(
     results, map_idx=0, overlay_idx=0, overlay_k=0, cmap="cividis"
