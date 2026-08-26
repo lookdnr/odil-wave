@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import sys
 from pathlib import Path
 
@@ -41,7 +42,7 @@ def main():
     geom_sl = AcquisitionGeometry(s_sl, r_sl)
     geom_rays = AcquisitionGeometry(s_rays, r_rays)
 
-    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+    fig, axs = plt.subplots(2, 2, figsize=(10, 10), constrained_layout=True)
 
     geoms = [geom_homog, geom_incl, geom_sl, geom_rays]
     models = [m_homog, m_incl, m_sl, m_rays]
@@ -52,8 +53,14 @@ def main():
         "Homogeneous\nLinear geometry",
     ]
 
+    # compute bounds for global cbar
+    vmin = min(m.c_min for m in models)
+    vmax = max(m.c_max for m in models)
+
     for i, ax in enumerate(axs.ravel()):
-        geoms[i].show(models[i], ax, cbar=False)
+        geoms[i].show(
+            models[i], ax, cbar=False, vmin=vmin, vmax=vmax, cmap="cmc.batlow"
+        )
         ax.get_legend().remove()
         ax.set_title(titles[i])
 
@@ -64,7 +71,60 @@ def main():
         if i in [0, 1]:
             ax.set_xlabel("")
 
-    fig.tight_layout(h_pad=0.1, w_pad=0.6)
+    im = axs.ravel()[0].images[0]
+    cbar = fig.colorbar(im, ax=axs, shrink=0.85, pad=0.02)
+    cbar.set_label(r"c ($ms^{-1}$)", fontsize=16)
+
+    # configure ticks
+    ticks = [1500, 1825, 2150, 2475, 2800]
+    cbar.set_ticks(ticks)
+    cbar.set_ticklabels([str(tick) for tick in ticks])
+
+    legend_handles = [
+        Line2D(
+            [],
+            [],
+            marker="*",
+            linestyle="none",
+            markersize=20,
+            color="orangered",
+            markeredgecolor="r",
+            label="Source",
+        ),
+        Line2D(
+            [],
+            [],
+            marker="v",
+            color="lime",
+            linestyle="none",
+            markersize=15,
+            markeredgewidth=1.0,
+            markeredgecolor="k",
+            fillstyle="none",
+            label="Receiver",
+        ),
+    ]
+    fig.legend(
+        handles=legend_handles,
+        loc="center",
+        bbox_to_anchor=(0.5, 0.01),
+        frameon=False,
+        fontsize=16,
+        ncol=5,
+    )
+
+    for ax, label in zip(axs.ravel(), "abcd"):
+        ax.text(
+            -0.10,
+            1.15,
+            f"({label})",
+            transform=ax.transAxes,
+            va="top",
+            ha="left",
+            fontweight="bold",
+            fontsize=14,
+        )
+
     plt.show()
 
 
