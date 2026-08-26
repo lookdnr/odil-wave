@@ -62,7 +62,7 @@ SL_BASE = replace(
     mask_skull=False,
     phantom_centre_frac=(0.95, 0.1),
     source_loc=(0.165, 0.20),
-    recv_locs=((0.29, 0.05),)
+    recv_locs=((0.29, 0.05),),
 )
 
 # 9.2 is at approx nyquist
@@ -104,7 +104,7 @@ def run(cfl_safety: float, save: bool, which: str = "homog"):
     # ODIL
     res = run_optimiser(cfg, opt, n_workers=32)
     U_odil = res.res.solution.U
-    growth_odil = field_growth(U_odil)
+    growth_odil = field_growth(U_odil, grid.dt)
 
     if cfg.model == "homogeneous":
         d_odil = recvs.extract_observations(U_odil)
@@ -120,7 +120,7 @@ def run(cfl_safety: float, save: bool, which: str = "homog"):
     ref = safe_run_devito(cfg, recvs.recv_xy, save_field, grid.dt)
     if ref["traces"] is not None:
         d_dev, t_dev = ref["traces"], ref["t"]
-        growth_dev = field_growth(d_dev)  # type: ignore
+        growth_dev = field_growth(d_dev, grid.dt)  # type: ignore
 
         if cfg.model == "homogeneous":
             ana_dev = analytical_traces(src, recvs, t_dev, cfg.c_min)  # type: ignore
@@ -133,7 +133,9 @@ def run(cfl_safety: float, save: bool, which: str = "homog"):
         else:
             err_dev = float("nan")
     else:
-        growth_dev = dict(max_u=[], growth_rate=float("nan"), finite=False)
+        growth_dev = dict(
+            max_u=[], growth_rate=float("nan"), r2=float("nan"), finite=False
+        )
         err_dev = float("nan")
 
     # save field
@@ -153,11 +155,13 @@ def run(cfl_safety: float, save: bool, which: str = "homog"):
         wall=res.wall,
         iters=res.iters,
         converged=res.converged,
-        growth_rate_odil=growth_odil["growth_rate"],
         finite_odil=growth_odil["finite"],
-        growth_rate_dev=growth_dev["growth_rate"],
-        finite_dev=growth_dev["finite"],
+        growth_rate_odil=growth_odil["growth_rate"],
+        r2_odil=growth_odil["r2"],
         err_odil=err_odil,
+        finite_dev=growth_dev["finite"],
+        growth_rate_dev=growth_dev["growth_rate"],
+        r2_dev=growth_dev["r2"],
         err_dev=err_dev,
         devito_error=ref["error"],
     )
