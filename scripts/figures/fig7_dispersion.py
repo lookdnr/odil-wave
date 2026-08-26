@@ -13,7 +13,7 @@ from exp3_dispersion import ANGLES  # type: ignore
 
 RESULTS_DIR = Path(__file__).resolve().parents[2] / "results" / "wave"
 
-FIGURE = "fig6_dispersion.png"
+FIGURE = "fig7_dispersion.png"
 
 TITLE_FS = 16
 LABEL_FS = 14

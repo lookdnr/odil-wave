@@ -15,7 +15,7 @@ from fig_utils import load_pkl  # type: ignore
 # set dirs
 ROOT = Path(__file__).resolve().parents[2]  # ../../
 RESULTS = ROOT / "results" / "accuracy" / "sweep_50khz.pkl"
-FIGURE = ROOT / "fig3_accuracy.png"
+FIGURE = ROOT / "fig4_accuracy.png"
 
 COL = {"odil": "royalblue", "dev": "darkorange"}
 

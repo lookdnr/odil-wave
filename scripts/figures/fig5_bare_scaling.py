@@ -10,7 +10,7 @@ CACHED = Path("f0_sweep_odil_cached.jsonl")
 UNCACHED = Path("f0_sweep_odil_uncached.jsonl")
 DEVITO = Path("f0_sweep_devito_na.jsonl")
 SCALING = Path("strong_scaling.jsonl")
-FIGURE = "fig4_bare_scaling.png"
+FIGURE = "fig5_bare_scaling.png"
 
 TITLE_FS = 16
 LABEL_FS = 14

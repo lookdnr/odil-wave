@@ -20,7 +20,7 @@ PREFIX = "results/wave/cfl_sweep_sl_field"
 TIME_LEVELS = [15, 50, 80, 110]
 CFL_LOW, CFL_HIGH = 0.7, 1.3
 
-FIGURE = "fig8_cfl_snapshots.png"
+FIGURE = "fig9_cfl_snapshots.png"
 
 
 def load_field_wavefield(cfl_safety, solver):
@@ -220,7 +220,7 @@ def plot_cfl_snapshot(gap_frac=0.1, label_frac=0.1):
                 gs[i, mid - 1 : mid + 1] if ncols % 2 == 0 else gs[i, mid]
             )
             fig.colorbar(
-                last_im,
+                last_im,  # type: ignore
                 cax=cax,
                 orientation="horizontal",
                 pad=1.0,  # type: ignore

@@ -5,7 +5,7 @@ import numpy as np
 import json
 
 RESULTS_DIR = Path(__file__).resolve().parents[2] / "results" / "wave"
-FIGURE = "fig7_cfl_stability.png"
+FIGURE = "fig8_cfl_stability.png"
 
 TITLE_FS = 16
 LABEL_FS = 14
