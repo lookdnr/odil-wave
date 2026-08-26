@@ -65,6 +65,8 @@ class AcquisitionGeometry:
         ax: matplotlib.axes.Axes | None = None,
         cmap: str | None = None,
         cbar: bool = True,
+        vmin: float | None = None,
+        vmax: float | None = None,
     ):
         """Plot the acquisition geometry over the velocity model.
 
@@ -76,6 +78,10 @@ class AcquisitionGeometry:
             Axes to draw on. A new figure is created if None.
         cmap : str or None
             Colour map for the velocity field (default "viridis").
+        cbar : bool
+            If True, display colourbar
+        vmin, vmax : float
+            If not None, use provided values for colourmap value bounds.
 
         Returns
         -------
@@ -88,11 +94,16 @@ class AcquisitionGeometry:
         if cmap is None:
             cmap = "viridis"
 
+        if vmin is None:
+            vmin = velocity_model.c_min
+        if vmax is None:
+            vmax = velocity_model.c_max
+
         velocity_model.show(
             ax=ax,
             title=f"Acquisition | {velocity_model.name}",
-            vmin=velocity_model.c_min,
-            vmax=velocity_model.c_max,
+            vmin=vmin,
+            vmax=vmax,
             cmap=cmap,
             cbar=cbar,
         )
