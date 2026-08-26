@@ -88,6 +88,7 @@ class VelocityModel(ABC):
         vmin: Optional[float] = None,
         vmax: Optional[float] = None,
         cmap: str = "viridis",
+        cbar: bool = True,
     ):
         """Plot the velocity field c(x, y).
 
@@ -127,6 +128,7 @@ class VelocityModel(ABC):
         ax.set_aspect("equal")
         ax.set_title(title or f"c(x, y) [{self.name}]", pad=10)
 
-        plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label=r"c ($ms^{-1}$)")
+        if cbar:
+            plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label=r"c ($ms^{-1}$)")
 
         return ax
