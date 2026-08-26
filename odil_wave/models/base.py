@@ -122,11 +122,11 @@ class VelocityModel(ABC):
         )
 
         # labels and colorbar
-        ax.set_xlabel("x [m]")
-        ax.set_ylabel("y [m]")
+        ax.set_xlabel("x (m)")
+        ax.set_ylabel("y (m)")
         ax.set_aspect("equal")
         ax.set_title(title or f"c(x, y) [{self.name}]", pad=10)
 
-        plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="c [m/s]")
+        plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label=r"c ($ms^{-1}$)")
 
         return ax
