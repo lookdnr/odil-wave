@@ -66,7 +66,7 @@ SL_BASE = replace(
 )
 
 # 17.2 is at approx nyquist for SL config
-FIELD_SAVE_CFLS = (0.7, 1.0, 1.3, 3.0, 9.0, 10.0, 17.2)
+FIELD_SAVE_CFLS = (0.7, 1.0, 1.3, 3.0, 5.0, 10.0, 17.2)
 
 
 def _should_save_field(cfl_safety: float) -> bool:
