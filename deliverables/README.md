@@ -1,20 +1,25 @@
 # Deliverables
 
-Commit your written reports to this directory using the exact filenames specified below:
+This subdirectory includes two of the submission deliverables for the Independent Research Project:
 
 | Deliverable     | Filename                          |
 |-----------------|-----------------------------------|
 | Project Plan    | `ld2022-project-plan.pdf`     |
 | Final Report    | `ld2022-final-report.pdf`     |
 
-**Filenames must:**
-- Be all lowercase  
-- Use dashes (`-`) instead of underscores (`_`)  
-- Have a `.pdf` extension  
-- Contain no whitespace
 
-## Validating with GitHub Actions
+## Building the Final Report
 
-To verify your submission is readable, ensure the corresponding GitHub Actions workflow (`project-plan` or `final-report`) passes.
+A Makefile is provided to build my final report from the $\LaTeX$ source files.
 
-It is normal for the workflows to fail until you have submitted the required deliverables. The checks will only pass once your reports are correctly named, below the maximum file size limit, and committed before the deadline.
+To do so, from this directory, run
+
+```bash
+make report
+```
+
+To clean up the build artefacts, run
+
+```bash
+make clean
+```
