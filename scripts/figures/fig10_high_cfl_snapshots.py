@@ -17,7 +17,7 @@ from exp4_cfl_sweep import SL_BASE  # type: ignore
 
 PREFIX = "results/wave/cfl_sweep_sl_field"
 TIME_LEVELS = [15, 50, 80]
-CFL_VALUES = [3.0, 6.0, 9.2]
+CFL_VALUES = [3.0, 5.0, 10.0, 17.2]
 
 FIGURE = "fig10_high_cfl.png"
 
