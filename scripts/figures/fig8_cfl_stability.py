@@ -164,10 +164,10 @@ def plot_cfl_stability(rows, figsize=(12, 4)):
         ncol=4,
     )
 
-    for ax, lab in zip(axs, "ab"):
+    for ax, lab in zip(axs, "abc"):
         ax.text(
             -0.12,
-            1.05,
+            1.1,
             f"({lab})",
             transform=ax.transAxes,
             va="top",
