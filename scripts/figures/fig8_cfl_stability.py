@@ -61,6 +61,11 @@ def plot_error_vs_cfl(rows, ax):
 
     ax.axvline(1.0, color="gray", lw=0.8, ls=":")
     ax.set(xlabel="CFL", ylabel="Relative L2 trace error", title="Error vs CFL")
+
+    xticks = [0.7, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    xticks_labels = [str(tick) for tick in xticks]
+    ax.set_xticks(xticks, labels=xticks_labels)
+    plt.tight_layout(h_pad=2)
     return ax
 
 
@@ -89,20 +94,52 @@ def plot_growth_vs_cfl(rows, ax):
 
     ax.axhline(0.0, color="k", lw=0.8, ls="--")
     ax.axvline(1.0, color="gray", lw=0.8, ls=":")
-    ax.set(
-        xlabel="CFL safety factor", ylabel="Growth rate", title="Field growth vs CFL"
-    )
+    ax.set(xlabel="CFL", ylabel="Growth rate", title="Field growth vs CFL")
     xticks = [0.7, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     xticks_labels = [str(tick) for tick in xticks]
     ax.set_xticks(xticks, labels=xticks_labels)
     return ax
 
 
-def plot_cfl_stability(rows, figsize=(11, 4.5)):
+def plot_r2_vs_cfl(rows, ax):
+    """R2 of the growth rate vs cfl_safety"""
+    cfls = np.array([r["cfl_safety"] for r in rows])
+    r2_odil = np.array([r["r2_odil"] for r in rows], dtype=float)
+    r2_dev = np.array([r["r2_dev"] for r in rows], dtype=float)
+
+    fin_dev = np.array([r["finite_dev"] for r in rows])
+    non_finite_dev = fin_dev == False
+
+    ax.semilogx(cfls, r2_odil, "o-", color=COL["odil"])
+    ax.semilogx(
+        cfls[non_finite_dev != True],
+        r2_dev[non_finite_dev != True],
+        "s-",
+        color=COL["devito"],
+    )
+
+    if non_finite_dev.any():
+        fnf = get_first_non_finite(cfls, non_finite_dev)
+        ax.scatter(
+            cfls[fnf - 1], r2_dev[fnf - 1], marker="x", s=120, color="red", zorder=6
+        )
+
+    ax.axvline(1.0, color="gray", lw=0.8, ls=":")
+    ax.set(xlabel="CFL", ylabel="$R^2$ (growth fit)", title="Growth rate fit quality")
+    ax.set_ylim(top=1.02)
+
+    xticks = [0.7, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    xticks_labels = [str(tick) for tick in xticks]
+    ax.set_xticks(xticks, labels=xticks_labels)
+    return ax
+
+
+def plot_cfl_stability(rows, figsize=(12, 4)):
     """Error and growth rate vs CFL, side by side"""
-    fig, axs = plt.subplots(1, 2, figsize=figsize)
+    fig, axs = plt.subplots(1, 3, figsize=figsize)
     plot_error_vs_cfl(rows, ax=axs[0])
     plot_growth_vs_cfl(rows, ax=axs[1])
+    plot_r2_vs_cfl(rows, ax=axs[2])
 
     legend_handles = [
         Line2D([0], [0], color=COL["odil"], marker="o", label="ODIL"),
@@ -139,7 +176,7 @@ def plot_cfl_stability(rows, figsize=(11, 4.5)):
             fontsize=14,
         )
 
-    plt.tight_layout(h_pad=2)
+    plt.tight_layout()
     return fig
 
 
