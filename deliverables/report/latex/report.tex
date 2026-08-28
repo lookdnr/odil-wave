@@ -216,7 +216,7 @@ The temporal second derivative operator is defined as $D_{tt} \in \mathbb{R}^{N_
 \ifshowfigs
 \begin{figure}[!ht]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig1_op_structure.png}
+    \includegraphics[width=0.98\linewidth]{figures/fig1_op_structure.png}
     \caption{Sparsity plots of the operator matrices $D_{xx},\ D_{yy}$, and $D_{tt}$ (a - c) and the global operator matrix $A$ (d) in the discretised wave equation for a second order centred difference (in the absence of boundary and initial conditions). Blue squares represent the non-zero entries in the matrices, and red boxes indicate the near-Block Toeplitz with Toeplitz Blocks structure of the global operator. The inset illustrates the block structure: off-diagonal blocks couple neighbouring time levels and the central block represents the current time with the spatial operator terms folded in. }
     \label{fig:sparsity}
 \end{figure}
@@ -241,7 +241,7 @@ The global wave equation operator $A \in \mathbb{R}^{N_t N_x N_y \times N_t N_x 
     \label{eq:A_op}
 \end{equation}
 
-where $I_t \in \mathbb{R}^{Nt \times N_t}$ and $I_{xy} \in \mathbb{R}^{N_x \times N_y}$ are the identity matrices and $C \in \mathbb{R}^{N_x N_y \times N_x N_y}$ is a diagonal matrix containing the wave speed values on the computational grid. In the absence of boundary and initial conditions, $A$ has a Block Toeplitz with Toeplitz Blocks (BTTB) structure.
+where $I_t \in \mathbb{R}^{N_t \times N_t}$ and $I_{xy} \in \mathbb{R}^{N_x \times N_y}$ are the identity matrices and $C \in \mathbb{R}^{N_x N_y \times N_x N_y}$ is a diagonal matrix containing the wave speed values on the computational grid. In the absence of boundary and initial conditions, $A$ has a Block Toeplitz with Toeplitz Blocks (BTTB) structure.
 
 Under this discretisation, the full system can be expressed as a linear system,
 
@@ -338,11 +338,11 @@ The LU factorisation for each block corresponding to a frequency mode may be pre
 
 The transformed circulant matrix decomposes into independent spatial systems, making the task of factorisation embarrassingly parallel. Hardware parallelism is exploited by distributing factorisations across processes, orchestrated by Python's \texttt{multiprocessing} module. This bypasses the Global Interpreter Lock and allows the $(N_t/2) + 1$ factorisations to run concurrently across CPU cores.
 
-The temporal discretisation was fixed at second order for the following results. Extending to higher time order is a matter of generalising the factorisation and closing the additional initial conditions with more data, rather than a limitation of the preconditioning technique, and is left to future work. The spatial stencil order, unless otherwise stated, was sixth order.
+The temporal discretisation was fixed at second order for the following results. Extending to higher time order is a matter of generalising the factorisation and closing the additional initial conditions with more data, rather than a limitation of the preconditioning technique, and is left to future work. The spatial stencil, unless otherwise stated, was of the sixth order.
 
 \newpage
 \section{Methods of Evaluation}
-The purpose of this study is to compare the characteristics of ODIL against FDTD solutions obtained using Devito \cite{louboutinDevitoV310Embedded2019} in three key areas: accuracy, performance, dispersion, and stability. This study focuses on the low-to-mid ultrasound band ($50$-$200 \si{\kilo\hertz}$), motivated by transcranial ultrasound applications.
+The purpose of this study is to compare the characteristics of ODIL against FDTD solutions obtained using Devito \cite{louboutinDevitoV310Embedded2019} in the following areas: accuracy, performance, dispersion, and stability. This study focuses on the low-to-mid ultrasound band ($50$-$200 \si{\kilo\hertz}$), motivated by transcranial ultrasound applications.
 
 ODIL and Devito solutions were obtained on the same grid and velocity model, with identical discretisation and physical parameters. ODIL components were built programmatically using the Python library developed for this research. FDTD components were built using elements of Devito's \texttt{examples.seismic} submodule. Source injection and trace extraction for both sides of the problem was orchestrated using identical sinc interpolation methods (Section \ref{subsect:disc_source_inj}), verified against the Devito source code. 
 
@@ -355,14 +355,14 @@ All relevant computational parameters are delineated on a per-experiment basis i
     \label{fig:models}
 \end{figure}
 
-All experiments were performed on an AMD Rome compute node from Imperial's CX3 high performance computing facility. A node is comprised of two AMD EPYC 7742 processors, each with 64 physical cores and 128 threads, and 1Tb of RAM. Devito's shared memory parallelism (orchestrated by OpenMP) is controlled through its Programmatic API for controlling environment variables \cite{ConfigurationSystemXdslproject}. All other variables, including compiler optimisations, are left to the default settings. For ODIL, the number of concurrent processes was set to be equal to the number of physical cores prescribed to particular experiments.
+All experiments were performed on an AMD Rome compute node comprised of two AMD EPYC 7742 processors, each with 64 physical cores and 128 threads, and 1Tb of RAM. Devito's shared memory parallelism (orchestrated by OpenMP) is controlled through its Programmatic API for controlling environment variables. All other variables, including compiler optimisations, are left to the default settings. For ODIL, the number of concurrent processes was set to be equal to the number of physical cores prescribed to particular experiments.
 
 \subsection{Accuracy Study}
 \label{subsect:experiments-accuracy}
 
 To address \hyperref[rq:1]{RQ1}, the solutions achieved by ODIL and Devito are benchmarked against an analytical solution to the wave equation, for which the L2 norm of observed trace misfit is calculated at 24 receiver locations in the domain. Measuring at receivers represents realistic use cases, in which the full wave field is unknown and instead interpreted from discrete observations. It also avoids conflating numerical errors with boundary reflection artefacts. 
 
-Norms are calculated on traces normalised to unity to avoid being skewed by differences in wavelet scaling choices. Trace measurements are restricted to a window between the arrival times of the direct wave and any boundary reflections to prevent differing boundary reflection profiles from contaminating measurements. Measurements were made at a number of Degrees of Freedom (DOF) by varying the number of spatial grid nodes, and at each DOF measurements were repeated three times, with the mean value reported.
+Norms are calculated on traces normalised to unity to avoid being skewed by differences in wavelet scaling choices. Trace measurements are restricted to a window between the arrival times of the direct wave and any boundary reflections to prevent differing boundary reflection profiles from contaminating measurements. Measurements were made for seven different Degrees of Freedom (DOF) varied by the number of spatial grid nodes, and at each DOF measurements were repeated three times, with the mean value reported.
 
 The analytical solution follows the definition of the Green's function and convolution integral as in \cite{wapenaarMultipleReflectionsHuygens2025}, and is calculated by convolving the Green's function for the 2D wave equation with the Ricker wavelet. Appendix \ref{app:conv_reduct} demonstrates that the convolution integral can be written
 
@@ -416,7 +416,7 @@ where $k=\nicefrac{2\pi}{\lambda}$ is the wavenumber corresponding to wavelength
 
 This relation can be solved for $\omega$, then the analytical phase velocity is given by $\tilde{C}_h = \nicefrac{\omega}{k}$. 
 
-The measured and analytical phase velocities are determined for a number of grid resolutions. The resolution is parametrised by the number of Points Per Wavelength $\lambda$, defined as
+The measured and analytical phase velocities are determined at various grid resolutions. The resolution is parametrised by the number of Points Per Wavelength $\lambda$, defined as
 
 \begin{equation}
     \text{PPW} = \frac{\lambda}{\max(\Delta x, \Delta y)}.
@@ -434,7 +434,7 @@ In general, for a second order explicit time stepping scheme to be stable the re
 
 Stability is assessed quantitatively and qualitatively by inspecting solutions on two models at a range of CFL numbers by varying temporal grid spacing. For the homogeneous model, $\text{CFL} \in[0.7, 9.2]$ was used, and for the Shepp Logan phantom model, $\text{CFL}\in[0.7, 17.2]$. At the upper limit of these bounds, the temporal sampling rate converges to the Nyquist limit. 
 
-On the homogeneous model, the analytical solution described in Section \ref{subsect:experiments-accuracy} is used to analyse error about the stability transition zone. Exponential decay is assumed, so the growth rate is reported as the slope of a straight line fitted to $\log\left(\max(|\mathbf{u}|)\right)$ against $t$, with a positive value indicating growth. We also report the coefficient of determination $R^2$ for the fitted line. The Shepp Logan Phantom \cite{sheppFourierReconstructionHead1974} is used to qualitatively infer how the solution degrades beyond the CFL limit.  
+On the homogeneous model, the analytical solution described in Section \ref{subsect:experiments-accuracy} is used to analyse error about the stability transition zone. Exponential decay is assumed, so the growth rate is reported as the slope of a straight line fitted to $\log\left(\max(|\mathbf{u}|)\right)$ against $t$, with a positive value indicating growth. The coefficient of determination $R^2$ is also reported. The Shepp Logan Phantom \cite{sheppFourierReconstructionHead1974} is used to qualitatively infer how the solution degrades beyond the CFL limit.  
 
 \newpage
 \section{Results and Discussion}
@@ -552,7 +552,8 @@ In summary, beyond the CFL limit, the ODIL solution does not diverge in the mann
 
 In this work, a methodology for solving the forced acoustic wave equation in two dimensions using the Optimising a Discrete Loss (ODIL) framework has been established and compared against traditional FDTD. ODIL was shown to inherit the accuracy properties of the underlying discretisation, converging to the same discrete solution as time stepping and matching it in dispersive character. The particular formulation presented, which uses an alpha circulant preconditioner, underperforms time stepping in memory usage and wall clock time when run in serial, owing to its higher computational complexity, though this gap narrows considerably when hardware parallelism is exploited. While many of the error characteristics are identical, the manner in which ODIL destabilises beyond the CFL limit was found to differ from FDTD. Evidence is presented that, in unstable regimes, ODIL settles on a single dominant mode of oscillation as time progresses, rather than diverging to complete numerical overflow. Identifying that mode, and the mechanism by which it is selected, is left to future work, and represents one of the most interesting avenue opened by this study. Under the formulation presented, ODIL's performance characteristics remain less favourable than those of FDTD. However, as hardware, software, and preconditioning methods continue to advance, the continued study of ODIL for such problems remains a valuable pursuit.
 
-\bibliographystyle{plain}
+\newpage
+\bibliographystyle{ieeetr}
 \bibliography{references.bib} 
 
 \newpage
