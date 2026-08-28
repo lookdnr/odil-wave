@@ -1,0 +1,3 @@
+# supress reporting of notebooks and report docs as langs
+*.ipynb linguist-documentation
+deliverables/report/** linguist-documentation
