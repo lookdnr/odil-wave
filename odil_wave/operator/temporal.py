@@ -29,7 +29,20 @@ def _diff_matrix(derivative: int, ord: int, n: int, h: float) -> sp.csr_matrix:
 
 
 class FirstTimeDerivative(SparseOperator):
-    """First derivative operator"""
+    """First time derivative operator, Dt kron Ixy.
+
+    Parameters
+    ----------
+    wavefield : Wavefield
+        Wavefield the operator acts on.
+    ord : {2, 4, 6, 8}, optional
+        Finite-difference accuracy order.
+
+    Attributes
+    ----------
+    Dt : scipy.sparse.csr_matrix
+        (nt, nt) first time derivative operator.
+    """
 
     def __init__(self, wavefield: Wavefield, ord: int = 2) -> None:
         super().__init__(wavefield, ord)
@@ -43,16 +56,51 @@ class FirstTimeDerivative(SparseOperator):
         self.Dt = _diff_matrix(derivative=1, ord=ord, n=nt, h=dt)
 
     def apply(self, U: np.ndarray) -> np.ndarray:
-        """Apply operator to a (time, space) ndarray"""
+        """Apply the first time derivative operator to a (time, space) array.
+
+        Parameters
+        ----------
+        U : np.ndarray
+            (nt, nx*ny) array.
+
+        Returns
+        -------
+        np.ndarray
+            (nt, nx*ny) time derivative of `U`.
+        """
         return self.Dt @ U
 
     def apply_transpose(self, U: np.ndarray) -> np.ndarray:
-        """Apply transposed operator to a (time, space) array"""
+        """Apply the transposed first time derivative operator.
+
+        Parameters
+        ----------
+        U : np.ndarray
+            (nt, nx*ny) array.
+
+        Returns
+        -------
+        np.ndarray
+            (nt, nx*ny) result of Dt.T @ U.
+        """
         return self.Dt.T @ U
 
 
 class SecondTimeDerivative(SparseOperator):
-    """Second derivative operator"""
+    """Second time derivative operator, Dtt kron Ixy.
+
+    Parameters
+    ----------
+    wavefield : Wavefield
+        Wavefield the operator acts on.
+    ord : {2, 4, 6, 8}, optional
+        Finite-difference accuracy order.
+
+    Attributes
+    ----------
+    Dt : scipy.sparse.csr_matrix
+        (nt, nt) second time derivative operator.
+    """
 
     def __init__(self, wavefield: Wavefield, ord: int = 2) -> None:
         super().__init__(wavefield, ord)
@@ -66,9 +114,31 @@ class SecondTimeDerivative(SparseOperator):
         self.Dtt = _diff_matrix(derivative=2, ord=ord, n=nt, h=dt)
 
     def apply(self, U: np.ndarray) -> np.ndarray:
-        """Apply operator to a (time, space) ndarray"""
+        """Apply the second time derivative operator to a (time, space) array.
+
+        Parameters
+        ----------
+        U : np.ndarray
+            (nt, nx*ny) array.
+
+        Returns
+        -------
+        np.ndarray
+            (nt, nx*ny) time derivative of `U`.
+        """
         return self.Dtt @ U
 
     def apply_transpose(self, U: np.ndarray) -> np.ndarray:
-        """Apply transposed operator to a (time, space) array"""
+        """Apply the transposed second time derivative operator.
+
+        Parameters
+        ----------
+        U : np.ndarray
+            (nt, nx*ny) array.
+
+        Returns
+        -------
+        np.ndarray
+            (nt, nx*ny) result of Dtt.T @ U.
+        """
         return self.Dtt.T @ U

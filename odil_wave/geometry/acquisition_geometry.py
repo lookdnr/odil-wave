@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.axes
 
 from odil_wave.models.base import VelocityModel
 from .sources import Sources
@@ -7,51 +8,117 @@ from .receivers import Receivers
 
 
 class AcquisitionGeometry:
-    """
-    Convenience class for collecting Sources and Receivers into a unified object.
+    """Convenience class for representing `Sources` and `Receivers` in a single object.
 
-    TODO: Downstream functionality operates on AcquistionGeometry instances, need to
-    check functionality interfacing
+    Attributes
+    ----------
+    sources : Sources
+        Source positions and wavelet injection.
+    receivers : np.ndarray, optional
+        Receiever positions and observation extraction.
     """
 
     def __init__(self, sources: Sources, receivers: Receivers):
+        """Bundle a source and receiver layout into one acquisition geometry.
+
+        Parameters
+        ----------
+        sources : Sources
+            Source positions and wavelet injection.
+        receivers : Receivers
+            Receiver positions and trace extraction.
+        """
         self.sources = sources
         self.receivers = receivers
 
     def source_matrix(self) -> np.ndarray:
+        """Return the source injection matrix.
+
+        Returns
+        -------
+        np.ndarray
+            Source injection matrix.
+
+        Notes
+        -----
+        Delegates to `Sources.source_matrix`.
+        """
         return self.sources.source_matrix()
 
     def extract_observations(self, U: np.ndarray) -> np.ndarray:
+        """Sample the wavefield at receiver locations
+
+        Parameters
+        ----------
+        U : np.ndarray
+            Full wavefield array.
+
+        Notes
+        -----
+        Delegates to `Receivers.extract_observations`.
+        """
         return self.receivers.extract_observations(U)
 
-    def show(self, velocity_model: VelocityModel, ax=None):
-        """Plot the acquisition geometry"""
+    def show(
+        self,
+        velocity_model: VelocityModel,
+        ax: matplotlib.axes.Axes | None = None,
+        cmap: str | None = None,
+        cbar: bool = True,
+        vmin: float | None = None,
+        vmax: float | None = None,
+    ):
+        """Plot the acquisition geometry over the velocity model.
+
+        Parameters
+        ----------
+        velocity_model : VelocityModel
+            Velocity model used as the plots colour field.
+        ax : matplotlib.ax.Axes or None
+            Axes to draw on. A new figure is created if None.
+        cmap : str or None
+            Colour map for the velocity field (default "viridis").
+        cbar : bool
+            If True, display colourbar
+        vmin, vmax : float
+            If not None, use provided values for colourmap value bounds.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The axes the geometry was plotted on.
+        """
         if ax is None:
-            _, ax = plt.subplots(figsize=(5.5, 5))
-        velocity_model.show(ax=ax, title=f"Acquisition on {velocity_model.name}")
+            _, ax = plt.subplots(figsize=(6, 6))
+
+        if cmap is None:
+            cmap = "viridis"
+
+        if vmin is None:
+            vmin = velocity_model.c_min
+        if vmax is None:
+            vmax = velocity_model.c_max
+
+        velocity_model.show(
+            ax=ax,
+            title=f"Acquisition | {velocity_model.name}",
+            vmin=vmin,
+            vmax=vmax,
+            cmap=cmap,
+            cbar=cbar,
+        )
+
         x = self.sources.grid.x
         y = self.sources.grid.y
 
         recv_ij = self.receivers.recv_ij
         src_ij = self.sources.src_ij
 
-        n_recv = self.receivers.n_receivers
-        n_src = self.sources.n_sources
-
         rx = x[recv_ij[:, 0]]
         ry = y[recv_ij[:, 1]]
         sx = x[src_ij[:, 0]]
         sy = y[src_ij[:, 1]]
-        ax.scatter(
-            rx,
-            ry,
-            marker="v",
-            c="lime",
-            edgecolor="black",
-            s=70,
-            label=f"{n_recv} receivers",
-            zorder=5,
-        )
+
         ax.scatter(
             sx,
             sy,
@@ -59,9 +126,25 @@ class AcquisitionGeometry:
             c="red",
             edgecolor="black",
             s=180,
-            label=f"{n_src} sources",
-            zorder=6,
+            label="Sources",
         )
-        ax.legend(loc="upper right", fontsize=8)
-        plt.tight_layout()
+
+        ax.scatter(
+            rx,
+            ry,
+            marker="v",
+            c="lime",
+            edgecolor="black",
+            s=70,
+            label="Receivers",
+        )
+
+        ax.legend(
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.12),
+            ncol=2,
+            frameon=False,
+            fontsize=15,
+        )
+        ax.margins(0)
         return ax

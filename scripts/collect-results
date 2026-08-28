@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# A driver script for submitting all PBS jobs to collect results
+# Makes directories and submits PBS jobs scripts with the correct arguments
+
+mkdir -p results/{accuracy,performance,wave}
+
+# exp0: baseline results (LBFGSB, unpreconditioned GMRES, preconditioned GMRES)
+qsub -N baseline -v OUT=results/baseline.pkl scripts/jobs/exp0_baseline.pbs
+
+# exp1: ODIL vs Devito on a DOF sweep
+qsub -N accuracy-sweep scripts/jobs/exp1_accuracy_sweep.pbs
+
+# exp2a: frequency sweep: serial, then full thread count
+qsub -N f0-sweep-cached-c1 -v SOLVER=odil,MODE=cached,NCORES=1 scripts/jobs/exp2a_f0_sweep.pbs
+qsub -N f0-sweep-uncached-c1 -v SOLVER=odil,MODE=uncached,NCORES=1 scripts/jobs/exp2a_f0_sweep.pbs
+qsub -N f0-sweep-devito-c1 -v SOLVER=devito,MODE=na,NCORES=1 scripts/jobs/exp2a_f0_sweep.pbs
+
+qsub -N f0-sweep-cached-c128 -v SOLVER=odil,MODE=cached,NCORES=128 scripts/jobs/exp2a_f0_sweep.pbs
+qsub -N f0-sweep-uncached-c128 -v SOLVER=odil,MODE=uncached,NCORES=128 scripts/jobs/exp2a_f0_sweep.pbs
+qsub -N f0-sweep-devito-c128 -v SOLVER=devito,MODE=na,NCORES=128 scripts/jobs/exp2a_f0_sweep.pbs
+
+# exp2b: strong scaling (no args)
+qsub -N strong-scaling scripts/jobs/exp2b_strong_scaling.pbs
+
+# exp3a: dispersion/dissipation ppw sweep (no args)
+qsub -N dispersion scripts/jobs/exp3a_dispersion.pbs
+
+# exp3b: CFL sweep, one submission per model
+qsub -N cfl-sweep-homog -v WHICH=homog scripts/jobs/exp3b_cfl_sweep.pbs
+qsub -N cfl-sweep-sl -v WHICH=sl scripts/jobs/exp3b_cfl_sweep.pbs
+
+echo "All jobs submitted, check status with: qstat -u \$USER"

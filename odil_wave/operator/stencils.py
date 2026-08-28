@@ -1,3 +1,10 @@
+"""Hardcoded central finite difference stencil coefficients and offsets.
+
+`STENCIL_COEFFS_1ST`/`STENCIL_COEFFS_2ND` map accuracy order to
+(numerator coefficients, denominator coefficient). `STENCIL_OFFSETS` maps
+order to the diagonal offsets shared by both derivatives.
+"""
+
 # hardcoded central difference stencil coefficients (1st derivative)
 # e.g. order : ([numerator coeffs], denom coeff)
 STENCIL_COEFFS_1ST = {

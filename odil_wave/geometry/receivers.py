@@ -8,12 +8,44 @@ from .utils import build_weight_matrix, place_ellipse
 class Receivers:
     """Create an array of receivers on a Grid.
 
-    If mode == "custom", custom placement (in spatial coordinates) can be used
-    else if mode == "ring", receivers will be placed in an ellipse controlled by
-    the ring_centre and a_frac/ b_frac.
+    Two placement modes are suppoted: `"custom"` places receivers at
+    explicit spatial coordinates, `"ring"` places them on an ellipse
+    controlled by `ring_centre` and `a_frac`/ `b_frac`. Extraction
+    from a wavefield uses Kaiser-windowed sinc interpolation over an
+    `n_sinc` window in each spatial direction.
 
-    Receiver extraction is handled by sinc interpolation over an n_sinc window in
-    each spatial direction.
+    Parameters
+    ----------
+    grid : Grid
+        Grid the receivers are placed on.
+    mode : {"custom", "ring"}
+        Placement mode.
+    receiver_locs : tuple of (float, float), optional
+        Explicit (x, y) receiver coordinates, required if `mode` is "custom".
+    n_receivers : int, optional
+        Number of receivers to place on the ring, ignored if `mode` is "custom".
+    a_frac, b_frac : float, optional
+        Semi axis fractions of the ellipse for ring placement (mode="ring" only).
+    ring_centre : tuple of (float, float), optional
+        Centre of the receiver ring in spatial coordinates (mode="ring" only).
+    n_sinc : int, optional
+        Width of the sinc interpolation window used for extraction.
+
+    Attributes
+    ----------
+    recv_xy : np.ndarray
+        (n_receivers, 2) array of receiver coordinates.
+    recv_ij : np.ndarray
+        (n_receivers, 2) array of nearest-node grid indices, for display/indexing.
+    W : np.ndarray
+        (nx*ny, n_receivers) sinc interpolation weight matrix.
+
+    Raises
+    ------
+    ValueError
+        If `n_receivers` is not positive, `mode` is invalid, `receiver_locs`
+        is missing under "custom" mode, or any location/centre falls outside
+        the grid extent.
     """
 
     def __init__(
@@ -126,6 +158,21 @@ class Receivers:
         )  # (nx*ny, n_recv)
 
     def extract_observations(self, U: np.ndarray) -> np.ndarray:
-        """Project (NT, NX, NY) wavefield onto receivers -> (NT, n_recv)."""
+        """Extract wavefield observations at receiver locations.
+
+        Parameters
+        ----------
+        U : np.ndarray
+            Full wavefield array.
+
+        Returns
+        -------
+        np.ndarray
+            Array of traces extracted at receiver locations.
+
+        Notes
+        -----
+        Uses Kaiser-windowed sinc interpolation configured at construction.
+        """
         nt = U.shape[0]
         return U.reshape(nt, -1) @ self.W  # (nt, n_recv)

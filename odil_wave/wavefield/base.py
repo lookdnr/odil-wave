@@ -2,7 +2,9 @@ from dataclasses import dataclass, field
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
-from typing import Sequence
+from matplotlib.ticker import EngFormatter
+from matplotlib.colors import SymLogNorm
+from typing import Any
 
 from odil_wave.grid import Grid
 from odil_wave.models.base import VelocityModel
@@ -10,6 +12,21 @@ from odil_wave.models.base import VelocityModel
 
 @dataclass
 class Wavefield:
+    """Amplitude field on a fixed Grid.
+
+    Stores the (nt, nx*ny) wavefield as a flat (time, space) array, with
+    convenience accessors for the reshaped view via `U` and the fully
+    flattened `(nt*nx*ny,)` optimisation vector via `flat_data`.
+
+    Parameters
+    ----------
+    grid : Grid
+        Grid the field is discretised on.
+    init_amplitude : np.ndarray, optional
+        Initial amplitude values, reshaped to (nt, nx*ny);
+        zero-initialised if None.
+    """
+
     grid: Grid
     _amplitude: np.ndarray = field(init=False)
     init_amplitude: np.ndarray | None = None  # optionally initialise amplitude
@@ -27,6 +44,7 @@ class Wavefield:
 
     @property
     def U(self) -> np.ndarray:
+        """np.ndarray: (nt, nx*ny) amplitude field."""
         return self._amplitude
 
     @U.setter
@@ -37,7 +55,9 @@ class Wavefield:
 
     @property
     def flat_data(self) -> np.ndarray:
-        """Return flat parameter vector amp (nt*nx*ny) as np.ndarray"""
+        """np.ndarray: Flattened (nt*nx*ny,) amplitude vector, the
+        optimisation variable. Assigning a flat vector reshapes it back
+        into (nt, nx*ny); a mismatched size raises `ValueError`."""
         return self._amplitude.ravel()
 
     @flat_data.setter
@@ -55,6 +75,30 @@ class Wavefield:
             ) from e
 
     def show(self, idx: int, title="Wavefield", view: str = "xy"):
+        """Plot a 2D amplitude slice of the field.
+
+        Parameters
+        ----------
+        idx : int
+            Index along the sliced axis (time or one spatial axis,
+            depending on `view`).
+        title : str, optional
+            Figure title.
+        view : {"xy", "ty", "tx"}, optional
+            Which plane to slice: "xy" is a spatial snapshot at time
+            `idx`; "ty"/"tx" are space-time slices at a fixed spatial
+            index.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Figure containing the sliced amplitude plot.
+
+        Raises
+        ------
+        ValueError
+            If `idx` is outside the valid range for the selected `view`.
+        """
         assert view in [
             "xy",
             "ty",
@@ -104,8 +148,10 @@ class Wavefield:
         fps: int = 20,
         cmap: str = "seismic",
         title: str = "Wavefield history",
-        model: "VelocityModel | np.ndarray | None" = None,
-        model_levels: int | Sequence[float] = 1,
+        scaling: str | None = None,
+        db_floor=-60.0,  # dynamic range for scaling="dB"
+        model: VelocityModel | np.ndarray | None = None,
+        model_levels: int | float = 1,
         model_colour: str = "k",
         model_alpha: float = 0.35,
         model_linewidth: float = 0.9,
@@ -113,13 +159,57 @@ class Wavefield:
     ) -> str:
         """Render the amplitude field over all time steps to an animated GIF.
 
-        Optionally overlays dashed contours from a velocity model to give
-        structural context without competing with the wavefield colours.
+        Optionally overlays dashed contours from a velocity model to
+        give structural context without competing with the wavefield
+        colours.
 
-        model can be either:
-        - a VelocityModel instance (uses model.c), or
-        - a raw ndarray with shape (Nx, Ny) or (Ny, Nx).
+        Parameters
+        ----------
+        filename : str, optional
+            Output path for the GIF.
+        fps : int, optional
+            Frames per second.
+        cmap : str, optional
+            Colormap used when `scaling` is None or "SymLog".
+        title : str, optional
+            Figure title.
+        scaling : {"dB", "SymLog", None}, optional
+            Amplitude scaling: "dB" clips to `db_floor` dB below the
+            peak amplitude. "SymLog" uses a symmetric log colour norm.
+            None uses a given cmap.
+        db_floor : float, optional
+            Dynamic range floor in dB, used when `scaling` is "dB".
+        model : VelocityModel or np.ndarray, optional
+            Velocity model to overlay as contours: either a
+            `VelocityModel` (uses `model.c`) or a raw array.
+        model_levels : int or array-like, optional
+            Number of evenly spaced contour levels (if int), or explicit
+            level values.
+        model_colour : str, optional
+            Contour line colour.
+        model_alpha : float, optional
+            Contour line transparency.
+        model_linewidth : float, optional
+            Contour line width.
+        model_linestyle : str, optional
+            Contour line style.
+
+        Returns
+        -------
+        str
+            Path to the saved GIF (equal to `filename`).
+
+        Raises
+        ------
+        ValueError
+            If `scaling` is not one of None, "dB", "SymLog".
+        TypeError
+            If `model` is neither a `VelocityModel` nor an ndarray.
         """
+        if scaling not in [None, "dB", "SymLog"]:
+            raise ValueError(
+                f"arg `scaling` must be one of 'db', 'SymLog', got {scaling}"
+            )
 
         amp = self._amplitude  # (Nt, Nx, Ny)
         Nt = self.grid.nt
@@ -127,24 +217,37 @@ class Wavefield:
         (xmin, xmax), (ymin, ymax) = self.grid.extent
         t = self.grid.t
 
-        # fixed colour scale
-        vmax = float(np.abs(amp).max()) or 1.0
-        vmin = -vmax
+        u_max = float(np.abs(amp).max()) or 1.0
+        data = amp
+
+        # scaling == None...
+        plot_kwargs: dict[str, Any] = dict(cmap=cmap, vmin=-u_max, vmax=u_max)
+        cbar_label = "Amplitude"
+
+        if scaling == "dB":
+            data = 20.0 * np.log10(np.maximum(np.abs(amp), 1e-30) / u_max)
+            data = np.clip(data, db_floor, 0.0)  # 60db range
+            plot_kwargs = dict(cmap="magma", vmin=db_floor, vmax=0.0)
+            cbar_label = "dB rel. max"
+        elif scaling == "SymLog":
+            norm = SymLogNorm(linthresh=1e-3 * u_max, vmin=-u_max, vmax=u_max)
+            plot_kwargs = dict(cmap=cmap, norm=norm)
+            cbar_label = "Amplitude"
 
         fig, ax = plt.subplots(figsize=(6, 5))
         im = ax.imshow(
-            amp[0].reshape(Nx, Ny).T,
+            data[0].reshape(Nx, Ny).T,
             origin="lower",
             extent=(xmin, xmax, ymin, ymax),
-            cmap=cmap,
-            vmin=vmin,
-            vmax=vmax,
             animated=True,
+            **plot_kwargs,
         )
+
         ax.set_xlabel("x")
         ax.set_ylabel("y")
-        ttl = ax.set_title(f"{title}  (t = {t[0]:.3f} s)")
-        plt.colorbar(im, ax=ax, label="Amplitude", shrink=0.85)
+        fmt_t = EngFormatter(unit="s", places=2)
+        ttl = ax.set_title(f"{title}  (t = {fmt_t(t[0])})")
+        plt.colorbar(im, ax=ax, label=cbar_label, shrink=0.85)
 
         if model is not None:
             if isinstance(model, np.ndarray):
@@ -190,8 +293,8 @@ class Wavefield:
 
         # update for drawing frames
         def update(frame: int):
-            im.set_data(amp[frame].reshape(Nx, Ny).T)
-            ttl.set_text(f"{title}  (t = {t[frame]:.3f} s)")
+            im.set_data(data[frame].reshape(Nx, Ny).T)
+            ttl.set_text(f"{title} (t = {fmt_t(t[frame])})")
             return im, ttl
 
         anim = animation.FuncAnimation(

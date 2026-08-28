@@ -1,18 +1,27 @@
-from typing import Tuple
-
 import scipy.optimize as scopt
 import numpy as np
 
 from .base import Optimiser
 from odil_wave.loss import DiscreteLoss
 from odil_wave.wavefield import Wavefield
-from odil_wave.loss.utils import LossTape
+from odil_wave.metrics import SolveRecorder, SolveResult
 
 from .utils import create_u0
 
 
 class ScipyOptimiser(Optimiser):
-    """Wrapper around scipy.optimize.minimize"""
+    """Wrapper around `scipy.optimize.minimize` for wavefield optimisation.
+
+    Parameters
+    ----------
+    loss : DiscreteLoss
+        Loss function (and underlying `Problem`) being minimised.
+    method : str, optional
+        `scipy.optimize.minimize` method name, e.g. "L-BFGS-B", "Newton-CG".
+    **opts
+        Extra options forwarded to `scipy.optimize.minimize`
+        (e.g. maxiter, ftol).
+    """
 
     def __init__(self, loss: DiscreteLoss, method: str = "L-BFGS-B", **opts) -> None:
         super().__init__(loss)
@@ -26,35 +35,92 @@ class ScipyOptimiser(Optimiser):
         ftol=1e-8,
         gtol=1e-10,
         callback=None,
-    ) -> Tuple[Wavefield, LossTape]:
+    ) -> SolveResult:
+        """Minimise the loss via `scipy.optimize.minimize`.
+
+        The objective is rescaled by 1/L(u0) so it starts at unity,
+        which keeps `ftol`/`gtol` meaningful across problems of
+        different scale.
+
+        Parameters
+        ----------
+        u0 : Wavefield or np.ndarray, optional
+            Initial guess, zero initialised if None.
+        maxiter : int, optional
+            Maximum number of iterations.
+        ftol : float, optional
+            Loss-change convergence tolerance.
+        gtol : float, optional
+            Gradient norm convergence tolerance.
+        callback : callable, optional
+            Callback forwarded to `scipy.optimize.minimize`.
+
+        Returns
+        -------
+        SolveResult
+            Solution wavefield and recorded solve history.
+        """
 
         self.opts.update(maxiter=maxiter, ftol=ftol, gtol=gtol)
 
         grid = self.loss.problem.wavefield.grid
-        N = grid.nt * grid.nx * grid.ny
+        nt, nx, ny = grid.nt, grid.nx, grid.ny
+        N = nt * nx * ny
+        s = self.loss.problem.sources[:, 0]
+
+        meta = {
+            "method": self.method,
+            "maxiter": maxiter,
+            "ftol": ftol,
+            "gtol": gtol,
+            "nt": nt,
+            "nx": nx,
+            "ny": ny,
+            "norm_s": np.linalg.norm(s),
+        }
+        rec = SolveRecorder(meta)
+        self.loss.callback = rec
 
         u0 = create_u0(u0, N)
 
+        # scale objective to unity
+        L0, _ = self.loss.evaluate(u0)
+        scale = 1.0 / L0 if L0 > 0 else 1.0
+
+        def scaled_obj(x):
+            """Normalised objective"""
+            L, g = self.loss.evaluate(x)
+            return scale * L, scale * g
+
         result = scopt.minimize(
-            fun=self.loss.evaluate,
+            fun=scaled_obj,
             x0=u0,
             method=self.method,
             jac=True,  # analytic gradient via rmatvec in ForwardLoss._grad
             callback=callback,
             options=self.opts,
         )
-        self.loss.callback.result = result
 
         if not result.success:
             print(f"Warning: optimisation did not converge: {result.message}")
 
         wf = Wavefield(grid=grid)
         wf.flat_data = result.x
-        return wf, self.loss.callback
+        return rec.finalise(
+            wf, nit=result.nit, success=result.success, message=str(result.message)
+        )
 
 
 class LBFGSB(ScipyOptimiser):
-    """Subclass for L-BFGS-B"""
+    """`ScipyOptimiser` preconfigured for the L-BFGS-B method.
+
+    Parameters
+    ----------
+    loss : DiscreteLoss
+        Loss function (and underlying `Problem`) being minimised.
+    **opts
+        Extra options forwarded to `scipy.optimize.minimize`.
+    """
 
     def __init__(self, loss: DiscreteLoss, **opts) -> None:
         super().__init__(loss, method="L-BFGS-B", **opts)

@@ -6,7 +6,28 @@ from odil_wave.geometry import Sources
 
 @dataclass
 class Problem:
-    """Configuration for the loss function."""
+    """Configuration for the loss function.
+
+    Bundles the discrete wave equation with an acquisition geometry (or
+    a bare `Sources` object) and precomputes the flattened source matrix
+    used by `DiscreteLoss` subclasses, with initial condition rows zeroed.
+
+    Parameters
+    ----------
+    wave_eq : WaveEquation
+        Discrete wave equation operator.
+    geometry : AcquisitionGeometry or Sources
+        Acquisition geometry (or just sources) supplying the source matrix.
+
+    Attributes
+    ----------
+    Nx, Ny, Nt : int
+        Spatial and temporal grid dimensions, taken from
+        `wave_eq.wavefield.grid`.
+    sources : np.ndarray
+        (nt*nx*ny, n_shots) source matrix, with the first two time rows
+        zeroed to respect the initial conditions u(0) = u_t(0) = 0.
+    """
 
     wave_eq: WaveEquation
     geometry: AcquisitionGeometry | Sources
@@ -26,4 +47,5 @@ class Problem:
 
     @property
     def wavefield(self) -> Wavefield:
+        """Wavefield: The wavefield attached to `wave_eq`."""
         return self.wave_eq.wavefield

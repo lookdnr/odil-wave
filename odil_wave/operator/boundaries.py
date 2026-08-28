@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
+from typing import Tuple
 import numpy as np
 import scipy.sparse as sp
+from math import cos, radians
 
 from odil_wave.wavefield import Wavefield
 from odil_wave.models.base import VelocityModel
@@ -26,10 +28,37 @@ def _first_diff_spatial(ord: int, n: int, h: float, ghost_width: int) -> sp.csr_
 
 @dataclass
 class HigdonBC:
-    """Higdon 2nd order ABC rows for one boundary edge.
+    """Higdon 2nd-order absorbing boundary condition rows for one edge.
 
-    Enforces: u_tt + sign * 2 * u_nt + c_bdry^2 * u_nn = 0
-    where n is the outward normal direction.
+    Enforces:
+
+        (cos(theta1)dt + cdn)(cos(theta2)dt + cdn)u
+            = a1a2 u_tt + (a1+a2) c u_nt + c^2 u_nn.
+
+    where `n` is the outward normal direction of this boundary and
+    `a_i = cos(theta_i)`.
+
+    Parameters
+    ----------
+    wavefield : Wavefield
+        Wavefield the boundary condition is built for.
+    model : VelocityModel
+        Velocity model, used for the local wavespeed at boundary nodes.
+    space_order : int
+        Finite difference order for the spatial normal derivatives.
+    time_order : int
+        Finite difference order for the time derivatives.
+    boundary : {"left", "right", "bottom", "top"}
+        Which domain edge this instance represents.
+    angles : tuple of (float, float), optional
+        Absorption angles theta1, theta2 [deg] defining the Higdon operator.
+
+    Attributes
+    ----------
+    bdry_cols : np.ndarray
+        Flattened spatial indices of the nodes on this boundary.
+    Dn, Dnn : scipy.sparse.csr_matrix
+        First and second normal derivative operators at the boundary nodes.
     """
 
     wavefield: Wavefield
@@ -37,6 +66,11 @@ class HigdonBC:
     space_order: int
     time_order: int
     boundary: str  # "left" | "right" | "bottom" | "top"
+    angles: Tuple[float, float] = (0.0, 60.0)  # absorption angles in deg
+
+    # coefficients a_i = cos(theta_i)
+    a1: float = field(init=False)
+    a2: float = field(init=False)
 
     bdry_cols: np.ndarray = field(init=False)
     c_bdry: np.ndarray = field(init=False)
@@ -52,6 +86,9 @@ class HigdonBC:
     Dnn: sp.csr_matrix = field(init=False)  # (n_bdry, nx*ny) second normal deriv
 
     def __post_init__(self):
+        self.a1 = cos(radians(self.angles[0]))
+        self.a2 = cos(radians(self.angles[1]))
+
         grid = self.wavefield.grid
         nx, ny = grid.nx, grid.ny
         g = self.space_order // 2
@@ -108,28 +145,59 @@ class HigdonBC:
         self.c_bdry = self.model.c.ravel()[self.bdry_cols]  # (n_bdry,)
 
     def apply(self, U: np.ndarray) -> np.ndarray:
-        """Higdon residual at this boundary. U: (nt, nx*ny) -> (nt, n_bdry)"""
+        """Apply the Higdon condition at this boundary.
+
+        Parameters
+        ----------
+        U : np.ndarray
+            (nt, nx*ny) full wavefield array.
+
+        Returns
+        -------
+        np.ndarray
+            (nt, n_bdry) Higdon boundary residual.
+        """
 
         utt = self.Dtt @ U[:, self.bdry_cols]  # (nt, n_bdry)
         unn = U @ self.Dnn.T  # (nt, n_bdry)
         unt = self.Dt @ (U @ self.Dn.T)  # (nt, n_bdry)
 
-        # u_tt + sign * 2 * u_nt + c_bdry^2 * u_nn
+        # a1a2 * u_tt + sign * (a1+a2) * u_nt + c_bdry^2 * u_nn
         # scaled by dt**2 for consistency
         return self.dt2 * (
-            utt
-            + self.sign * 2.0 * unt * self.c_bdry  # broadcast over time axis
+            self.a1 * self.a2 * utt
+            + self.sign
+            * (self.a1 + self.a2)
+            * unt
+            * self.c_bdry  # broadcast over time axis
             + unn * self.c_bdry**2
         )
 
     def apply_transpose(self, R: np.ndarray) -> np.ndarray:
-        """Add Higdon adjoint to ATv. R: is the (nt, nx*ny) full residual."""
+        """Add the Higdon adjoint contribution to A^T v.
+
+        Parameters
+        ----------
+        R : np.ndarray
+            (nt, nx*ny) full residual array.
+
+        Returns
+        -------
+        np.ndarray
+            (nt, nx*ny) adjoint contribution to add to A^T v.
+        """
 
         Rb = R[:, self.bdry_cols]  # boundary residual (nt, n_bdry)
 
         ATv = np.zeros_like(R)
-        ATv[:, self.bdry_cols] += self.dt2 * (self.Dtt.T @ Rb)
-        ATv += self.dt2 * self.sign * 2.0 * (self.Dt.T @ (Rb * self.c_bdry)) @ self.Dn
+        ATv[:, self.bdry_cols] += self.dt2 * self.a1 * self.a2 * (self.Dtt.T @ Rb)
+        ATv += (
+            self.dt2
+            * self.sign
+            * (self.a1 + self.a2)
+            * (self.Dt.T @ (Rb * self.c_bdry))
+            @ self.Dn
+        )
         ATv += self.dt2 * (Rb * self.c_bdry**2) @ self.Dnn
 
         return ATv

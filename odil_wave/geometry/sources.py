@@ -5,6 +5,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import EngFormatter
+import matplotlib.axes
 
 from odil_wave.grid import Grid
 from odil_wave.models.base import VelocityModel
@@ -15,15 +16,49 @@ from .utils import place_ellipse, build_weight_matrix
 class Sources:
     """Create an array of Ricker-in-time sources.
 
-    If mode == "custom", custom placement (in spatial coordinates) can be used
-    else if mode == "ring", sources will be placed in an ellipse controlled by
-    the ring_centre and a_frac/ b_frac.
+    Two placement modes are supported: ``"custom"`` places sources at
+    explicit spatial coordinates; ``"ring"`` places them on an ellipse
+    controlled by `ring_centre` and `a_frac`/`b_frac`. Injection into the
+    wavefield uses Kaiser-windowed sinc interpolation over an `n_sinc`
+    window in each spatial direction, and each source emits a Ricker
+    wavelet in time.
 
-    Source injection is handled by sinc interpolation over an n_sinc window in
-    each spatial direction.
+    Parameters
+    ----------
+    grid : Grid
+        Grid the sources are placed on.
+    n_sources : int, optional
+        Number of sources to place on the ring, ignored if `mode` is "custom".
+    f0 : float, optional
+        Peak frequency of the Ricker wavelet [Hz].
+    t0 : float, optional
+        Causal delay of the Ricker wavelet [s], defaults to 1/f0 if None.
+    mode : {"custom", "ring"}
+        Placement mode.
+    source_locs : tuple of (float, float), optional
+        Explicit (x, y) source coordinates, required if `mode` is "custom".
+    a_frac, b_frac : float, optional
+        Semi axis fractions of the ellipse for ring placement (mode="ring" only).
+    ring_centre : tuple of (float, float), optional
+        Centre of the source ring in spatial coordinates (mode="ring" only).
+    n_sinc : int, optional
+        Width of the sinc interpolation window used for injection.
 
-    `n_receivers` transducer positions record every shot. A subset
-    (`n_sources`, evenly spaced) act as shot sources.
+    Attributes
+    ----------
+    src_xy : np.ndarray
+        (n_sources, 2) array of source coordinates.
+    src_ij : np.ndarray
+        (n_sources, 2) array of nearest node grid indices, for display/indexing.
+    W : np.ndarray
+        (nx*ny, n_sources) sinc injection weight matrix.
+
+    Raises
+    ------
+    ValueError
+        If `n_sources` is not positive, `mode` is invalid, `source_locs` is
+        missing under "custom" mode, `f0` is not positive, or any location/
+        centre falls outside the grid extent.
     """
 
     def __init__(
@@ -32,14 +67,12 @@ class Sources:
         n_sources: int | None = None,
         f0: float = 4.0,
         t0: Optional[float] = None,
-        mode: str = "custom",  # default to custom placement
-        source_locs: (
-            Tuple[Tuple[float, float], ...] | None
-        ) = None,  # spatial source locs
+        mode: str = "custom",
+        source_locs: Tuple[Tuple[float, float], ...] | None = None,
         a_frac: float = 0.55,
         b_frac: float = 0.70,
         ring_centre: Tuple[float, float] = (0.0, 0.0),
-        n_sinc: int = 8,  # sinc window half-width (nodes per dimension)
+        n_sinc: int = 8,
     ):
         # inherit geometry from grid
         self.grid = grid
@@ -144,21 +177,64 @@ class Sources:
         )  # (nx*ny, n_sources)
 
     def ricker(self, t: np.ndarray) -> np.ndarray:
+        """Compute value of the Ricker wavelet at the given times.
+
+        Parameters
+        ----------
+        t : np.ndarray
+            Times at which to evaluate the wavelet [s].
+
+        Returns
+        -------
+        np.ndarray
+            Ricker wavelet amplitude, same shape as `t`.
+        """
         arg = (math.pi * self.f0 * (t - self.t0)) ** 2
         return (1.0 - 2.0 * arg) * np.exp(-arg)
 
     def src_position(self, src_idx: int) -> Tuple[float, float]:
+        """Return the (x, y) spatial coordinates of a source.
+
+        Parameters
+        ----------
+        src_idx : int
+            Index of the source.
+
+        Returns
+        -------
+        tuple of float
+            (x, y) coordinates of the source.
+        """
         return float(self.src_xy[src_idx, 0]), float(self.src_xy[src_idx, 1])
 
     def source_field(self, src_idx: int) -> np.ndarray:
-        """(NT, NX, NY) sinc-injected point source field for shot src_idx."""
+        """Compute the sinc-injected point source field for one shot.
+
+        Parameters
+        ----------
+        src_idx : int
+            Index of the source.
+
+        Returns
+        -------
+        np.ndarray
+            (nt, nx, ny) source field: the outer product of the Ricker
+            wavelet in time and the sinc injection weights in space.
+        """
         w = self.W[:, src_idx].reshape(self.grid.shape)  # (nx, ny)
         temporal = self.ricker(self.grid.t)  # (nt,)
         # broadcast (nt, 1, 1) * (1, nx, ny) => (nt, nx, ny)
         return temporal.reshape(-1, 1, 1) * w.reshape(1, *self.grid.shape)
 
     def source_matrix(self) -> np.ndarray:
-        """Precompute (nt*nx*ny, n_sources) source matrix for all shots."""
+        """Precompute the source matrix for all shots.
+
+        Returns
+        -------
+        np.ndarray
+            (nt*nx*ny, n_sources) matrix; column s is the flattened
+            space time source field for shot s.
+        """
         f = self.ricker(self.grid.t)  # (nt,)
 
         # einsum multiples the source f and sinc weights matrix W and creates a new axis
@@ -166,8 +242,19 @@ class Sources:
         # output: (nt, nx*ny) -> (nt*ny*ny, n_sources) (expected format for solve)
         return np.einsum("t,ns->tns", f, self.W).reshape(-1, self.n_sources)
 
-    def plot_source_pulse(self, ax=None):
-        """Plot the Ricker temporal waveform R(t) of the source."""
+    def plot_source_pulse(self, ax: matplotlib.axes.Axes | None = None):
+        """Plot the Ricker wavelet in time.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw on, a new figure is created if None.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The axes the wavelet was plotted on.
+        """
         if ax is None:
             _, ax = plt.subplots(figsize=(5.5, 3.5))
         r = self.ricker(self.grid.t)
@@ -181,10 +268,29 @@ class Sources:
         ax.grid(alpha=0.3)
         return ax
 
-    def plot_source_field(self, src_idx: int = 0, t_idx: Optional[int] = None, ax=None):
-        """Plot a spatial snapshot of the source field s(x, y, t_idx).
+    def plot_source_field(
+        self,
+        src_idx: int = 0,
+        t_idx: Optional[int] = None,
+        ax: matplotlib.axes.Axes | None = None,
+    ):
+        """Plot a spatial snapshot of the source field.
 
         Defaults to the peak time of the Ricker pulse.
+
+        Parameters
+        ----------
+        src_idx : int, optional
+            Index of the source to plot.
+        t_idx : int, optional
+            Time index to snapshot, defaults to the pulse's peak time if None.
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw on; a new figure is created if None.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The axes the field snapshot was plotted on.
         """
         if ax is None:
             _, ax = plt.subplots(figsize=(5.5, 4.5))
@@ -209,7 +315,20 @@ class Sources:
         return ax
 
     def show(self, velocity_model: VelocityModel, ax=None):
-        """Plot the source geometry"""
+        """Plot the source geometry over a velocity model.
+
+        Parameters
+        ----------
+        velocity_model : VelocityModel
+            Velocity model used as the plot's colour field.
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw on, a new figure is created if None.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The axes the geometry was plotted on.
+        """
         if ax is None:
             _, ax = plt.subplots(figsize=(5.5, 5))
         velocity_model.show(ax=ax, title=f"Sources on {velocity_model.name}")
