@@ -62,6 +62,9 @@ I would like to thank also the other students in the research group: Milica Peji
 I acknowledge my use of AI tools, including Claude (\url{https://claude.ai/}) and Perplexity (\url{https://www.perplexity.ai/}), throughout the IRP period. Perplexity was used for exploring the literature around my topic of research, and Claude for programming guidance, including architecting the software package, debugging Python code, and prototyping plots for figures. I can declare however that the work submitted is my own, and reflects my own understanding of the topics addressed in this work. 
 
 \newpage
+\tableofcontents
+
+\newpage
 % Introduction section
 \section{Introduction}
 \label{sect:intro}
@@ -118,7 +121,7 @@ for time $t$ and the spatial coordinates $(x,y)$. $s = s(t)$ is some time depend
 
 where $f_0$ is the peak frequency and $t_0$ is the time shift that centres the pulse. This choice of forcing wavelet is arbitrary and does not change the validity of the results.
 
-\subsubsection{Initial and Boundary Conditions}
+\subsection{Initial and Boundary Conditions}
 \label{subsect:conditions}
 
 The pressure field is assumed to be initially at rest, corresponding to zero initial pressure and zero initial particle velocity. As such, the following initial conditions are imposed
@@ -559,6 +562,9 @@ In this work, a methodology for solving the forced acoustic wave equation in two
 \newpage
 %TC:ignore
 \appendix
+\phantomsection
+\addcontentsline{toc}{section}{Appendices}
+\addtocontents{toc}{\protect\setcounter{tocdepth}{-1}}
 \section*{Appendix}
 
 \section{Expansion of the Higdon Boundary Condition}
