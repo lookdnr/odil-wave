@@ -298,7 +298,7 @@ At the $k$-th iteration of the Gauss-Newton method, the solution field is update
     \label{eq:gn-update}
 \end{equation} 
 
-For nonlinear problems, the update variable $\delta u$ is obtained by linearising the residual around the current iterate and finding the solution to the least squares problem that results through the normal equations. In Appendix \ref{app:gn}, it is shown that, since the residual is linear in $\mathbf{u}$, the normal equations reduce to $A \delta u = -r$. 
+For nonlinear problems, the update variable $\delta u$ is obtained by linearising the residual around the current iterate and finding the solution to the least squares problem that results through the normal equations. In Appendix \ref{app:gn}, it is shown that, since the residual is linear in $\mathbf{u}$, the normal equations reduce to $A \delta \mathbf{u} = -\mathbf{r}$. 
 
 The Gauss-Newton method converges in a single iteration for linear problems \cite{alfordAccuracyFinitedifferenceModeling1974}. Substituting Equations \ref{eq:residual} and \ref{eq:gn-update} into the reduced normal equations yields
 
