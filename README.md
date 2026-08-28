@@ -1,6 +1,8 @@
 # ODIL-wave: a tool for solving the wave equation by Optimising a Discrete Loss (ODIL)
 
 ![Tests](https://github.com/ese-ada-lovelace-2025/irp-ld2022/actions/workflows/test-package.yml/badge.svg?branch=main)
+![Build Report](https://github.com/ese-ada-lovelace-2025/irp-ld2022/actions/workflows/build-report.yml/badge.svg?branch=main)
+
 
 ## Overview
 
