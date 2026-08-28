@@ -3,6 +3,15 @@
 ![Tests](https://github.com/ese-ada-lovelace-2025/irp-ld2022/actions/workflows/test-package.yml/badge.svg?branch=main)
 ![Build Report](https://github.com/ese-ada-lovelace-2025/irp-ld2022/actions/workflows/build-report.yml/badge.svg?branch=main)
 
+## Table of contents
+
+- [Overview](#overview)
+- [Getting started](#getting-started)
+- [Repository structure](#repository-structure)
+- [Examples](#examples)
+- [Documentation](#documentation)
+- [Tests](#tests)
+- [Reproducing the report](#reproducing-the-report)
 
 ## Overview
 
