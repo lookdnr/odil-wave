@@ -52,10 +52,10 @@
 \section*{Abstract}
 \label{sect:abstract}
 
-The Optimising a Discrete Loss (ODIL) framework has been demonstrated on the 1D wave equation and shown to outperform Physics Informed Neural Networks, but its extension to higher dimensional problems and its comparison against conventional numerical solvers has not been examined. This work solves the forced acoustic wave equation in two dimensions using ODIL, and compares the results to finite-difference-based time stepping on accuracy, computational performance, and the treatment of known sources of error in wave modelling. The ODIL solution matches the accuracy and dispersive characteristics of time stepping, and destabilises beyond the Courant-Friedrichs-Lewy limit, though by in a different manner to time stepping that is postulated to result from propagation of a dominant unstable mode. ODIL's time and space complexities are less optimal than those of time stepping, but the preconditioner used is embarrassingly parallel, and exploiting this closes much of the performance gap. To support this work, a modular, extensible Python library was developed, which is benchmarked against analytical solutions and dispersion relations, and against Devito, a highly optimised finite differencing engine.
+The Optimising a Discrete Loss (ODIL) framework has been demonstrated on the 1D wave equation and shown to outperform Physics Informed Neural Networks, but its extension to higher dimensional problems and its comparison against conventional numerical solvers has not been examined. This work solves the forced acoustic wave equation in two dimensions using ODIL, and compares the results to finite-difference-based time stepping on accuracy, computational performance, and the treatment of known sources of error in wave modelling. The ODIL solution matches the accuracy and dispersive characteristics of time stepping, and destabilises beyond the Courant-Friedrichs-Lewy limit, though in a different manner to time stepping that is postulated to result from propagation of a dominant unstable mode. ODIL's time and space complexities are less optimal than those of time stepping, but the preconditioner used is embarrassingly parallel, and exploiting this closes much of the performance gap. To support this work, a modular, extensible Python library was developed, which is benchmarked against analytical solutions and dispersion relations, and against Devito, a highly optimised finite differencing engine.
 
 \section*{Acknowledgements}
-I would like to thank my supervisors, Dr. Lluis Gausch, Dr. Ben Moseley, and Dr. Carlos Cueto, for offering their time, support, and expertise to me during the IRP period. I feel very fortunate to have been able to contribute to the excellent work going on at Sonalis. 
+I would like to thank my supervisors, Dr. Lluis Guasch, Dr. Ben Moseley, and Dr. Carlos Cueto, for offering their time, support, and expertise to me during the IRP period. I feel very fortunate to have been able to contribute to the excellent work going on at Sonalis. 
 
 I would like to thank also the other students in the research group: Milica Pejic and Anton Belov, who contributed to the early development of my Python package, and provided many a conversation that helped me to navigate this challenging research space.
 
@@ -68,7 +68,7 @@ I acknowledge my use of AI tools, including Claude (\url{https://claude.ai/}) an
 
 While an analytical solution to the wave equation exists under certain assumptions, practical problems require the flexibility to represent complex geometries, boundary conditions, and forcing terms, so the wave equation is instead solved numerically by approximating it with a discrete form. The finite difference \cite{roseFiniteDifferenceSchemes1964,courantPartialDifferenceEquations1967} and finite element \cite{turnerStiffnessDeflectionAnalysis1956} methods are the standard approaches, producing systems of equations that are solved either iteratively \cite{ipsenIdeaKrylovMethods1998} or directly \cite{haoNumericalMethodsSolving2015}. Both incur a computational cost that can be substantial, owing to the often ill-conditioned and sparse nature of the discretised systems \cite{pranjalOptimalIterativeSolvers2018,kirbySolverCompositionPDE2018,gillmanDirectSolver$ON$2014}.
 
-Beyond cost, finite difference schemes for the wave equation carry their own characteristic errors. Discretisation introduces numerical dispersion and dissipation \cite{marshallNumericalDispersionDissipation2011}, causing waves to propagate at an incorrect speed, and solving the wave equation by time stepping can cause these errors accumulate both with propagation distance and time \cite{gustafssonWellposednessStability2008}. Suppressing them typically demands finer discretisation \cite{haoNumericalMethodsSolving2015}, which drives the computational cost up further. High order methods \cite{cohenBasicEquations2002}, dispersion reduction schemes \cite{finkelsteinFiniteDifferenceTime2007,anUniformDispersionReduction2017}, and spectral methods \cite{bernardiSpectralMethods1997} each address one side of this trade off, but the tension between accuracy and cost persists.
+Beyond cost, finite difference schemes for the wave equation carry their own characteristic errors. Discretisation introduces numerical dispersion and dissipation \cite{marshallNumericalDispersionDissipation2011}, causing waves to propagate at an incorrect speed, and solving the wave equation by time stepping can cause these errors to accumulate with both propagation distance and time \cite{gustafssonWellposednessStability2008}. Suppressing them typically demands finer discretisation \cite{haoNumericalMethodsSolving2015}, which drives the computational cost up further. High order methods \cite{cohenBasicEquations2002}, dispersion reduction schemes \cite{finkelsteinFiniteDifferenceTime2007,anUniformDispersionReduction2017}, and spectral methods \cite{bernardiSpectralMethods1997} each address one side of this trade off, but the tension between accuracy and cost persists.
 
 An alternative approach to finite difference based time stepping (FDTD) is to reformulate the problem as an optimisation problem. Optimising a Discrete Loss (ODIL) \cite{karnakovSolvingInverseProblems2024a} can approximate the solution to a PDE by means of minimising a functional that encapsulates the discretised PDE and relevant constraints. In the functional, the PDE is expressed by a residual that is a function of the field of interest, which is optimised directly on the discretising grid. Thus, if a minimiser drives the loss to zero, it is the solution field which satisfies the discretised PDE and boundary conditions exactly. Unlike FDTD, ODIL need not enforce the PDE exactly at each timestep, and so its accuracy and stability properties may differ.
 
@@ -161,7 +161,7 @@ In Appendix \ref{app:hig_exp}, it is shown that Equation \eqref{eq:higdon} can b
     \label{eq:higdon_expanded}
 \end{equation}
 
-where mixed partial derivatives have been combined using the commutativity of partial differentiation. This form is used because it is more simple to discretise, since each derivative can be evaluated independently according to predefined finite difference operators.
+where mixed partial derivatives have been combined using the commutativity of partial differentiation. This form is used because it is simpler to discretise, since each derivative can be evaluated independently according to predefined finite difference operators.
 
 \section{Finite Difference Discretisation}
 \label{subsect:discretisation}
@@ -211,7 +211,7 @@ The pressure field is the optimisation variable in which all time levels are rep
 
 Here, the spatial indices are flattened into a single spatial degree of freedom index where $u^n \in \mathbb{R}^{N_x N_y}$ is the pressure field across space at the $n$-th time level. Correspondingly, the differential operators are naturally represented as matrices acting on the global vector.
 
-The temporal second derivative operator is defined as $D_{tt} \in \mathbb{R}^{N_t \times N_t}$ and the second spatial derivative operators $D_{xx} \in \mathbb{R}^{N_x \times N_x}$ and $D_{yy} \in \mathbb{R}^{N_y \times N_y}$. In these matrices, rows corresponds to a point in space/time, whose nonzero entries identify the neighbouring points coupled into the stencil at that location. In the absence of boundary modifications, the finite difference derivative matrices have a near-Toeplitz structure, illustrated in Figure \ref{fig:sparsity}.
+The temporal second derivative operator is defined as $D_{tt} \in \mathbb{R}^{N_t \times N_t}$ and the second spatial derivative operators $D_{xx} \in \mathbb{R}^{N_x \times N_x}$ and $D_{yy} \in \mathbb{R}^{N_y \times N_y}$. In these matrices, rows correspond to a point in space/time, whose nonzero entries identify the neighbouring points coupled into the stencil at that location. In the absence of boundary modifications, the finite difference derivative matrices have a near-Toeplitz structure, illustrated in Figure \ref{fig:sparsity}.
 
 \ifshowfigs
 \begin{figure}[!ht]
@@ -232,7 +232,7 @@ The discrete Laplacian operator $L_{xy}\in\mathbb{R}^{N_xN_y\times N_xN_y}$ is c
     I_x\otimes D_{yy},
 \end{equation}
 
-where $I_x \in \mathbb{R}^{Nx\times Nx}$ and $I_y \in \mathbb{R}^{Ny\times Ny}$ are identity matrices.
+where $I_x \in \mathbb{R}^{N_x\times N_x}$ and $I_y \in \mathbb{R}^{Ny\times Ny}$ are identity matrices.
 
 The global wave equation operator $A \in \mathbb{R}^{N_t N_x N_y \times N_t N_x N_y}$ is formed similarly by lifting the temporal operator to act across space, and the Laplacian operator to act across time, through Kronecker products:
 
@@ -241,7 +241,7 @@ The global wave equation operator $A \in \mathbb{R}^{N_t N_x N_y \times N_t N_x 
     \label{eq:A_op}
 \end{equation}
 
-where $I_t \in \mathbb{R}^{N_t \times N_t}$ and $I_{xy} \in \mathbb{R}^{N_x \times N_y}$ are the identity matrices and $C \in \mathbb{R}^{N_x N_y \times N_x N_y}$ is a diagonal matrix containing the wave speed values on the computational grid. In the absence of boundary and initial conditions, $A$ has a Block Toeplitz with Toeplitz Blocks (BTTB) structure.
+where $I_t \in \mathbb{R}^{N_t \times N_t}$ and $I_{xy} \in \mathbb{R}^{N_x N_y \times N_x N_y}$ are the identity matrices and $C \in \mathbb{R}^{N_x N_y \times N_x N_y}$ is a diagonal matrix containing the wave speed values on the computational grid. In the absence of boundary and initial conditions, $A$ has a Block Toeplitz with Toeplitz Blocks (BTTB) structure.
 
 Under this discretisation, the full system can be expressed as a linear system,
 
@@ -255,7 +255,7 @@ In ODIL, the optimisation variable comprises the entire discrete space-time pres
 \subsection{Discretisation of the Initial and Boundary Conditions}
 \label{subsubsect:disc_conditions}
 
-Initial and boundary conditions are incorporated by modifying the corresponding rows of the discrete operator, such that the complete system represents both the PDE residual and constraints within a the same formulation. The initial pressure field is imposed directly by setting the solution at the initial time level to zero, and the zero initial velocity condition is enforced using a forward difference approximation of the first temporal derivative at $t=0$. At the computational boundaries, a discrete approximation of the absorbing boundary condition is enforced by central difference approximations.
+Initial and boundary conditions are incorporated by modifying the corresponding rows of the discrete operator, such that the complete system represents both the PDE residual and constraints within the same formulation. The initial pressure field is imposed directly by setting the solution at the initial time level to zero, and the zero initial velocity condition is enforced using a forward difference approximation of the first temporal derivative at $t=0$. At the computational boundaries, a discrete approximation of the absorbing boundary condition is enforced by central difference approximations.
 
 Since a central difference stencil of order $2g$ requires $g$ nodes either side of the evaluation point, the domain is extended by $g$ ghost nodes on each side to avoid stencil truncation. Ghost values are populated via Lagrange extrapolation of values on the interior of the domain and are folded into a linear map $G$ that is applied to the space-time vector. More detail on the construction of this linear map and incorporation of boundary conditions is provided in Appendix \ref{app:higdon_mat}.
 
@@ -268,7 +268,7 @@ Source injection in the discrete domain is handled using Hicks' method of Kaiser
 ODIL solves an optimisation problem that seeks to minimise an objective function that enforces both the discretised PDE and its conditions. The discrete field is the optimisation variable, and the solution is obtained by minimising a loss function constructed from the residual of the discretised governing equations. For the two dimensional wave equation, the discrete residual can be written
 
 \begin{equation}
-    r(\mathbf{u}) = A \bf u - s.
+    r(\mathbf{u}) = A \mathbf{u} - \mathbf{s}.
     \label{eq:residual}
 \end{equation}
 
@@ -282,10 +282,10 @@ The objective function $\mathcal{L}$ is the L2 norm of the discrete residual,
 It is written such that the residual tends to zero when the discrete wave equation is satisfied. The forward problem is therefore the unconstrained optimisation problem
 
 \begin{equation}
-    \min_{\mathbf{u}}\mathcal{L}(\bf u).
+    \min_{\mathbf{u}}\mathcal{L}(\mathbf{u}).
 \end{equation}
 
-Then it follows that the minimiser is a discrete pressure field $\bf u$ for which the residual is minimised, implying satisfaction of the discrete wave equation.
+Then it follows that the minimiser is a discrete pressure field $\mathbf{u}$ for which the residual is minimised, implying satisfaction of the discrete wave equation.
 
 \subsection{Solving the ODIL problem}
 
@@ -300,17 +300,17 @@ At the $k$-th iteration of the Gauss-Newton method, the solution field is update
 
 For nonlinear problems, the update variable $\delta u$ is obtained by linearising the residual around the current iterate and finding the solution to the least squares problem that results through the normal equations. In Appendix \ref{app:gn}, it is shown that, since the residual is linear in $\mathbf{u}$, the normal equations reduce to $A \delta \mathbf{u} = -\mathbf{r}$. 
 
-The Gauss-Newton method converges in a single iteration for linear problems \cite{alfordAccuracyFinitedifferenceModeling1974}. Substituting Equations \ref{eq:residual} and \ref{eq:gn-update} into the reduced normal equations yields
+The Gauss-Newton method converges in a single iteration for linear problems \cite{greenbaum3ErrorBounds1997}. Substituting Equations \ref{eq:residual} and \ref{eq:gn-update} into the reduced normal equations yields
 
 \begin{align}
     A(\mathbf{u}_{k+1} - \mathbf{u}_k) &= -(A\mathbf{u}_k - \mathbf{s})\\
     A\mathbf{u}_{k+1} - A\mathbf{u}_k &= -A\mathbf{u}_k + \mathbf{s}\\
-    \Rightarrow A\mathbf{u}_{k+1} &= s
+    \Rightarrow A\mathbf{u}_{k+1} &= \mathbf{s}
 \end{align}
 
 Therefore, for the linear wave equation, applying the Gauss Newton update is equivalent to solving the discretised linear system directly. The distinction is primarily one of formulation: instead of solving directly, the problem is posed as a least squares optimisation problem, with the Gauss-Newton method providing the linear solve.
 
-GMRES is used to solve for $\delta \mathbf{u}$. GMRES \cite{gmres} requires only matrix vector products, avoiding costly matrix factorisations and aligning with the aforementioned matrix free approach. In addition, GMRES solves $A \delta \mathbf{u} = -r$ directly, which avoids amplifying any ill-conditioning in the system , which would be the case for a least squares solve which introduces a transpose term that has the effect of squaring the conditioning number. 
+GMRES is used to solve for $\delta \mathbf{u}$. GMRES \cite{gmres} requires only matrix vector products, avoiding costly matrix factorisations and aligning with the aforementioned matrix free approach. In addition, GMRES solves $A \delta \mathbf{u} = -\mathbf{r}$ directly, which avoids amplifying any ill-conditioning in the system , which would be the case for a least squares solve which introduces a transpose term that has the effect of squaring the conditioning number. 
 
 The GMRES algorithm displays poor convergence properties when the eigenvalues of the system are loosely clustered \cite{trefethenChapterIIIConditioning1997}. The all-at-once wave equation operator, prior to preconditioning, is strongly ill-conditioned, with poor clustering of its eigenvalues (Figure \ref{fig:svd}). Thus, there is motivation to precondition the linear system.
 
@@ -321,7 +321,7 @@ Karnakov et al. \cite{karnakovSolvingInverseProblems2024a} suggest that ODIL can
 
 ParaDiag-II approximates the temporal Toeplitz operator by a circulant matrix, whose structure differs only in a wraparound block. Similarly, the resulting near-BTTB system is approximated by a block circulant matrix. Circulant matrices are diagonalisable by discrete Fourier transform (DFT) \cite{hariprasadCirculantDecompositionMatrix2024}, so applying the preconditioner $M^{-1}$ requires (i) an $\alpha$-weighted Fast Fourier Transform (FFT) in time, (ii) $N_t$ independent spatial solves in the Fourier domain, and (iii) an inverse FFT. Further details on the diagonalisation and $\alpha$ weighting are given in Appendix \ref{app:precond}. 
 
-Since the temporal operator is real valued, its DFT exhibits complex conjugate symmetry \cite{johnsonModifiedSplitRadixFFT2007}. Consequently, for even $N_t$, only $(N_T / 2) + 1$ distinct spatial factorisations are required. The remaining factorisations are obtained by complex conjugation. This has the effect of reducing the memory required to apply the preconditioner significantly.
+Since the temporal operator is real valued, its DFT exhibits complex conjugate symmetry \cite{johnsonModifiedSplitRadixFFT2007}. Consequently, for even $N_t$, only $(N_t / 2) + 1$ distinct spatial factorisations are required. The remaining factorisations are obtained by complex conjugation. This has the effect of reducing the memory required to apply the preconditioner significantly.
 
 The parameter $\alpha \in (0,1)$ controls the wrap-around weighting and hence the conditioning of the preconditioned system \cite{ganderParaDiagParallelintimeAlgorithms2020}. A smaller $\alpha$ brings the circulant approximation closer to the original temporal operator, causing the eigenvalues of $M^{-1}A$ to cluster more closely around unity (Figure \ref{fig:svd}), drastically improving GMRES convergence. In all results presented here, $\alpha=0.001$ is used.
 
@@ -344,7 +344,7 @@ The temporal discretisation was fixed at second order for the following results.
 \section{Methods of Evaluation}
 The purpose of this study is to compare the characteristics of ODIL against FDTD solutions obtained using Devito \cite{louboutinDevitoV310Embedded2019} in the following areas: accuracy, performance, dispersion, and stability. This study focuses on the low-to-mid ultrasound band ($50$-$200 \si{\kilo\hertz}$), motivated by transcranial ultrasound applications.
 
-ODIL and Devito solutions were obtained on the same grid and velocity model, with identical discretisation and physical parameters. ODIL components were built programmatically using the Python library developed for this research. FDTD components were built using elements of Devito's \texttt{examples.seismic} submodule. Source injection and trace extraction for both sides of the problem was orchestrated using identical sinc interpolation methods (Section \ref{subsect:disc_source_inj}), verified against the Devito source code. 
+ODIL and Devito solutions were obtained on the same grid and velocity model, with identical discretisation and physical parameters. ODIL components were built programmatically using the Python library developed for this research. FDTD components were built using elements of Devito's \texttt{examples.seismic} submodule. Source injection and trace extraction for both sides of the problem were orchestrated using identical sinc interpolation methods (Section \ref{subsect:disc_source_inj}), verified against the Devito source code. 
 
 All relevant computational parameters are delineated on a per-experiment basis in Appendix \ref{app:setup}, and models and acquisition geometries are illustrated in Figure \ref{fig:models}. The homogeneous model is used to compute analytical solutions of the wave equation, and the inclusion model isolates the effect of heterogeneity on solver scaling, while the Shepp-Logan phantom adds anatomical and geometric complexity. 
 
@@ -355,7 +355,7 @@ All relevant computational parameters are delineated on a per-experiment basis i
     \label{fig:models}
 \end{figure}
 
-All experiments were performed on an AMD Rome compute node comprised of two AMD EPYC 7742 processors, each with 64 physical cores and 128 threads, and 1Tb of RAM. Devito's shared memory parallelism (orchestrated by OpenMP) is controlled through its Programmatic API for controlling environment variables. All other variables, including compiler optimisations, are left to the default settings. For ODIL, the number of concurrent processes was set to be equal to the number of physical cores prescribed to particular experiments.
+All experiments were performed on an AMD Rome compute node comprised of two AMD EPYC 7742 processors, each with 64 physical cores and 128 threads, and 1TB of RAM. Devito's shared memory parallelism (orchestrated by OpenMP) is controlled through its Programmatic API for controlling environment variables. All other variables, including compiler optimisations, are left to the default settings. For ODIL, the number of concurrent processes was set to be equal to the number of physical cores prescribed to particular experiments.
 
 \subsection{Accuracy Study}
 \label{subsect:experiments-accuracy}
@@ -395,7 +395,7 @@ For explicit time stepping, determining complexity is straightforward. In FDTD, 
 \subsection{Measuring Numerical Dispersion}
 \label{subsect:wave_specifics}
 
-The $p$-$\omega$ (slowness-frequency) transform method, described by Chekroun et al. \cite{chekrounTimedomainNumericalSimulations2012}, is used to measure phase velocity empirically. Receivers are positioned on rays relative to the source at a spacing much smaller than the minimum wavelength. Their locations are parametrised by a ray angle $\theta$ anticlockwise from the horizontal and a distance $r$ along each ray (\ref{fig:models}d). At each receiver distance $r_k$ along the propagation direction, the Fourier transform of the recorded signal is calculated, $s(r_k, \omega)$, where $\omega$ is denotes angular frequency. Then, for a set of trial slowness values $p_i = \nicefrac{1}{c_i}$, $c_i \in [1300, 1600]\ \si{\metre\per\second}$, each receiver's spectrum is phase shifted by $e^{i\omega p r_k}$, and spectra across receivers are summed to form a stack quantity $\hat{s}(p, \omega)$. When the trial slowness $p$ matches the true slowness at that frequency, the phase corrected terms add constructively and $|\hat{s}(p, \omega)|$ is maximised, identifying the effective slowness. Sweeping over $p$ for each $\omega$ and locating the maximum allows an empirical phase velocity to be calculated as
+The $p$-$\omega$ (slowness-frequency) transform method, described by Chekroun et al. \cite{chekrounTimedomainNumericalSimulations2012}, is used to measure phase velocity empirically. Receivers are positioned on rays relative to the source at a spacing much smaller than the minimum wavelength. Their locations are parametrised by a ray angle $\theta$ anticlockwise from the horizontal and a distance $r$ along each ray (\ref{fig:models}d). At each receiver distance $r_k$ along the propagation direction, the Fourier transform of the recorded signal is calculated, $s(r_k, \omega)$, where $\omega$ denotes angular frequency. Then, for a set of trial slowness values $p_i = \nicefrac{1}{c_i}$, $c_i \in [1300, 1600]\ \si{\metre\per\second}$, each receiver's spectrum is phase shifted by $e^{i\omega p r_k}$, and spectra across receivers are summed to form a stack quantity $\hat{s}(p, \omega)$. When the trial slowness $p$ matches the true slowness at that frequency, the phase corrected terms add constructively and $|\hat{s}(p, \omega)|$ is maximised, identifying the effective slowness. Sweeping over $p$ for each $\omega$ and locating the maximum allows an empirical phase velocity to be calculated as
 
 \begin{equation}
     C_h(\omega) = \frac{1}{\hat{p}(\omega)}.
@@ -430,7 +430,7 @@ Solution stability is analysed at a range of CFL numbers. The CFL is given in 2D
     \text{CFL} = c\Delta t\sqrt{\frac{1}{\Delta x^2} + \frac{1}{\Delta y^2}}.
 \end{equation}
 
-In general, for a second order explicit time stepping scheme to be stable the requirement is $C \leq 1$ \cite{courantPartialDifferenceEquations1967}, though the actual requirement is usually more stringent in practice.
+In general, for a second order explicit time stepping scheme to be stable the requirement is $\text{CFL} \leq 1$ \cite{courantPartialDifferenceEquations1967}, though the actual requirement is usually more stringent in practice.
 
 Stability is assessed quantitatively and qualitatively by inspecting solutions on two models at a range of CFL numbers by varying temporal grid spacing. For the homogeneous model, $\text{CFL} \in[0.7, 9.2]$ was used, and for the Shepp Logan phantom model, $\text{CFL}\in[0.7, 17.2]$. At the upper limit of these bounds, the temporal sampling rate converges to the Nyquist limit. 
 
@@ -440,7 +440,7 @@ On the homogeneous model, the analytical solution described in Section \ref{subs
 \section{Results and Discussion}
 \label{sect:results}
 
-As a baseline, L-BFGS-B, unpreconditioned GMRES, and preconditioned GMRES were run for a small homogeneous problem, measuring error norm, wall clock time, error norm, and reason for exit. The unpreconditioned GMRES method exited almost immediately on a relative tolerance  criterion, indicating the solve is not viable without preconditioning, while L-BFGS-B achieved a significantly smaller error norm, but at an infeasible iteration cost. Accordingly, only the caching and non-caching ODIL methodologies are compared against FDTD going forward.
+As a baseline, L-BFGS-B, unpreconditioned GMRES, and preconditioned GMRES were run for a small homogeneous problem, measuring error norm, wall clock time, iterations, and reason for exit. The unpreconditioned GMRES method exited almost immediately on a relative tolerance  criterion, indicating the solve is not viable without preconditioning, while L-BFGS-B achieved a significantly smaller error norm, but at an infeasible iteration cost. Accordingly, only the caching and non-caching ODIL methodologies are compared against FDTD going forward.
 
 The relevant numerical results represented by figures in the discussion that follows are provided in Appendix \ref{app:results}, Table \ref{tab:baseline}-\ref{tab:results-cfl}.
 
@@ -452,7 +452,7 @@ Error norm measurements for ODIL are within $\sim\pm 0.01$ of those of the FDTD 
 \ifshowfigs
 \begin{figure}[!ht]
     \includegraphics[width=0.9\textwidth]{figures/fig4_accuracy.png}
-    \caption{Panel (a) indicates global error norm as a function of Degrees of Freedom (DOF). Panel (b) illustrates the relative difference between the normalised trace residual norms of ODIL and Devito. Panel (c) shows waveforms observed at the receiver indicated by the red circle in Panel (b) against the analytical solution. The trace panel also demonstrates spurious boundary reflections and the pre-reflection window which omits them from metric calculations. Panels (b) and (c) visualise the results on the coarsest grid (lowest DOF) of $N_z = N_y = 80$, giving approximately 10 points per wavelength.}
+    \caption{Panel (a) indicates global error norm as a function of Degrees of Freedom (DOF). Panel (b) illustrates the relative difference between the normalised trace residual norms of ODIL and Devito. Panel (c) shows waveforms observed at the receiver indicated by the red circle in Panel (b) against the analytical solution. The trace panel also demonstrates spurious boundary reflections and the pre-reflection window which omits them from metric calculations. Panels (b) and (c) visualise the results on the coarsest grid (lowest DOF) of $N_x = N_y = 80$, giving approximately 10 points per wavelength.}
     \label{fig:accuracy}
 \end{figure}
 \fi
@@ -460,7 +460,7 @@ Error norm measurements for ODIL are within $\sim\pm 0.01$ of those of the FDTD 
 \subsection{Computational Performance Properties}
 \label{subsect:results_perf}
 
-Both method's run time and memory consumption scales within the theoretical time and space complexity bounds, as seen in Figure \ref{fig:raw-scaling}. Devito's initial departure from the proposed complexities for time stepping is likely due to Python process overheads dominating measurements. Figure \ref{fig:raw-scaling}b demonstrates raw wall clock measurements and evidences that, when run in serial, ODIL underperforms FDTD, which is primarily attributable to inferior algorithmic scalability.
+Both methods run time and memory consumption scale within the theoretical time and space complexity bounds, as seen in Figure \ref{fig:raw-scaling}. Devito's initial departure from the proposed complexities for time stepping is likely due to Python process overheads dominating measurements. Figure \ref{fig:raw-scaling}b demonstrates raw wall clock measurements and evidences that, when run in serial, ODIL underperforms FDTD, which is primarily attributable to inferior algorithmic scalability.
 
 \ifshowfigs
 \begin{figure}[!ht]
@@ -471,9 +471,9 @@ Both method's run time and memory consumption scales within the theoretical time
 \end{figure}
 \fi
 
-In Figure \ref{fig:raw-scaling}b, the non-caching method sits below the lower bounds of memory complexity. Since factors are discarded after they are formed, the peak memory usage cannot exceed $M_{\max} = p \times M_\text{k} $, where $p$ is the number of processes and $M_k$ is the memory required to factorising a Toeplitz block corresponding to a single frequency mode. Figure \ref{fig:raw-scaling}c, isolates per mode factorisation wall clock cost and shows that run time scaling sits very close to the proposed lower bound on time complexity. This indicates near-optimal row ordering in the factorisations.
+In Figure \ref{fig:raw-scaling}c, the non-caching method sits below the lower bounds of memory complexity. Since factors are discarded after they are formed, the peak memory usage cannot exceed $M_{\max} = p \times M_\text{k} $, where $p$ is the number of processes and $M_k$ is the memory required to factorise a Toeplitz block corresponding to a single frequency mode. Figure \ref{fig:raw-scaling}c, isolates per mode factorisation wall clock cost and shows that run time scaling sits very close to the proposed lower bound on time complexity. This indicates near-optimal row ordering in the factorisations.
 
-Figures \ref{fig:raw-scaling}c and d illustrate wall clock time and RSS as a function of peak source frequency $f_0$, exposing a key limitation of the preconditioner. Temporal grid density depends on the peak frequency via the Nyquist criterion, and, since the ParaDiag II preconditioner scales poorly in memory when factorisations are cached, this limits the usable frequency range. Without sufficient RAM, at ultrasound frequencies the caching approach must be used instead, at the cost of an impractical factorisation time.
+Figures \ref{fig:raw-scaling}d and e illustrate wall clock time and RSS as a function of peak source frequency $f_0$, exposing a key limitation of the preconditioner. Temporal grid density depends on the peak frequency via the Nyquist criterion, and, since the ParaDiag II preconditioner scales poorly in memory when factorisations are cached, this limits the usable frequency range. Without sufficient RAM, at ultrasound frequencies the non-caching approach must be used instead, at the cost of an impractical factorisation time.
 
 Figure \ref{fig:hardware-scaling}a demonstrates near-linear speedup for ODIL up to 32 cores. Since the AMD Rome node used to execute the code has 4 NUMA domains, each formed of 32 cores, the departure from linear speedup is likely due to costly NUMA domain crosstalk. Devito shows negligible speedup, attributed to OpenMP overhead offsetting the modest gains available for a problem of this size. Figure \ref{fig:hardware-scaling}c demonstrates how exploiting hardware parallelism allows ODIL to compete more closely with time stepping, though the lowest solve duration is still $\sim$10 times greater than that of Devito. Figure \ref{fig:hardware-scaling}b demonstrates a less obvious idiosyncrasy of the non-caching methodology. Since $M_{\max}$ depends on the number of processes, when the number of processes is equal to the number of modes to be factorised, the memory consumption of the non-caching method approaches that of the caching method.
 
@@ -492,7 +492,7 @@ In summary, under the presented formulation, ODIL's performance characteristics 
 \subsection{Dispersion and CFL Effects}
 \label{subsect:results_wave}
 
-Figure \ref{fig:phase-v-error} shows the percentage error in phase velocity versus as a function of Points Per Wavelength (PPW) versus the analytical dispersion relation. At all measured angles, ODIL and FDTD agree closely with the analytical relation across PPW levels, with the error converging toward zero as PPW increases. It is expected that ODIL and Devito display the same dispersive behaviour, since both discretise the wave equation with the same stencil. That ODIL's measured dispersion matches this analytical prediction provides further quantitative evidence that it converges to the same discrete solution as FDTD.
+Figure \ref{fig:phase-v-error} shows the percentage error in phase velocity as a function of Points Per Wavelength (PPW) versus the analytical dispersion relation. At all measured angles, ODIL and FDTD agree closely with the analytical relation across PPW levels, with the error converging toward zero as PPW increases. It is expected that ODIL and Devito display the same dispersive behaviour, since both discretise the wave equation with the same stencil. That ODIL's measured dispersion matches this analytical prediction provides further quantitative evidence that it converges to the same discrete solution as FDTD.
 
 \ifshowfigs
 \begin{figure}[!ht]
@@ -515,7 +515,7 @@ Figure \ref{fig:cfl-stability} establishes the behaviour of the ODIL and FDTD so
 \fi
 
 \newpage
-Solutions on the Shepp Logan phantom model for both methodologies at stable and unstable CFL numbers are visualised in Figure \ref{fig:snapshots}. Within the stable regime, ODIL and time stepping solutions share similar peak amplitudes and wavelet shapes. Both solutions destabilise beyond the CFL limit, but in different ways. Devito solution fields grow exponentially, spilling into numerical overflow early in the simulation. On the contrary, ODIL initially  propagate the source wavelet in a physically plausible manner, but at later times seemingly converges to a fixed, oscillatory pattern. That pattern resembles a two dimensional standing wave with a frequency that decreases with CFL number.
+Solutions on the Shepp Logan phantom model for both methodologies at stable and unstable CFL numbers are visualised in Figure \ref{fig:snapshots}. Within the stable regime, ODIL and time stepping solutions share similar peak amplitudes and wavelet shapes. Both solutions destabilise beyond the CFL limit, but in different ways. Devito solution fields grow exponentially, spilling into numerical overflow early in the simulation. On the contrary, ODIL initially propagates the source wavelet in a physically plausible manner, but at later times seemingly converges to a fixed, oscillatory pattern. That pattern resembles a two dimensional standing wave with a frequency that decreases with CFL number.
 
 \ifshowfigs
 \begin{figure}[p]
@@ -526,10 +526,10 @@ Solutions on the Shepp Logan phantom model for both methodologies at stable and 
 \end{figure}
 \fi
 
-To further characterise this behaviour, the cosine similarity $s(t_i)$ and growth rate $r(t_i)$ between successive time levels is calculated for the ODIL solution at each CFL number according to
+To further characterise this behaviour, the cosine similarity $s(t_i)$ and growth rate $r(t_i)$ between successive time levels $i,\ i+1$ are calculated for the ODIL solution at each CFL number according to
 
 \begin{align}
-    s(t_i) &= \frac{\mathbf{u}_{t} \cdot \mathbf{u}_{t+1}}{\|\mathbf{u}_t\|\|\mathbf{u}_{t+1}\|},\\[3pt]
+    s(t_i) &= \frac{\mathbf{u}_{i} \cdot \mathbf{u}_{i+1}}{\|\mathbf{u}_t\|\|\mathbf{u}_{t+1}\|},\\[3pt]
     r(t_i) &= \frac{\|\mathbf{u}_{i+1}\|}{\|\mathbf{u}_{i}\|}.
 \end{align}
 
@@ -550,7 +550,7 @@ In summary, beyond the CFL limit, the ODIL solution does not diverge in the mann
 \newpage
 \section{Conclusion}
 
-In this work, a methodology for solving the forced acoustic wave equation in two dimensions using the Optimising a Discrete Loss (ODIL) framework has been established and compared against traditional FDTD. ODIL was shown to inherit the accuracy properties of the underlying discretisation, converging to the same discrete solution as time stepping and matching it in dispersive character. The particular formulation presented, which uses an alpha circulant preconditioner, underperforms time stepping in memory usage and wall clock time when run in serial, owing to its higher computational complexity, though this gap narrows considerably when hardware parallelism is exploited. While many of the error characteristics are identical, the manner in which ODIL destabilises beyond the CFL limit was found to differ from FDTD. Evidence is presented that, in unstable regimes, ODIL settles on a single dominant mode of oscillation as time progresses, rather than diverging to complete numerical overflow. Identifying that mode, and the mechanism by which it is selected, is left to future work, and represents one of the most interesting avenue opened by this study. Under the formulation presented, ODIL's performance characteristics remain less favourable than those of FDTD. However, as hardware, software, and preconditioning methods continue to advance, the continued study of ODIL for such problems remains a valuable pursuit.
+In this work, a methodology for solving the forced acoustic wave equation in two dimensions using the Optimising a Discrete Loss (ODIL) framework has been established and compared against traditional FDTD. ODIL was shown to inherit the accuracy properties of the underlying discretisation, converging to the same discrete solution as time stepping and matching it in dispersive character. The particular formulation presented, which uses an alpha circulant preconditioner, underperforms time stepping in memory usage and wall clock time when run in serial, owing to its higher computational complexity, though this gap narrows considerably when hardware parallelism is exploited. While many of the error characteristics are identical, the manner in which ODIL destabilises beyond the CFL limit was found to differ from FDTD. Evidence is presented that, in unstable regimes, ODIL settles on a single dominant mode of oscillation as time progresses, rather than diverging to complete numerical overflow. Identifying that mode, and the mechanism by which it is selected, is left to future work, and represents one of the most interesting avenues opened by this study. Under the formulation presented, ODIL's performance characteristics remain less favourable than those of FDTD. However, as hardware, software, and preconditioning methods continue to advance, the continued study of ODIL for such problems remains a valuable pursuit.
 
 \newpage
 \bibliographystyle{ieeetr}
@@ -678,7 +678,7 @@ where $\mathbf{u}_b$ are the boundary columns of the solution array.
 
 \section{Reduction of the Gauss-Newton Method}
 \label{app:gn}
-Guass-Newton is an iterative method for solving nonlinear least squares optimisation problems that approximates the Hessian of the objective function, avoiding the computation of second derivatives. At the $k$-th iterate, the residual is linearised as 
+Gauss-Newton is an iterative method for solving nonlinear least squares optimisation problems that approximates the Hessian of the objective function, avoiding the computation of second derivatives. At the $k$-th iterate, the residual is linearised as 
 
 \begin{equation}
     \mathbf{r}(\mathbf{u}_k+\delta\mathbf{u}) \approx \mathbf{r}_k + J_k\delta\mathbf{u},
@@ -697,16 +697,16 @@ For the present problem, however, the residual is linear in $\mathbf{u}$, such t
     A^T A\delta \mathbf{u}_k = - A^T \mathbf{r}_k.
 \end{equation}
 
-Assuming that the discretised wave equation is uniquely solvable, such that $A$ is non-singular, $A^T$ is then also non-singular. Resultingly, Equation \eqref{eq:normal_eqs} can be written
+Assuming that the discretised wave equation is uniquely solvable, such that $A$ is non-singular, $A^T$ is then also non-singular. Consequently, Equation \eqref{eq:normal_eqs} can be written
 
 \begin{equation}
-    A^T(A\delta \mathbf{u} + r) = 0.
+    A^T(A\delta \mathbf{u} + \mathbf{r}) = 0.
 \end{equation}
 
-since $A^T$ is neccesarily non-zero, the minimiser of the Gauss-Newton equations can found by solving
+since $A^T$ is necessarily non-zero, the minimiser of the Gauss-Newton equations can be found by solving
 
 \begin{equation}
-    A\delta \mathbf{u} = - r,
+    A\delta \mathbf{u} = - \mathbf{r},
 \end{equation}
 
 for the update, $\delta \mathbf{u}$. Using the definition of the residual $\mathbf{r}$, this can be written as
@@ -883,9 +883,9 @@ This section summarises the numerical and physical parameters used across each o
     \label{tab:parameters}
 \end{table}
 
-Where referenced, the homogeneous model had $c=\SI{1500}{\metre\per\second}$. The so called 'inclusion' model featured a circular velocity anomaly of $c=\SI{1800}{\metre\per\second}$ against a background of $c=\SI{1500}{\metre\per\second}$, centred on the middle of the relevant domain with a radius of $\SI{0.03}{\metre}$. The Shepp Logan Phantom model was derived from the scikit-image \cite{waltScikitimageImageProcessing2014} API and was manipulated such that the skull had a wave speed of 2800 \si{\metre\per\second}, the brain tissue wave speed was in the range $[1500, 1600] \si{\metre\per\second}$, and the background wave speed was $1480 \si{\metre\per\second}$. Models are illusrtated in Figure \ref{fig:models}.
+Where referenced, the homogeneous model had $c=\SI{1500}{\metre\per\second}$. The so called 'inclusion' model featured a circular velocity anomaly of $c=\SI{1800}{\metre\per\second}$ against a background of $c=\SI{1500}{\metre\per\second}$, centred on the middle of the relevant domain with a radius of $\SI{0.03}{\metre}$. The Shepp Logan Phantom model was derived from the scikit-image \cite{waltScikitimageImageProcessing2014} API and was manipulated such that the skull had a wave speed of 2800 \si{\metre\per\second}, the brain tissue wave speed was in the range $[1500, 1600] \si{\metre\per\second}$, and the background wave speed was $1480 \si{\metre\per\second}$. Models are illusrated in Figure \ref{fig:models}.
 
-Where referenced in Table \ref{tab:parameters_physical}, the 'halo' receiver configuration is comprised of an array of $n$ receivers distributed evenly on circle with radius $r$ centred on the middle of the domain. The 'rays' configuration is comprised of receivers distributed uniformly along 4 rays at angles of $0^{\circ}, 15^{\circ}, 30^{\circ}$, and $45^{\circ}$ counterclockwise from the horizontal. The receivers sit at a distance $r$ from the source location $(s_x, s_y)$. The location of the $i$-th receiver along the ray at angle $\theta_j$ is calculated according to
+Where referenced in Table \ref{tab:parameters_physical}, the 'halo' receiver configuration is comprised of an array of $n$ receivers distributed evenly on a circle with radius $r$ centred on the middle of the domain. The 'rays' configuration is comprised of receivers distributed uniformly along 4 rays at angles of $0^{\circ}, 15^{\circ}, 30^{\circ}$, and $45^{\circ}$ counterclockwise from the horizontal. The receivers sit at a distance $r$ from the source location $(s_x, s_y)$. The location of the $i$-th receiver along the ray at angle $\theta_j$ is calculated according to
 
 \begin{align*}
     x_i &= s_x + r_i\cos{\theta_j}\\
@@ -952,13 +952,13 @@ Making the substitution $\tau = t - \mathcal{T}$ and $d\tau = -d\mathcal{T}$, th
     u(r, t) = \frac{1}{2\pi} \int^{a}_t \frac{s(t-\mathcal{T})}{\sqrt{\mathcal{T}^2 - a^2}} -d\mathcal{T},
 \end{equation}
 
-To make the interval increasing, interval is negated and the limits are flipped, cancelling the negative the differential introduced, yielding
+To make the interval increasing, the intergrand is negated and the limits are flipped, cancelling the negative the differential introduced, yielding
 
 \begin{equation}
     u(r, t) = \frac{1}{2\pi} \int^t_a \frac{s(t-\mathcal{T})}{\sqrt{\mathcal{T}^2 - a^2}} d\mathcal{T}, \quad t > a.
 \end{equation}
 
-The intuitive explanation of the limits here is that the Ricker wavelet and the Green's function are beign convolved between the arrival time $a = r/c$ and the current time $t$.
+The intuitive explanation of the limits here is that the Ricker wavelet and the Green's function are being convolved between the arrival time $a = r/c$ and the current time $t$.
 
 Now, a $\cosh$ substitution can be used to remove the singular denominator. Let $\mathcal{T} = a\cosh{\nu}$ for the dimensionless dummy integration variable $\nu: \nu \geq 0$. Then
 
@@ -1011,11 +1011,11 @@ which simplifies nicely down to the result stated in Equation \eqref{eq:reduced_
         $N_x, N_y$ & $N_t$ & DOF & $\Delta x$ & PPW & $\bar{\mathcal{E}}_\text{ODIL}$ & $\bar{\mathcal{E}}_\text{Devito}$ & GMRES iters. \\
         \midrule
     80 & 136 & 870,400 & 0.002532 & 11.85 & 0.052191 & 0.053204 & 3\\	
-    100 & 170 &	1,700,000	& 0.002020 & 14.85 & 0.034569 & 0.035088 & 3 \\	
+    100 & 170 &	1,700,000 & 0.002020 & 14.85 & 0.034569 & 0.035088 & 3 \\	
     120 & 203 &2,923,200 & 0.001681 & 17.85 & 0.024245 & 0.024403 & 3 \\
-    140 & 237 & 4,645,200	& 0.001439 & 20.85 & 0.018974 & 0.019090 & 3 \\
-    160	& 271 & 6,937,600	& 0.001258 & 23.85 & 0.013713 & 0.013797 & 3 \\	
-    180	& 305 & 9,882,000	& 0.001117 & 26.85 & 0.010958 & 0.011150 & 3 \\
+    140 & 237 & 4,645,200 & 0.001439 & 20.85 & 0.018974 & 0.019090 & 3 \\
+    160	& 271 & 6,937,600 & 0.001258 & 23.85 & 0.013713 & 0.013797 & 3 \\	
+    180	& 305 & 9,882,000 & 0.001117 & 26.85 & 0.010958 & 0.011150 & 3 \\
     200	& 339 & 13,560,000 & 0.001005 & 29.85 & 0.008472 & 0.008572 & 3 \\
         \bottomrule
     \end{tabular}
@@ -1030,12 +1030,12 @@ which simplifies nicely down to the result stated in Equation \eqref{eq:reduced_
         & & \multicolumn{3}{c}{Wall clock (\si{\second})}
           & \multicolumn{3}{c}{Peak RSS (Gi\si{\byte})} \\
         \cmidrule(lr){3-5}\cmidrule(lr){6-8}
-        $f_0$ (\si{\kilo\hertz}) & DOF & Devito & ODIL$_\text{uc}$ & ODIL$_\text{c}$ & Devito & ODIL$_\text{uc}$ & ODIL$_\text{c}$ \\
+        $f_0$ (\si{\kilo\hertz}) & DOF & Devito & ODIL$_\text{nc}$ & ODIL$_\text{c}$ & Devito & ODIL$_\text{uc}$ & ODIL$_\text{c}$ \\
         \midrule
-         25 & $1.73 \times 10^{5}$ & 0.61 & 2.2 & 0.8 & 0.19 & 0.20 & 0.46 \\
-         50 & $1.28 \times 10^{6}$ & 0.62 & 30.7 & 9.2 & 0.21 & 0.36 & 3.10 \\
-         75 & $4.21 \times 10^{6}$ & 0.62 & 161.1 & 46.7 & 0.23 &  0.82 & 11.90 \\
-        100 & $1.01 \times 10^{7}$ & 0.63 &  508.9 & 142.3 & 0.29 & 1.53 &  30.92 \\
+        25 & $1.73 \times 10^{5}$ & 0.61 & 2.2 & 0.8 & 0.19 & 0.20 & 0.46 \\
+        50 & $1.28 \times 10^{6}$ & 0.62 & 30.7 & 9.2 & 0.21 & 0.36 & 3.10 \\
+        75 & $4.21 \times 10^{6}$ & 0.62 & 161.1 & 46.7 & 0.23 &  0.82 & 11.90 \\
+        100 & $1.01 \times 10^{7}$ & 0.63 &  508.9 & 142.3 & 0.29 & 1.53 & 30.92 \\
         125 & $1.94 \times 10^{7}$ & 0.65 & 1316.4 & 365.7 & 0.39 & 2.71 & 65.16 \\
         150 & $3.33 \times 10^{7}$ & 0.68 & 2939.5 & 826.7 & 0.52 & 4.51 & 122.75 \\
         200 & $7.90 \times 10^{7}$ & 0.74 & 8884.2 & 2552.8 & 0.94 & 12.99 & 323.90 \\
